@@ -1,0 +1,924 @@
+CCSD PROJECT - CONSOLIDATED LIST / LIBRARY / COLUMN INVENTORY
+Prepared from: this chat, the uploaded master schema file, working screenshots, and later schema changes discussed in chat.
+
+IMPORTANT NOTES
+===============
+1. This document combines:
+   - The authoritative CCSD master schema from the uploaded "SPA Lists Columns and Plan (1).txt"
+   - Additional platform/support lists defined later in chat for the SharePoint SPA
+   - Later-added hardware/software governance columns shown in screenshots and refined in chat
+   - The current CCSD_PersonnelDataCall_Staging list discussed in chat and shown in screenshot
+
+2. Where a column is a Choice field and the choice values were explicitly stated, they are included.
+
+3. Where a column is a Choice field but the exact choice values were NOT explicitly stated in the source material, it is marked as:
+   "Choice (values not explicitly specified in source)"
+
+4. Where there was a conflict between an older schema and a later user correction, the later user correction is reflected in the "Working / Current" note.
+
+5. Some lists are core, authoritative data sources. Others are staging, optional, support, workflow, telemetry, or planned/extended lists associated with the project.
+
+====================================================================
+A. CORE ORG & PEOPLE
+====================================================================
+
+1) CCSD_Organizations (List)
+----------------------------
+- Org ID (OrgID) - Single line of text
+- Org Name (OrgName) - Single line of text
+- Parent Organization (ParentOrgID) - Lookup -> CCSD_Organizations
+- Org Type (OrgType) - Choice
+  Choices: Wing; Group; Squadron; Flight; Section; Detachment; Office; Other
+- Org Display Order (OrgDisplayOrder) - Number
+- Is Active (IsActive) - Yes/No
+- Org Code (OrgCode) - Single line of text
+- Notes (Notes) - Multiple lines of text
+- SharePointURL (SharePointURL) - Hyperlink
+- Organization Address Number (OrganizationAddressNumber) - Single line of text
+- Organization Address Bldg Number (OrganizationAddressBldgNumber) - Single line of text
+- Organization Address Street (OrganizationAddressStreet) - Single line of text
+- Organization Address City (OrganizationAddressCity) - Single line of text
+- Organization Address State (OrganizationAddressState) - Single line of text
+- Organization Address Zip (OrganizationAddressZip) - Single line of text
+
+2) CCSD_Positions (List)
+------------------------
+- Position ID (PositionID) - Single line of text
+- Position Title (PositionTitle) - Single line of text
+- Organization (OrgID) - Lookup -> CCSD_Organizations
+- Supervisor Position (SupervisorPositionID) - Lookup -> CCSD_Positions
+- Grade Band (GradeBand) - Choice
+  Choices: Officer; Enlisted; Warrant Officer; GS; GG; NH; SES; Contractor; Other
+- Grade Number (GradeNumber) - Number
+- Authorized Count (AuthorizedCount) - Number
+- Is Key Leadership (IsKeyLeadership) - Yes/No
+- Duty Summary (DutySummary) - Multiple lines of text
+- Notes (Notes) - Multiple lines of text
+- PositionLevel (PositionLevel) - Choice
+  Choices: Non-supervisory; Supervisory; Manager; Executive
+
+3) CCSD_Personnel (List)
+------------------------
+- Person ID (PersonID) - Single line of text
+- Last Name (LastName) - Single line of text
+- First Name (FirstName) - Single line of text
+- Middle Name (MiddleName) - Single line of text
+- Suffix (Suffix) - Choice
+  Choices: Sr.; Jr.; I; II; III; IV; V; VI
+- Grade (Grade) - Choice
+  Choices: E-1; E-2; E-3; E-4; E-5; E-6; E-7; E-8; E-9; WO-1; WO-2; WO-3; WO-4; WO-5; O-1; O-2; O-3; O-4; O-5; O-6; O-7; O-8; O-9; GS-01; GS-02; GS-03; GS-04; GS-05; GS-06; GS-07; GS-08; GS-09; GS-10; GS-11; GS-12; GS-13; GS-14; GS-15; GG-01; GG-02; GG-03; GG-04; GG-05; GG-06; GG-07; GG-08; GG-09; GG-10; GG-11; GG-12; GG-13; GG-14; GG-15; NH-01; NH-02; NH-03; NH-04; Contractor; Other; SES
+- Rank (Rank) - Choice
+  Choices: CIV; CTR; AB; Amn; A1C; SrA; SSgt; TSgt; MSgt; SMSgt; CMSgt; 2d LT; 1st LT; Capt; Maj; Lt Col; Col; Brig Gen; Maj Gen; Lt Gen; Gen; Other
+- Component (Component) - Choice
+  Choices: Active Duty; Air National Guard; Air Force Reserve; Civilian; Contractor; Other
+- Category (Category) - Choice
+  Choices: Military; Civilian; Contractor; Student; Intern; Other
+- M365 Account (Account) - Person or Group
+- Email (Email) - Single line of text
+- Workcenter (WorkcenterID) - Lookup -> CCSD_Workcenters
+- Organization (OrgID) - Lookup -> CCSD_Organizations
+- Position (PositionID) - Lookup -> CCSD_Positions
+- Seat (SeatID) - Lookup -> CCSD_Seats
+- Supervisor (Person) (SupervisorPersonID) - Lookup -> CCSD_Personnel
+- Status (Status) - Choice
+  Choices: In-Processing; Assigned; Deployed; TDY; Leave; Departed; Inactive
+- Date Arrived (DateArrived) - Date and Time
+- Date Departed (DateDeparted) - Date and Time
+- Primary Phone (PrimaryPhone) - Single line of text
+- Alt Phone (AltPhone) - Single line of text
+- Office Phone (OfficePhone) - Single line of text
+- Is Supervisor (IsSupervisor) - Yes/No
+- Notes (Notes) - Multiple lines of text
+- AFSC (AFSC) - Single line of text
+- Step (Step) - Number
+- Education Level (EducationLevel) - Choice
+  Choices: High school graduate or certificate equivalency; Terminal occupational program--did not complete; Terminal occupational program--certificate of completion, diploma or equivalent; Some college--less than one year; One year of college; Two years of college; Associate Degree; Three years of college; Four years of college; Bachelor's Degree; Post-Bachelor's; First professional; Post-first professional; Master's degree; Post-Master's; Sixth-year degree; Post-sixth year; Doctorate degree; Post-Doctorate
+
+====================================================================
+B. FACILITIES, ROOMS & SEATING
+====================================================================
+
+4) CCSD_Facilities (List)
+-------------------------
+- Facility ID (FacilityID) - Single line of text
+- Building Number (BuildingNumber) - Single line of text
+- Base (Base) - Single line of text
+- Address (Address) - Multiple lines of text
+- Has NIPR (HasNIPR) - Yes/No
+- Has SIPR (HasSIPR) - Yes/No
+- Has JWICS (HasJWICS) - Yes/No
+- Facility POC (FacilityPOC) - Person or Group
+- Notes (Notes) - Multiple lines of text
+
+5) CCSD_Rooms (List)
+--------------------
+- Room ID (RoomID) - Single line of text
+- Facility (FacilityID) - Lookup -> CCSD_Facilities
+- Room Number (RoomNumber) - Single line of text
+- Floor (Floor) - Single line of text or Number
+- Room Type (RoomType) - Choice
+  Choices: Office (Private); Office (Shared); Open Bay; Conference Room; Training Room; Server Room; Storage; Other
+- Max Seats (MaxSeats) - Number
+- SCIF (IsSCIF) - Yes/No
+- Notes (Notes) - Multiple lines of text
+
+6) CCSD_Seats (List)
+--------------------
+- Seat ID (SeatID) - Single line of text
+- Room (RoomID) - Lookup -> CCSD_Rooms
+- Seat Label (SeatLabel) - Single line of text
+- Port Number (PortNumber) - Single line of text
+- NIPR (HasNIPR) - Yes/No
+- SIPR (HasSIPR) - Yes/No
+- JWICS (HasJWICS) - Yes/No
+- Phone Number (PhoneNumber) - Single line of text
+- VTC Enabled (VTCEnabled) - Yes/No
+- Current Person (CurrentPersonID) - Lookup -> CCSD_Personnel
+- X Coordinate (XCoord) - Number
+- Y Coordinate (YCoord) - Number
+- Seat Status (SeatStatus) - Choice
+  Choices: Occupied; Vacant; Reserved; Out of Service; Planned; Decommissioned
+- Notes (Notes) - Multiple lines of text
+
+====================================================================
+C. IN/OUT PROCESSING
+====================================================================
+
+7) CCSD_InOutProcessing (List)
+------------------------------
+- In/Out ID (InOutID) - Single line of text
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Process Type (ProcessType) - Choice
+  Choices: In-Processing; Out-Processing; Internal Transfer; Temporary Assignment; Return from Deployment
+- Status (Status) - Choice
+  Choices: Open; In Progress; Waiting on Member; Waiting on Office; Complete; Canceled
+- Category (Category) - Choice
+  Choices: Military; Civilian; Contractor; Student; Intern; Other
+- Opened On (OpenedOn) - Date and Time
+- Closed On (ClosedOn) - Date and Time
+- Owning Office (OwningOrgID) - Lookup -> CCSD_Organizations
+- Current Step (CurrentStep) - Single line of text or Choice
+  Choices: not explicitly specified in source if implemented as Choice
+- Priority (Priority) - Choice
+  Choices: Low; Medium; High; Critical
+- Notes (Notes) - Multiple lines of text
+
+8) CCSD_InOutChecklists (List)
+------------------------------
+- Checklist ID (ChecklistID) - Single line of text
+- Process Type (ProcessType) - Choice
+  Choices: In-Processing; Out-Processing; Internal Transfer
+- Category (Category) - Choice
+  Choices: HR; Security; IT; Facilities; Training; Finance; Command Staff; Other
+- Applicable Org (OrgID) - Lookup -> CCSD_Organizations
+- Applicable Population (ApplicablePopulation) - Choice
+  Choices: Officer; Enlisted; Civilian; Contractor; All
+- Step Number (StepNumber) - Number
+- Step Description (StepDescription) - Multiple lines of text
+- Owning Office (OwningOrgID) - Lookup -> CCSD_Organizations
+- Active (IsActive) - Yes/No
+
+9) CCSD_InOutStepStatus (List)
+------------------------------
+(Defined later in chat as part of the canonical SPA schema)
+- Title (Title) - Single line of text
+- In/Out (InOutID) - Lookup -> CCSD_InOutProcessing
+- Checklist Step (ChecklistID) - Lookup -> CCSD_InOutChecklists
+- Step Number (StepNumber) - Number
+- Owning Office (OwningOrgID) - Lookup -> CCSD_Organizations
+- Assigned To (AssignedTo) - Person or Group
+- Status (Status) - Choice
+  Choices: not explicitly specified in source
+- Due Date (DueDate) - Date and Time
+- Completed On (CompletedOn) - Date and Time
+- Completed By (CompletedBy) - Person or Group
+- Office Notes (OfficeNotes) - Multiple lines of text
+- Member Notes (MemberNotes) - Multiple lines of text
+- Correlation ID (CorrelationID) - Single line of text
+
+====================================================================
+D. SECURITY & CLEARANCES
+====================================================================
+
+10) CCSD_Clearances (List)
+--------------------------
+- Clearance ID (ClearanceID) - Single line of text
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Clearance Level (ClearanceLevel) - Choice
+  Choices: None; Confidential; Secret; Top-Secret; TS/SCI; TS/SCI (Poly); Other
+- Investigation Type (InvestigationType) - Choice
+  Choices: T1; T2; T3; T4; T5; CE (Continuous Evaluation); Other
+- Investigation Close Date (InvestigationCloseDate) - Date and Time
+- Eligibility Date (EligibilityDate) - Date and Time
+- PR Due Date (PRDueDate) - Date and Time
+- Accesses (Accesses) - Choice (multi-select)
+  Choices: NIPR; SIPR; JWICS; SAP; NATO; Other
+- Owning SMO (OwningSMO) - Single line of text
+- DISS ID (DISSID) - Single line of text
+- Security POC (SecurityPOC) - Person or Group
+- Status (Status) - Choice
+  Choices: Active; Pending; Suspended; Revoked; Expired
+- Notes (Notes) - Multiple lines of text
+
+====================================================================
+E. TRAINING & QUALIFICATIONS
+====================================================================
+
+11) CCSD_TrainingCatalog (List)
+-------------------------------
+- Training Code (TrainingCode) - Single line of text
+- Training Name (TrainingName) - Single line of text
+- Category (Category) - Choice
+  Choices: Cyber; Security; Safety; Leadership; IT Systems; Compliance; Other
+- Frequency (Months) (FrequencyMonths) - Number
+- Owning Office (OwningOrgID) - Lookup -> CCSD_Organizations
+- Required For (RequiredFor) - Choice
+  Choices: All; Civilian; Military-Active Duty; Military-Reserve; Military-National Guard; Contractor; Enlisted; Officer; Contracting; Program Managers; Supervisors; SES; Key Leadership; TS/SCI; Secret; NATO; Records Managers; Content Managers
+- Cost Per Person (CostPerPerson) - Currency
+- Mandatory (IsMandatory) - Yes/No
+- Active (IsActive) - Yes/No
+- Notes (Notes) - Multiple lines of text
+- Training Link (TrainingLink) - Hyperlink
+- SF182 Required (SF182) - Yes/No
+- Training Duty Hours (TrainingDutyHours) - Number
+- Training Non-Duty Hours (TrainingNonDutyHours) - Number
+- Training Type (TrainingType) - Lookup -> CCSD_TrainingCourseDataTypeCode
+
+12) CCSD_TrainingRecords (List)
+-------------------------------
+- Training Record ID (TrainingRecordID) - Single line of text
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Training (TrainingID) - Lookup -> CCSD_TrainingCatalog
+- Completion Date (CompletionDate) - Date and Time
+- Expiration Date (ExpirationDate) - Date and Time
+- Status (Status) - Choice
+  Choices: Complete; In Progress; Expired; Waived; Pending Review
+- Source System (SourceSystem) - Choice
+  Choices: MyLearning; ADLS; AF Portal; Unit Training; External Vendor; Manual Entry; Other
+- Certificate URL (CertificateURL) - Hyperlink
+- Entered By (EnteredBy) - Person or Group
+- Entered On (EnteredOn) - Date and Time
+- Notes (Notes) - Multiple lines of text
+- Expected Completion Date (ExpectedCompletionDate) - Date and Time
+
+13) CCSD_TrainingSubmissions (List, optional)
+---------------------------------------------
+- Person (Submitter) (Person) - Person or Group
+- Person ID (PersonID) - Single line of text
+- Training (TrainingID) - Lookup -> CCSD_TrainingCatalog
+- Completion Date (CompletionDate) - Date and Time
+- Proof Attached (ProofAttached) - Yes/No
+- Status (Status) - Choice
+  Choices: Submitted; Under Review; Approved; Rejected; Returned for Correction
+- Reviewer (Reviewer) - Person or Group
+- Reviewed On (ReviewedOn) - Date and Time
+- Notes (Notes) - Multiple lines of text
+
+14) CCSD_SF182TrainingRequests (List)
+-------------------------------------
+- Title (Title) - Single line of text
+- Requestor (Requestor) - Person
+- Training (Training) - Lookup -> CCSD_TrainingCatalog
+- Training Start Date (TrainingStartDate) - Date and Time
+- Training End Date (TrainingEndDate) - Date and Time
+- Status (Status) - Choice
+  Choices: Draft; Pending Supervisor Approval; Pending 2nd-line Supervisor Approval; Pending Training Officer Approval; Pending Finance Approval; Approved; Rejected; Pending Training Completion Certification; Complete
+- Approval ID (ApprovalID) - Single line of text
+- Generated SF-182 (GeneratedSF182) - Hyperlink
+- Rejection Comments (RejectionComments) - Multiple lines of text
+- Special Accommodation (SpecialAccommodation) - Yes/No
+
+15) CCSD_SF182Library (Document Library)
+----------------------------------------
+- Title (Title) - Single line of text
+
+16) CCSD_TrainingCourseDataTypeCode (List)
+------------------------------------------
+- Training Sub Type Code (Title) - Single line of text
+- Training Sub Type Code Short Explanation (TrainingSubTypeCodeShortExplanation) - Single line of text
+- Training Sub Type Code Explanation (TrainingSubTypeCodeExplanation) - Multiple lines of text
+- Training Type Code (TrainingTypeCode) - Number
+- Training Type Code Explanation (TrainingTypeCodeExplanation) - Single line of text
+- Competency (Competency) - Single line of text
+
+17) CCSD_TrainingPurposeType (List)
+-----------------------------------
+- Title (Title) - Single line of text
+- Code (Code) - Number
+- Description (Description) - Multiple lines of text
+
+18) CCSD_TrainingDeliveryTypeCode (List)
+----------------------------------------
+- Title (Title) - Single line of text
+- Code (Code) - Number
+- Description (Description) - Multiple lines of text
+
+====================================================================
+F. ADDITIONAL DUTIES & LETTERS
+====================================================================
+
+19) CCSD_DutyTypes (List)
+-------------------------
+- Duty Type ID (DutyTypeID) - Single line of text
+- Title (Title) - Single line of text
+- Description (Description) - Multiple lines of text
+- Default Organization (DefaultOrgID) - Lookup -> CCSD_Organizations
+- Template Name / ID (TemplateName) - Single line of text
+- Default Notification POC (DefaultNotificationPOC) - Person or Group
+- Required Training (RequiredTraining) - Multiple lines of text
+- Active (IsActive) - Yes/No
+
+20) CCSD_AdditionalDuties (List)
+--------------------------------
+- Duty ID (DutyID) - Single line of text
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Duty Type (DutyTypeID) - Lookup -> CCSD_DutyTypes
+- Organization (OrgID) - Lookup -> CCSD_Organizations
+- Appointment Start (AppointmentStartDate) - Date and Time
+- Appointment End (AppointmentEndDate) - Date and Time
+- Status (Status) - Choice
+  Choices: Pending; Active; Vacant; Suspended; Closed
+- Notification POC (NotificationPOC) - Person or Group
+- Appointment Letter (AppointmentLetterURL) - Hyperlink
+- Last Notified On (LastNotifiedOn) - Date and Time
+- Notes (Notes) - Multiple lines of text
+
+21) CCSD_DutyVacancyLog (List, optional)
+----------------------------------------
+- Log ID (LogID) - Single line of text
+- Duty (DutyID) - Lookup -> CCSD_AdditionalDuties
+- Previous Person (PreviousPersonID) - Lookup -> CCSD_Personnel
+- Date Vacant (DateVacant) - Date and Time
+- Notified To (NotifiedTo) - Person or Group
+- Notification Date (NotificationDate) - Date and Time
+- Notes (Notes) - Multiple lines of text
+
+22) CCSD_LetterTemplates (Document Library)
+-------------------------------------------
+- Template ID (TemplateID) - Single line of text
+- Template Type (TemplateType) - Choice
+  Choices: Appointment Letter; Additional Duty Letter; Revocation Letter; Delegation Letter; Memorandum; Other
+- Duty Type (DutyTypeID) - Lookup -> CCSD_DutyTypes
+- Version Number (VersionNumber) - Number
+- Active (IsActive) - Yes/No
+- Notes (Notes) - Multiple lines of text
+
+23) CCSD_Letters (Document Library)
+-----------------------------------
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Duty Type (DutyTypeID) - Lookup -> CCSD_DutyTypes
+- Letter Type (LetterType) - Choice
+  Choices: Appointment; Reappointment; Revocation; Temporary Assignment; Other
+- Related Duty (RelatedDutyID) - Lookup -> CCSD_AdditionalDuties
+- Generated On (GeneratedOn) - Date and Time
+- Generated By (GeneratedBy) - Person or Group
+- Notes (Notes) - Multiple lines of text
+
+====================================================================
+G. HARDWARE & SOFTWARE ASSET MANAGEMENT
+====================================================================
+
+24) CCSD_HardwareAssets (List)
+------------------------------
+Authoritative base schema:
+- Asset ID (AssetID) - Single line of text
+- Asset Type (AssetType) - Choice
+  Choices: Desktop; Laptop; Monitor; Printer; Phone; VTC Equipment; Network Device; Headset; Mouse; Card Reader; Peripheral; Other
+- Manufacturer (Manufacturer) - Single line of text
+- Model (Model) - Single line of text
+- Serial Number (SerialNumber) - Single line of text
+- Status (Status) - Choice
+  Choices: In Service; In Storage; Assigned; Under Repair; Excess; Disposed
+- Purchase Date (PurchaseDate) - Date and Time
+- Purchase Cost (PurchaseCost) - Currency
+- Owning Org (OwningOrgID) - Lookup -> CCSD_Organizations
+- Default Cost Center (DefaultCostCenterID) - Lookup -> CCSD_CostCenters
+- Notes (Notes) - Multiple lines of text
+
+Working / Current added columns from screenshots and later chat:
+- DeviceNameHostName - Single line of text
+- PrimaryNetworkEnvironment - Choice
+  Choices: not explicitly specified in source; intended to represent network environments
+- Portable - Yes/No
+- AssetTagAlias - Single line of text
+
+25) CCSD_HardwareAssignments (List)
+-----------------------------------
+Authoritative base schema:
+- Assignment ID (AssignmentID) - Single line of text
+- Hardware Asset (AssetID) - Lookup -> CCSD_HardwareAssets
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Seat (SeatID) - Lookup -> CCSD_Seats
+- Assigned On (AssignedOn) - Date and Time
+- Unassigned On (UnassignedOn) - Date and Time
+- Status (Status) - Choice
+  Choices: Active; Returned; Transferred; Lost; Stolen
+- Notes (Notes) - Multiple lines of text
+
+Working / Current added columns from screenshots and later chat:
+- Hardware Asset: Title - Lookup
+- Hardware Asset: Serial Number - Lookup
+- Assigned By - Person or Group (older pre-existing field shown in screenshot)
+- Ticket / Reason - Single line of text
+- Correlation ID - Single line of text
+- NetworkEnvironment - Choice
+  Choices: not explicitly specified in source; intended to represent network environments
+- AssignmentType - Single line of text
+- AssignedBy - Person or Group (later user correction; originally created as text, then changed to Person)
+- ReturnedBy - Person or Group (later user correction; originally created as text, then changed to Person)
+
+26) CCSD_SoftwareAssets (List)
+------------------------------
+Authoritative base schema:
+- Software ID (SoftwareID) - Single line of text
+- Title (Title) - Single line of text
+- Vendor (Vendor) - Single line of text
+- Software Version (SoftwareVersion) - Single line of text
+- License Type (LicenseType) - Choice
+  Choices: Per User; Per Device; Concurrent; Site License; Enterprise; Subscription; Other
+- Total Licenses (TotalLicenses) - Number
+- Annual Cost (AnnualCost) - Currency
+- Default Cost Center (DefaultCostCenterID) - Lookup -> CCSD_CostCenters
+- Owning Org (OwningOrgID) - Lookup -> CCSD_Organizations
+- System (SystemID) - Lookup -> CCSD_Systems
+- Active (IsActive) - Yes/No
+- Notes (Notes) - Multiple lines of text
+
+Working / Current added columns from screenshots and later chat:
+- ApprovalStatus - Single line of text
+- ApprovedVersion - Single line of text
+- RequiresATO - Yes/No
+- ATONumber - Single line of text
+- ATOExpiration - Date and Time (later user correction; originally created as text)
+- AllowedNetworkEnvironments - Choice (multi-select) (later user clarified it was already multi-select)
+  Choices: not explicitly specified in source; intended to represent network environments
+- Requestable - Yes/No
+- RequiresAdministratorInstall - Yes/No
+
+27) CCSD_SoftwareAssignments (List)
+-----------------------------------
+Authoritative base schema:
+- Assignment ID (AssignmentID) - Single line of text
+- Software (SoftwareID) - Lookup -> CCSD_SoftwareAssets
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Seat (SeatID) - Lookup -> CCSD_Seats
+- Assigned On (AssignedOn) - Date and Time
+- Unassigned On (UnassignedOn) - Date and Time
+- Status (Status) - Choice
+  Choices: Active; Revoked; Expired; Pending
+- Notes (Notes) - Multiple lines of text
+
+Working / Current added columns from screenshots and later chat:
+- Assigned By - Person or Group
+- Ticket / Reason - Single line of text
+- Correlation ID - Single line of text
+- NetworkEnvironment - Choice
+  Choices: not explicitly specified in source; intended to represent network environments
+- AssignmentType - Single line of text
+- ApprovalSnapshot - Single line of text
+- VersionSnapshot - Single line of text
+- ExceptionApproved - Yes/No
+- ExceptionReason - Multiple lines of text
+
+28) CCSD_Systems (List)
+-----------------------
+Authoritative base schema:
+- System ID (SystemID) - Single line of text
+- System Name (SystemName) - Single line of text
+- Description (Description) - Multiple lines of text
+- Owning Org (OwningOrgID) - Lookup -> CCSD_Organizations
+- Criticality (Criticality) - Choice
+  Choices: Low; Medium; High; Critical
+- Notes (Notes) - Multiple lines of text
+- Active (IsActive) - Yes/No
+
+Working / Current added columns from screenshots and later chat:
+- ATONumber - Single line of text
+- ATOStatus - Single line of text (screenshot showed text; no authoritative choice set was provided)
+- ATOExpiration - Date and Time (later user correction; originally created as text)
+- AuthorizingOfficial - Single line of text
+- NetworkEnvironment - Choice
+  Choices: not explicitly specified in source; intended to represent network environments
+- ISSMISSO - Single line of text
+
+====================================================================
+H. CHANGE MANAGEMENT
+====================================================================
+
+29) CCSD_ChangeRequests (List)
+------------------------------
+- Change ID (ChangeID) - Single line of text
+- Requestor (Requestor) - Person or Group
+- Requested On (RequestedOn) - Date and Time
+- System / Service (SystemID) - Lookup -> CCSD_Systems
+- Category (Category) - Choice
+  Choices: Hardware; Software; Network; Facility; Security; Process; Other
+- Change Type (ChangeType) - Choice
+  Choices: Standard; Normal; Emergency
+- Priority (Priority) - Choice
+  Choices: Low; Medium; High; Critical
+- Risk Level (RiskLevel) - Choice
+  Choices: Low; Medium; High; Severe
+- Planned Start (PlannedStart) - Date and Time
+- Planned End (PlannedEnd) - Date and Time
+- Status (Status) - Choice
+  Choices: Draft; Submitted; Under Review; Approved; Scheduled; Implemented; Canceled; Failed
+- Approver (Approver) - Person or Group
+- Approved On (ApprovedOn) - Date and Time
+- Implementation Notes (ImplementationNotes) - Multiple lines of text
+- Backout Plan (BackoutPlan) - Multiple lines of text
+- Notes (Notes) - Multiple lines of text
+
+30) CCSD_ChangeImpactedItems (List)
+-----------------------------------
+- Impact ID (ImpactID) - Single line of text
+- Change Request (ChangeID) - Lookup -> CCSD_ChangeRequests
+- Impact Type (ImpactType) - Choice
+  Choices: Hardware; Software; Seat; Room; Facility; Organization; System
+- Hardware Asset (HardwareAssetID) - Lookup -> CCSD_HardwareAssets
+- Software Asset (SoftwareID) - Lookup -> CCSD_SoftwareAssets
+- Seat (SeatID) - Lookup -> CCSD_Seats
+- Room (RoomID) - Lookup -> CCSD_Rooms
+- Facility (FacilityID) - Lookup -> CCSD_Facilities
+- Organization (OrgID) - Lookup -> CCSD_Organizations
+- System (SystemID) - Lookup -> CCSD_Systems
+- Impact Description (ImpactDescription) - Multiple lines of text
+
+====================================================================
+I. FINANCE & COST ALLOCATION
+====================================================================
+
+31) CCSD_CostCenters (List)
+---------------------------
+- Cost Center ID (CostCenterID) - Single line of text
+- Cost Center Name (CostCenterName) - Single line of text
+- Description (Description) - Multiple lines of text
+- Owning Org (OwningOrgID) - Lookup -> CCSD_Organizations
+- Notes (Notes) - Multiple lines of text
+- Active (IsActive) - Yes/No
+
+32) CCSD_CostMappings (List)
+----------------------------
+- Mapping ID (MappingID) - Single line of text
+- Mapping Type (MappingType) - Choice
+  Choices: Person; Hardware; Software; System; Organization
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Hardware Asset (AssetID) - Lookup -> CCSD_HardwareAssets
+- Software Asset (SoftwareID) - Lookup -> CCSD_SoftwareAssets
+- System (SystemID) - Lookup -> CCSD_Systems
+- Organization (OrgID) - Lookup -> CCSD_Organizations
+- Cost Center (CostCenterID) - Lookup -> CCSD_CostCenters
+- Percentage (Percentage) - Number
+- Notes (Notes) - Multiple lines of text
+
+33) CCSD_AssetCosts (List)
+--------------------------
+- Cost ID (CostID) - Single line of text
+- Asset Type (AssetType) - Choice
+  Choices: Hardware; Software; System; Other
+- Hardware Asset (AssetID) - Lookup -> CCSD_HardwareAssets
+- Software Asset (SoftwareID) - Lookup -> CCSD_SoftwareAssets
+- Cost Period (CostPeriod) - Choice
+  Choices: One-Time; Monthly; Quarterly; Annual
+- Cost Amount (CostAmount) - Currency
+- Effective From (EffectiveFrom) - Date and Time
+- Effective To (EffectiveTo) - Date and Time
+- Notes (Notes) - Multiple lines of text
+
+34) CCSD_PersonCostSummary (List)
+---------------------------------
+- Summary ID (SummaryID) - Single line of text
+- Person (PersonID) - Lookup -> CCSD_Personnel
+- Org (OrgID) - Lookup -> CCSD_Organizations
+- Period (Period) - Single line of text
+- Hardware Cost (HardwareCost) - Currency
+- Software Cost (SoftwareCost) - Currency
+- Training Cost (TrainingCost) - Currency
+- Other Cost (OtherCost) - Currency
+- Total Cost (TotalCost) - Currency
+- Last Calculated (LastCalculated) - Date and Time
+
+====================================================================
+J. REFERENCE / SUPPORT LISTS
+====================================================================
+
+35) CCSD_Workcenters (List)
+---------------------------
+- Workcenter ID (WorkcenterID) - Single line of text
+- Cost Center Name (CostCenterName) - Single line of text
+- Org (OrgID) - Lookup -> CCSD_Organizations
+- Notes (Notes) - Multiple lines of text
+
+36) CCSD_Config (List)
+----------------------
+- Config Key (ConfigKey) - Single line of text
+- Value (ConfigValue) - Single line of text
+- Value (Long) (ConfigValueLong) - Multiple lines of text
+- Notes (Notes) - Multiple lines of text
+
+37) CCSD_ReferenceData (List)
+-----------------------------
+- Category (Category) - Choice
+  Choices: Rank; Grade; Status; Code Table; External System; Other
+- Code (Code) - Single line of text
+- Value (Value) - Single line of text
+- Description (Description) - Multiple lines of text
+- Notes (Notes) - Multiple lines of text
+
+38) CCSD_AppRoles (List)
+------------------------
+Authoritative checklist schema:
+- Role (Role) - Choice
+  Choices: HR; Security; IT; Facilities; Training; Admin; Supervisor
+- Member (Member) - Person
+- Active (IsActive) - Yes/No
+
+Expanded SPA / chat-associated schema and behavior:
+- PrincipalType - Single line of text or Choice (not explicitly finalized in source)
+- Principal - Single line of text / person / group pattern reference (implementation detail varied; not fully finalized as a list type in source)
+- ScopeType - Single line of text or Choice (not explicitly finalized in source)
+- ScopeOrgID - Lookup -> CCSD_Organizations
+- ScopeFacilityID - Lookup -> CCSD_Facilities
+- ScopeSystemID - Lookup -> CCSD_Systems
+- EffectiveFrom - Date and Time
+- EffectiveTo - Date and Time
+- Notes - Multiple lines of text
+
+Additional roles referenced in app notes / later chat:
+- Personnel Admin
+- Reports
+- App Admin
+
+NOTE: These extra roles were referenced in app logic and later chat, even though the earlier uploaded checklist only explicitly listed HR, Security, IT, Facilities, Training, Admin, Supervisor.
+
+39) CCSD_Vendors (List)
+-----------------------
+- Vendor Name (Title) - Single line of text
+- Vendor Street Number (VendorStreetNo) - Single line of text
+- Vendor Street (VendorStreet) - Single line of text
+- Vendor City (VendorCity) - Single line of text
+- Vendor State (VendorState) - Single line of text
+- Vendor Zip Code (VendorZip) - Single line of text
+- Vendor Phone (VendorPhone) - Number
+- Vendor Email (VendorEmail) - Single line of text
+- Vendor Website (VendorWebsite) - Single line of text
+- Vendor Point of Contact (VendorPOC) - Single line of text
+- Vendor Type (VendorType) - Choice
+  Choices: Training; Facilities; Supplies
+
+40) CCSD_PaySeries (List)
+-------------------------
+- Title (Title) - Single line of text
+- Job Series (JobSeries) - Single line of text
+- Job Category (JobCategory) - Choice
+  Choices: N/A; Administrative and Management; Clerical and Administrative Support; Professional and Scientific; Technical and Medical Support
+- Starting Pay Grade (StartingPayGrade) - Choice
+  Choices: N/A; GS-1; GS-4; GS-6
+- Maximum Pay Grade (MaximumPayGrade) - Choice
+  Choices: N/A; GS-9; GS-15
+- Series URL (SeriesURl) - Hyperlink
+
+====================================================================
+K. SPA PLATFORM / OPERATIONS SUPPORT LISTS
+====================================================================
+
+41) CCSD_AppTelemetry (List)
+----------------------------
+(Defined later in chat as a critical platform support list)
+- Title - Single line of text
+- Event Type (EventType) - Single line of text or Choice (not explicitly finalized in source)
+- Severity (Severity) - Single line of text or Choice (not explicitly finalized in source)
+- Event Time (EventTime) - Date and Time
+- Correlation ID (CorrelationID) - Single line of text
+- Session ID (SessionID) - Single line of text
+- User Display Name (UserDisplayName) - Single line of text
+- User Email (UserEmail) - Single line of text
+- User Claims (UserClaims) - Multiple lines of text or Single line of text (implementation detail varied)
+- Role Snapshot (RoleSnapshot) - Multiple lines of text or Single line of text
+- App Module (AppModule) - Single line of text
+- Operation (Operation) - Single line of text
+- Data Source (DataSource) - Single line of text
+- Item ID (ItemID) - Number
+- HTTP Status (HttpStatus) - Number
+- Error Message (ErrorMessage) - Multiple lines of text or Single line of text
+- Error Detail (ErrorDetail) - Multiple lines of text
+- Request URL (RequestUrl) - Hyperlink or Single line of text (implementation varied; hyperlink handling was discussed)
+- Request Payload (RequestPayload) - Multiple lines of text
+- Response Payload (ResponsePayload) - Multiple lines of text
+- Elapsed Ms (ElapsedMs) - Number
+- Page URL (PageUrl) - Hyperlink or Single line of text (implementation varied; hyperlink handling was discussed)
+- Client Info (ClientInfo) - Multiple lines of text or Single line of text
+- Is Resolved (IsResolved) - Yes/No
+- Resolved By (ResolvedBy) - Person or Group
+- Resolved On (ResolvedOn) - Date and Time
+- Resolution Notes (ResolutionNotes) - Multiple lines of text
+
+42) CCSD_AppAuditLog (List)
+---------------------------
+(Defined later in chat as a critical platform support list)
+- Title - Single line of text
+- Action Type (ActionType) - Single line of text or Choice (not explicitly finalized in source)
+- Entity Type (EntityType) - Single line of text
+- List Title (ListTitle) - Single line of text
+- List Item ID (ListItemID) - Number
+- Business Key (BusinessKey) - Single line of text
+- Before JSON (BeforeJson) - Multiple lines of text
+- After JSON (AfterJson) - Multiple lines of text
+- Changed Fields (ChangedFields) - Multiple lines of text or Single line of text
+- Changed By (ChangedBy) - Person or Group
+- Changed On (ChangedOn) - Date and Time
+- Reason / Ticket (Reason) - Single line of text or Multiple lines of text
+- Correlation ID (CorrelationID) - Single line of text
+
+43) CCSD_AppRequests (List)
+---------------------------
+(Defined later in chat as the unified request backbone)
+- Title - Single line of text
+- Request ID (RequestID) - Single line of text
+- Request Type (RequestType) - Single line of text or Choice (not explicitly finalized in source)
+- Status (Status) - Single line of text or Choice (not explicitly finalized in source)
+- Priority (Priority) - Single line of text or Choice (not explicitly finalized in source)
+- Requester (Requester) - Person or Group
+- Requesting Org (RequestingOrgID) - Lookup -> CCSD_Organizations
+- Related Person (PersonID) - Lookup -> CCSD_Personnel
+- Related Seat (SeatID) - Lookup -> CCSD_Seats
+- Related In/Out (InOutID) - Lookup -> CCSD_InOutProcessing
+- Related Duty (DutyID) - Lookup -> CCSD_AdditionalDuties
+- Related Hardware Asset (HardwareAssetID) - Lookup -> CCSD_HardwareAssets
+- Related Software Asset (SoftwareID) - Lookup -> CCSD_SoftwareAssets
+- Related Change (ChangeID) - Lookup -> CCSD_ChangeRequests
+- Assigned Office (AssignedOrgID) - Lookup -> CCSD_Organizations
+- Assigned To (AssignedTo) - Person or Group
+- Submitted On (SubmittedOn) - Date and Time
+- Due Date (DueDate) - Date and Time
+- Completed On (CompletedOn) - Date and Time
+- Details (Details) - Multiple lines of text
+- Workflow Step (WorkflowStep) - Single line of text
+- Workflow JSON (WorkflowJson) - Multiple lines of text
+- Correlation ID (CorrelationID) - Single line of text
+
+44) CCSD_Workflows (List)
+-------------------------
+(Defined later in chat as workflow configuration)
+- Title - Single line of text
+- Request Type (RequestType) - Single line of text or Choice (not explicitly finalized in source)
+- Is Active (IsActive) - Yes/No
+- Default Assigned Office (DefaultAssignedOrgID) - Lookup -> CCSD_Organizations
+- SLA Days (SlaDays) - Number
+- Steps JSON (StepsJson) - Multiple lines of text
+- Escalation JSON (EscalationJson) - Multiple lines of text
+- Notes (Notes) - Multiple lines of text
+
+45) CCSD_Templates (List)
+-------------------------
+(Defined later in chat as template registry / merge metadata)
+- Title - Single line of text
+- Template Type (TemplateType) - Single line of text or Choice (not explicitly finalized in source)
+- Template File URL (TemplateFileUrl) - Hyperlink
+- Is Active (IsActive) - Yes/No
+- Version (VersionNumber) - Number
+- Merge Schema JSON (MergeSchemaJson) - Multiple lines of text
+- Output Library URL (OutputLibraryUrl) - Hyperlink
+- Output Name Pattern (OutputNamePattern) - Single line of text
+- Owning Org (OwningOrgID) - Lookup -> CCSD_Organizations
+- Allowed Roles (AllowedRoles) - Multiple lines of text or Choice (not explicitly finalized in source)
+- Notes (Notes) - Multiple lines of text
+
+46) CCSD_HowTo (List)
+---------------------
+(Defined later in chat as in-app user guidance)
+- Title - Single line of text
+- Module - Single line of text
+- Audience - Single line of text or Choice (not explicitly finalized in source)
+- Summary - Multiple lines of text or Single line of text
+- Steps - Multiple lines of text
+- Links - Multiple lines of text or Hyperlink(s)
+- Tags - Multiple lines of text or managed text-style field (not explicitly finalized in source)
+- Is Active (IsActive) - Yes/No
+- Display Order (DisplayOrder) - Number
+
+47) CCSD_DataQualityRules (List)
+--------------------------------
+(Defined later in chat as centralized validation rules)
+- Title - Single line of text
+- Entity Type (EntityType) - Single line of text
+- Is Active (IsActive) - Yes/No
+- Rule Type (RuleType) - Single line of text or Choice (not explicitly finalized in source)
+- Severity (Severity) - Single line of text or Choice (not explicitly finalized in source)
+- Rule JSON (RuleJson) - Multiple lines of text
+- Message (Message) - Multiple lines of text or Single line of text
+
+====================================================================
+L. CURRENT PERSONNEL DATA CALL / STAGING LISTS AND INTAKE FIELDS
+====================================================================
+
+48) CCSD_PersonnelDataCall_Staging (Working staging list shown in screenshot)
+-----------------------------------------------------------------------------
+Current columns visible in screenshot / discussed in chat:
+- Title - Single line of text
+- FirstName - Single line of text
+- LastName - Single line of text
+- MiddleName - Single line of text
+- Suffix - Choice
+  Choices: not re-shown in screenshot; intended to align to Personnel list choices
+- Grade - Choice
+  Choices: not re-shown in screenshot; intended to align to Personnel list choices
+- Rank - Choice
+  Choices: not re-shown in screenshot; intended to align to Personnel list choices
+- Component - Choice
+  Choices: not re-shown in screenshot; intended to align to Personnel list choices
+- Category - Choice
+  Choices: not re-shown in screenshot; intended to align to Personnel list choices
+- Email - Single line of text
+- OrgCode - Single line of text
+- PositionTitle - Single line of text
+- SeatLabel - Single line of text
+- SupervisorEmailConfirmed - Single line of text
+- Status - Choice
+  Choices: not re-shown in screenshot; intended to align to Personnel list choices
+- DateArrived - Date and Time
+- ProjectedDeparture - Date and Time
+  NOTE: This is a working intake/staging field used to track future losses; distinct from DateDeparted.
+- OfficePhone - Single line of text
+- CellPhone - Single line of text
+  NOTE: user stated this will map to PrimaryPhone during import.
+- AltPhone - Single line of text
+- IsSupervisor - Yes/No
+- Step - Number
+- AFSC - Single line of text
+- EducationLevel - Choice
+  Choices: not re-shown in screenshot; intended to align to Personnel list choices
+- Notes - Multiple lines of text
+- BuildingNumber - Single line of text
+- RoomNumber - Single line of text
+- DataCallStatus - Choice
+  Choices: not explicitly confirmed in source
+
+Fields discussed for this staging/intake process but not confirmed visible in the screenshot at the end:
+- ProjectedDepartureReason - discussed for intake form usage
+- WorkcenterCode - discussed as a potentially useful mapping helper, but not confirmed visible in final staging screenshot
+- AccountEmail - discussed earlier, then later intentionally omitted by user because Email will be used for mapping
+
+49) CCSD Administrative Intake Form (working form field set; not confirmed as a SharePoint list by itself)
+-----------------------------------------------------------------------------------------------------------
+Fields shown in the screenshot / later chat ordering discussion:
+- First Name
+- Last Name
+- Middle Name
+- Suffix
+- Grade
+- Step (Civilians Only)
+- Component
+- Email
+- Office Symbol
+- Position Title
+- Supervisor Email
+- Status
+- Date Arrived
+- Projected Departure Date
+- Projected Departure Reason
+- Office Phone
+- Cell Phone
+- Alternate / Government Cell Phone
+- Are you a Supervisor?
+- AFSC
+- Education Level
+- Building Number
+- Room Number
+- Notes
+
+====================================================================
+M. ADDITIONAL PROJECT-ASSOCIATED NOTES / IMPLIED CHOICES
+====================================================================
+
+1. Network environment fields were repeatedly discussed as supporting all three environments:
+   - NIPR
+   - SIPR
+   - JWICS
+   However, exact authoritative choice sets were not explicitly shown for every new NetworkEnvironment-style field.
+
+2. CCSD_AppRoles definitely includes App Admin in working project use, even though one earlier checklist excerpt only listed:
+   HR; Security; IT; Facilities; Training; Admin; Supervisor.
+
+3. The project also repeatedly referenced role-aware modules for:
+   - HR
+n   - Security
+   - IT
+   - Facilities
+   - Training
+   - Admin
+   - Supervisor
+   - App Admin
+   - Personnel Admin (in older Power Apps notes)
+   - Reports (in older Power Apps notes)
+
+4. The SPA solution also depends on several list relationships beyond raw fields, especially for:
+   - Personnel <-> Organizations
+   - Personnel <-> Positions
+   - Personnel <-> Seats
+   - Seats <-> Rooms <-> Facilities
+   - Hardware/Software Assignments <-> Personnel and/or Seats
+   - SoftwareAssets <-> Systems
+   - Requests/Workflows <-> almost all major business entities
+
+END OF DOCUMENT
