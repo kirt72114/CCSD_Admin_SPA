@@ -454,7 +454,7 @@ tr:hover td{background:#eef5ff}
       <div class="header-actions">
         <div id="userPill" class="user-pill"><span class="dot"></span><span>Loading user...</span></div>
         <button class="btn subtle" data-action="refresh-route">Refresh</button>
-        <button class="btn subtle" data-action="open-diagnostics">Diagnostics</button>
+        <button id="btnDiagHeader" class="btn subtle" data-action="open-diagnostics" style="display:none">Diagnostics</button>
         <button class="btn primary" data-action="open-create-request">New Request</button>
       </div>
     </div>
@@ -1497,7 +1497,7 @@ function canEditPeople(){ return hasAnyRole(['HR','Admin','App Admin']); }
 function canReviewTraining(){ return hasAnyRole(['Training','HR','Supervisor','Admin','App Admin']); }
 function canSeeAllRequests(){ return hasAnyRole(['Admin','App Admin','HR','Training','Security','IT','Facilities']); }
 function canManageInOut(){ return hasAnyRole(['HR','Admin','App Admin','Supervisor']); }
-function canSeeAdmin(){ return hasAnyRole(['Admin','App Admin']); }
+function canSeeAdmin(){ return hasAnyRole(['App Admin']); }
 function getCurrentOrgId(){
   var p = APP.state.currentPersonnel;
   return p && p.OrgID && p.OrgID.Id ? p.OrgID.Id : null;
@@ -1723,11 +1723,16 @@ function ensureHowToLoaded(force){
   return queryList(APP.lists.HowTo, ['Title','Module','Audience','Summary','Steps','Links','Tags','IsActive','DisplayOrder'], { top: 200, orderby: 'DisplayOrder asc' }, 'ensureHowToLoaded').then(function(rows){ APP.state.data.howto = rows || []; return rows || []; }).catch(function(){ APP.state.data.howto = []; return []; });
 }
 function renderNav(){
-  var html = APP.nav.map(function(item){
+  var adminOnly = { admin: true, diagnostics: true };
+  var html = APP.nav.filter(function(item){
+    return !adminOnly[item.key] || canSeeAdmin();
+  }).map(function(item){
     return '<button class="nav-link' + (APP.state.route === item.key ? ' active' : '') + '" role="tab" aria-selected="' + (APP.state.route === item.key ? 'true' : 'false') + '" data-action="nav" data-route="' + escAttr(item.key) + '">' + escHtml(item.label) + '</button>';
   }).join('');
   html += '<button class="nav-link" data-action="keyboard-shortcuts" title="Keyboard Shortcuts" aria-label="Keyboard Shortcuts" style="font-size:16px">&#9000;</button>';
   document.getElementById('moduleTabs').innerHTML = html;
+  var diagBtn = document.getElementById('btnDiagHeader');
+  if (diagBtn) { diagBtn.style.display = canSeeAdmin() ? '' : 'none'; }
 }
 function renderContextBar(){
   var user = APP.state.currentUser;
@@ -1981,7 +1986,7 @@ function renderHome(){
     html += '<div class="stat-chip"><div class="n">' + escHtml(String(inout.queue.length)) + '</div><div class="t">In/Out Tasks</div></div>';
     html += '<div class="stat-chip"><div class="n">' + escHtml(String((APP.state.roleNames || []).length)) + '</div><div class="t">Resolved Roles</div></div>';
     html += '</div>';
-    html += '<div class="quick-actions"><button class="btn primary" data-action="open-create-request">New Request</button><button class="btn" data-action="nav" data-route="training">My Training</button><button class="btn" data-action="nav" data-route="requests">Workflow Inbox</button><button class="btn" data-action="open-inout-create">New In/Out Case</button><button class="btn" data-action="nav" data-route="diagnostics">Diagnostics Center</button></div>';
+    html += '<div class="quick-actions"><button class="btn primary" data-action="open-create-request">New Request</button><button class="btn" data-action="nav" data-route="training">My Training</button><button class="btn" data-action="nav" data-route="requests">Workflow Inbox</button><button class="btn" data-action="open-inout-create">New In/Out Case</button>' + (canSeeAdmin() ? '<button class="btn" data-action="nav" data-route="diagnostics">Diagnostics Center</button>' : '') + '</div>';
     html += '</div>';
     html += '<div class="grid cols-4" style="margin-top:16px">';
     html += metricCard('Training Compliance', currentPct + '%', 'Current out of required training', currentPct);
@@ -1992,7 +1997,7 @@ function renderHome(){
     html += '<div class="kpi-band">';
     html += '<div class="card glow"><div class="card-head"><div><div class="card-title">Operational Focus</div><div class="card-sub">Highest-priority items surfaced from across the app.</div></div><div class="health-pill">Now Supporting ' + escHtml(currentPersonName) + '</div></div><div class="card-body">' + renderActionSpotlight(actionItems) + '</div></div>';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">Training Risk Radar</div><div class="card-sub">Most urgent training items for the current user.</div></div></div><div class="card-body">' + renderMiniTrainingRiskList(riskRows) + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Health + Queue Signals</div><div class="card-sub">Support indicators pulled from diagnostics and current queues.</div></div></div><div class="card-body"><div class="kv"><div class="k">List Checks Run</div><div class="v">' + escHtml(String(health.tested)) + '</div><div class="k">List Check Failures</div><div class="v">' + escHtml(String(health.failed)) + '</div><div class="k">Queued Telemetry</div><div class="v">' + escHtml(String(health.telemetryQueued)) + '</div><div class="k">Queued Audit</div><div class="v">' + escHtml(String(health.auditQueued)) + '</div><div class="k">Pending Training Review</div><div class="v">' + escHtml(String(openReviewCount)) + '</div><div class="k">Recent Diagnostics Errors</div><div class="v">' + escHtml(String(health.recentErrors)) + '</div></div><div class="proj-note" style="margin-top:12px">Color and contrast have been tuned for readability on washed-out projectors: bright background, dark text, strong borders, and restrained accent use.</div></div></div>';
+    if (canSeeAdmin()) { html += '<div class="card"><div class="card-head"><div><div class="card-title">Health + Queue Signals</div><div class="card-sub">Support indicators pulled from diagnostics and current queues.</div></div></div><div class="card-body"><div class="kv"><div class="k">List Checks Run</div><div class="v">' + escHtml(String(health.tested)) + '</div><div class="k">List Check Failures</div><div class="v">' + escHtml(String(health.failed)) + '</div><div class="k">Queued Telemetry</div><div class="v">' + escHtml(String(health.telemetryQueued)) + '</div><div class="k">Queued Audit</div><div class="v">' + escHtml(String(health.auditQueued)) + '</div><div class="k">Pending Training Review</div><div class="v">' + escHtml(String(openReviewCount)) + '</div><div class="k">Recent Diagnostics Errors</div><div class="v">' + escHtml(String(health.recentErrors)) + '</div></div><div class="proj-note" style="margin-top:12px">Color and contrast have been tuned for readability on washed-out projectors: bright background, dark text, strong borders, and restrained accent use.</div></div></div>'; }
     html += '</div>';
     html += '<div class="grid cols-3" style="margin-top:16px">';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">Training Snapshot</div><div class="card-sub">Required training state for the current member.</div></div></div><div class="card-body">';
@@ -2006,7 +2011,9 @@ function renderHome(){
     html += '<div class="grid cols-2" style="margin-top:16px">';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">Notification Center</div><div class="card-sub">Alerts surfaced from training deadlines, overdue requests, and upcoming due dates.</div></div><div class="health-pill">' + escHtml(String(getNotifications().length)) + ' Active</div></div><div class="card-body">' + renderNotificationCenter() + '</div></div>';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">Quick Navigation</div><div class="card-sub">Jump to any module with one click.</div></div></div><div class="card-body"><div class="tile-grid">';
+    var adminOnlyNav = { admin: true, diagnostics: true };
     APP.nav.forEach(function(item){
+      if (adminOnlyNav[item.key] && !canSeeAdmin()) { return; }
       html += '<div class="tile" data-action="nav" data-route="' + escAttr(item.key) + '" style="cursor:pointer;text-align:center"><div class="tile-title">' + escHtml(item.label) + '</div></div>';
     });
     html += '</div></div></div></div>';
@@ -4010,8 +4017,8 @@ function renderRoute(){
   if (route === 'inout') { return renderInOut(); }
   if (route === 'facilities') { return renderFacilities(); }
   if (route === 'assets') { return renderAssets(); }
-  if (route === 'admin') { return renderAdmin(); }
-  if (route === 'diagnostics') { return renderDiagnostics(); }
+  if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
+  if (route === 'diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderDiagnostics(); }
   return renderHome();
 }
 function filterCards(selector, term){
@@ -4066,7 +4073,7 @@ function handleClick(e){
   if (action === 'close-modal') { closeModal(); return; }
   if (action === 'nav') { routeTo(el.getAttribute('data-route')); return; }
   if (action === 'refresh-route') { renderRoute(); return; }
-  if (action === 'open-diagnostics') { routeTo('diagnostics'); return; }
+  if (action === 'open-diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } routeTo('diagnostics'); return; }
   if (action === 'diag-detail') { openDiagnosticDetail(el.getAttribute('data-id')); return; }
   if (action === 'org-toggle') { ensureOrgChartUi(); var orgToggleId = Number(el.getAttribute('data-id')); APP.state.orgUi.expanded[orgToggleId] = !APP.state.orgUi.expanded[orgToggleId]; renderOrganizationsView(); return; }
   if (action === 'org-select') { ensureOrgChartUi(); APP.state.orgUi.selectedOrgId = Number(el.getAttribute('data-id')); var chain = getOrgBreadcrumb(buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []), APP.state.orgUi.selectedOrgId); chain.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; }); renderOrganizationsView(); return; }
@@ -4093,14 +4100,14 @@ function handleClick(e){
   if (action === 'save-request') { saveRequest(); return; }
   if (action === 'open-inout-create') { openCreateInOutModal(); return; }
   if (action === 'save-inout') { saveInOut(); return; }
-  if (action === 'run-self-test') { runSelfTest().then(function(){ if (APP.state.route === 'diagnostics' || APP.state.route === 'admin') { renderRoute(); } }); return; }
-  if (action === 'flush-telemetry') { flushTelemetryQueue(); return; }
+  if (action === 'run-self-test') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } runSelfTest().then(function(){ if (APP.state.route === 'diagnostics' || APP.state.route === 'admin') { renderRoute(); } }); return; }
+  if (action === 'flush-telemetry') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } flushTelemetryQueue(); return; }
   if (action === 'refresh-all') { refreshAll(); return; }
   if (action === 'select-facility') { ensureFacilityUi(); var fid = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = APP.state.facilityUi.selectedFacilityId === fid ? null : fid; APP.state.facilityUi.selectedRoomId = null; renderFacilities(); return; }
   if (action === 'select-room') { ensureFacilityUi(); APP.state.facilityUi.selectedRoomId = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = Number(el.getAttribute('data-facility')); renderFacilities(); return; }
   if (action === 'export-facilities') { exportTableToCSV('.table-wrap table', 'facilities_export'); return; }
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
-  if (action === 'run-data-quality') { toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
+  if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
   if (action === 'print-view') { printView(); return; }
   if (action === 'toggle-notifications') { var panel = document.getElementById('notificationPanel'); if (panel) { panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; } return; }
   if (action === 'edit-request') { openRequestEditModal(el.getAttribute('data-id')); return; }
@@ -4124,7 +4131,8 @@ function bootstrap(){
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') { closeModal(); return; }
     if (!e.altKey) { return; }
-    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', a: 'assets', d: 'diagnostics' };
+    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', a: 'assets' };
+    if (canSeeAdmin()) { shortcuts.d = 'diagnostics'; }
     var route = shortcuts[e.key.toLowerCase()];
     if (route) { e.preventDefault(); routeTo(route); return; }
     if (e.key.toLowerCase() === 'n') { e.preventDefault(); openCreateRequestModal(); return; }
