@@ -23,7 +23,7 @@
   --radius:18px;
 }
 *{box-sizing:border-box}
-html,body{margin:0;padding:0;background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);color:var(--text);font-family:Segoe UI,Arial,sans-serif;min-height:100%}
+html,body{margin:0;padding:0;background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);color:var(--text);font-family:Segoe UI,Arial,sans-serif;height:100%;overflow:hidden}
 a{color:var(--accent);text-decoration:none}
 button,input,select,textarea{font:inherit}
 body:before,body:after{content:'';position:fixed;pointer-events:none;z-index:0;border-radius:999px;filter:blur(50px);opacity:.24}
@@ -31,14 +31,14 @@ body:before{width:360px;height:360px;left:-80px;top:-40px;background:linear-grad
 body:after{width:420px;height:420px;right:-120px;top:120px;background:linear-gradient(135deg,var(--accent-2) 0%,transparent 75%);animation:floatBlob2 16s ease-in-out infinite}
 @keyframes floatBlob1{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(20px,35px,0)}}
 @keyframes floatBlob2{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(-20px,-25px,0)}}
-#app{position:relative;z-index:1;max-width:100%;width:100%;margin:0;padding:12px 16px 24px}
-.hero{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,rgba(7,17,31,.96) 0%,rgba(7,17,31,.82) 100%);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:24px;padding:18px 18px 12px;box-shadow:var(--shadow)}
+#app{position:relative;z-index:1;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;padding:8px 12px 0}
+.hero{flex-shrink:0;z-index:20;background:linear-gradient(180deg,rgba(7,17,31,.96) 0%,rgba(7,17,31,.82) 100%);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:18px;padding:12px 16px 8px;box-shadow:var(--shadow)}
 .hero-top{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
 .brand-wrap{display:flex;gap:14px;align-items:center}
-.brand-mark{width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--accent-2),var(--accent),var(--accent-3));box-shadow:0 0 0 1px rgba(255,255,255,.14),0 14px 32px rgba(101,213,255,.28);position:relative;overflow:hidden}
-.brand-mark:after{content:'';position:absolute;inset:1px;border-radius:15px;background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.02))}
-.brand-title{font-size:24px;font-weight:700;letter-spacing:.2px}
-.brand-sub{margin-top:4px;color:var(--muted);font-size:13px}
+.brand-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent-2),var(--accent),var(--accent-3));box-shadow:0 0 0 1px rgba(255,255,255,.14),0 14px 32px rgba(101,213,255,.28);position:relative;overflow:hidden}
+.brand-mark:after{content:'';position:absolute;inset:1px;border-radius:11px;background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.02))}
+.brand-title{font-size:18px;font-weight:700;letter-spacing:.2px}
+.brand-sub{margin-top:2px;color:var(--muted);font-size:11px;max-width:500px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .btn{background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04));color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;transition:.2s transform,.2s border-color,.2s box-shadow}
 .btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2);box-shadow:0 10px 24px rgba(0,0,0,.22)}
@@ -49,10 +49,10 @@ body:after{width:420px;height:420px;right:-120px;top:120px;background:linear-gra
 .btn.subtle{padding:8px 12px}
 .user-pill,.status-pill,.role-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-size:12px;white-space:nowrap}
 .user-pill .dot,.status-pill .dot,.role-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--accent-3);box-shadow:0 0 0 6px rgba(37,244,199,.09)}
-.nav-tabs{display:flex;gap:10px;overflow:auto;padding:14px 0 4px}
-.nav-link{padding:10px 14px;border-radius:14px;border:1px solid transparent;background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;white-space:nowrap;transition:.18s all}
+.nav-tabs{display:flex;gap:6px;overflow:auto;padding:8px 0 2px}
+.nav-link{padding:7px 11px;border-radius:10px;font-size:13px;border:1px solid transparent;background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;white-space:nowrap;transition:.18s all}
 .nav-link.active,.nav-link:hover{color:var(--text);border-color:var(--line);background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 10px 25px rgba(0,0,0,.18)}
-.context-bar{margin:14px 2px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.context-bar{flex-shrink:0;margin:6px 0 4px;display:flex;gap:6px;flex-wrap:nowrap;align-items:center;overflow-x:auto;padding:4px 2px;font-size:11px}
 .context-bar .spacer{flex:1}
 .grid{display:grid;gap:16px}
 .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -71,7 +71,11 @@ body:after{width:420px;height:420px;right:-120px;top:120px;background:linear-gra
 .metric .spark{min-width:120px;height:12px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
 .metric .spark > span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent-2),var(--accent),var(--accent-3))}
 .quick-actions{display:flex;gap:10px;flex-wrap:wrap}
-.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:14px}
+.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:14px;max-height:54vh}
+th[data-sort]{cursor:pointer;user-select:none}
+th[data-sort]:hover{color:var(--accent)}
+th[data-sort].sort-asc:after{content:' ▲';font-size:9px}
+th[data-sort].sort-desc:after{content:' ▼';font-size:9px}
 table{width:100%;border-collapse:collapse;min-width:860px}
 th,td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.05);text-align:left;vertical-align:top}
 th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:rgba(255,255,255,.03);position:sticky;top:0}
@@ -122,7 +126,8 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .health-row{display:grid;grid-template-columns:180px 1fr auto;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .health-row:last-child{border-bottom:0}
 .small-note{font-size:11px;color:var(--muted)}
-@media (max-width:1100px){.grid.cols-4,.grid.cols-3,.grid.cols-2{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.kv{grid-template-columns:1fr}.hero{position:relative;top:auto}}
+@media (max-width:1100px){.grid.cols-4,.grid.cols-3,.grid.cols-2{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.kv{grid-template-columns:1fr}}
+@media (max-height:600px){.hero{padding:8px 12px 4px}.nav-tabs{padding:4px 0 0}.brand-sub{display:none}.context-bar{margin:2px 0}}
 
 .asset-hero{display:grid;grid-template-columns:1.35fr .95fr;gap:16px;align-items:start}
 .asset-person-card{border:1px solid #d7e0ea;border-radius:18px;background:linear-gradient(180deg,#ffffff 0%,#f7faff 100%);padding:16px 18px;box-shadow:0 6px 20px rgba(19,52,89,.07)}
@@ -155,8 +160,15 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .asset-slim-card .hd{font-size:13px;color:#5c7085;font-weight:700}
 .asset-slim-card .val{font-size:22px;color:#10304f;font-weight:800;margin-top:4px}
 
+/* ─── No-Scroll SPA: viewHost fills remaining height ─── */
+#viewHost{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding:0 2px 12px}
+#viewHost::-webkit-scrollbar{width:6px}
+#viewHost::-webkit-scrollbar-track{background:transparent}
+#viewHost::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:999px}
+#viewHost::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.22)}
+
 /* ─── Smooth Page Transitions ─── */
-#viewHost{animation:fadeSlideIn .28s ease-out}
+#viewHost > *{animation:fadeSlideIn .22s ease-out}
 @keyframes fadeSlideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .modal-mask[style*="flex"]{animation:fadeIn .2s ease-out}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -172,6 +184,26 @@ tr:hover td{background:rgba(255,255,255,.03)}
 /* ─── Focus styles for accessibility ─── */
 .btn:focus-visible,.nav-link:focus-visible,.tile:focus-visible,.input:focus-visible,.select:focus-visible,.textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .close-x:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+
+/* ─── Comment Thread ─── */
+.comment-thread{display:flex;flex-direction:column;gap:10px;max-height:240px;overflow-y:auto;padding:4px 0}
+.comment-item{padding:10px 12px;border:1px solid rgba(255,255,255,.06);border-radius:12px;background:rgba(255,255,255,.03)}
+.comment-item .comment-meta{font-size:11px;color:var(--muted);margin-bottom:4px}
+.comment-item .comment-text{font-size:13px}
+.comment-form{display:flex;gap:8px;margin-top:8px}
+.comment-form .input{flex:1}
+
+/* ─── Supervisor / Team View ─── */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.team-card{padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.04)}
+.team-card .name{font-weight:700;font-size:15px}
+.team-card .role{font-size:12px;color:var(--muted);margin-top:2px}
+.team-card .training-bar{margin-top:10px}
+
+/* ─── Stats Row ─── */
+.stats-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.stat-mini{padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:12px;font-weight:700}
+.stat-mini .n{font-size:16px;font-weight:800}
 
 /* ─── Print Styles ─── */
 @media print{
@@ -450,7 +482,7 @@ tr:hover td{background:#eef5ff}
 'use strict';
 
 var APP = {
-  version: '2026.03.31.1',
+  version: '2026.03.31.2',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -2046,16 +2078,18 @@ function openPersonModal(id, editMode){
   if (!p) { toast('Person not found.', 'danger'); return; }
   if (!editMode) {
     Promise.all([ensureAssetsLoaded(), ensureFacilitiesLoaded()]).then(function(){
+      var orgStats = p.OrgID && p.OrgID.Id ? getOrgPeopleStats(p.OrgID.Id) : null;
       var body = '<div class="kv">'
         + '<div class="k">Name</div><div class="v">' + escHtml(formatPerson(p)) + '</div>'
         + '<div class="k">Email</div><div class="v">' + escHtml(p.Email || '') + '</div>'
         + '<div class="k">Status</div><div class="v">' + statusBadge(p.Status || 'Unknown') + '</div>'
-        + '<div class="k">Organization</div><div class="v">' + escHtml((p.OrgID && p.OrgID.Title) || '') + '</div>'
+        + '<div class="k">Organization</div><div class="v">' + escHtml((p.OrgID && p.OrgID.Title) || '') + (orgStats ? ' <span class="badge dim">' + orgStats.total + ' members, ' + orgStats.active + ' active</span>' : '') + '</div>'
         + '<div class="k">Position</div><div class="v">' + escHtml((p.PositionID && p.PositionID.Title) || '') + '</div>'
         + '<div class="k">Seat</div><div class="v">' + escHtml((p.SeatID && p.SeatID.Title) || '') + '</div>'
         + '<div class="k">Primary Phone</div><div class="v">' + escHtml(p.PrimaryPhone || '') + '</div>'
         + '<div class="k">Office Phone</div><div class="v">' + escHtml(p.OfficePhone || '') + '</div>'
         + '<div class="k">AFSC</div><div class="v">' + escHtml(p.AFSC || '') + '</div>'
+        + '<div class="k">Supervisor Chain</div><div class="v">' + renderSupervisorChain(p.Id) + '</div>'
         + '<div class="k">Notes</div><div class="v">' + escHtml(p.Notes || '') + '</div>'
         + '</div>';
       body += '<div style="margin-top:16px">' + renderPersonAssetPanel(p, true) + '</div>';
@@ -2663,6 +2697,11 @@ function renderTraining(){
     else { html += renderTrainingSubmissionTable(reviewerRows); }
     html += '</div></div>';
     html += '</div>';
+    if (canReviewTraining()) {
+      html += '<div style="margin-top:16px"><div class="section-head"><div class="section-title">Team Training Compliance</div><button class="btn subtle" data-action="toggle-team-training">' + (APP.state.showTeamTraining ? 'Hide' : 'Show') + ' Team View</button></div>';
+      if (APP.state.showTeamTraining) { html += renderTeamTraining(); }
+      html += '</div>';
+    }
     setView(html);
   }).catch(function(){
     setView('<div class="card"><div class="card-body"><div class="empty">Training failed to load.</div></div></div>');
@@ -2797,9 +2836,9 @@ function renderSF182(){
     if (!visible.length) {
       html += '<div class="empty">No SF182 requests found yet. Use the Training module and choose a training that requires SF182.</div>';
     } else {
-      html += '<div class="table-wrap"><table><thead><tr><th>Title</th><th>Requestor</th><th>Training</th><th>Dates</th><th>Status</th><th>Approval ID</th><th>Comments</th></tr></thead><tbody>';
+      html += '<div class="table-wrap"><table><thead><tr><th data-sort="title">Title</th><th data-sort="requestor">Requestor</th><th data-sort="training">Training</th><th data-sort="dates">Dates</th><th data-sort="status">Status</th><th>Approval ID</th><th>Actions</th></tr></thead><tbody>';
       visible.forEach(function(r){
-        html += '<tr><td><strong>' + escHtml(r.Title || '') + '</strong></td><td>' + escHtml((r.Requestor && r.Requestor.Title) || '') + '</td><td>' + escHtml((r.Training && r.Training.Title) || String(r.Training || '')) + '</td><td>' + escHtml(formatDate(r.TrainingStartDate)) + (r.TrainingEndDate ? ' to ' + escHtml(formatDate(r.TrainingEndDate)) : '') + '</td><td>' + statusBadge(r.Status || 'Submitted') + '</td><td>' + escHtml(r.ApprovalID || '') + '</td><td>' + escHtml(r.RejectionComments || '') + '</td></tr>';
+        html += '<tr><td><strong>' + escHtml(r.Title || '') + '</strong></td><td>' + escHtml((r.Requestor && r.Requestor.Title) || '') + '</td><td>' + escHtml((r.Training && r.Training.Title) || String(r.Training || '')) + '</td><td>' + escHtml(formatDate(r.TrainingStartDate)) + (r.TrainingEndDate ? ' to ' + escHtml(formatDate(r.TrainingEndDate)) : '') + '</td><td>' + statusBadge(r.Status || 'Submitted') + '</td><td>' + escHtml(r.ApprovalID || '') + '</td><td><button class="btn subtle" data-action="edit-sf182" data-id="' + escAttr(r.Id) + '">Edit</button></td></tr>';
       });
       html += '</tbody></table></div>';
     }
@@ -2826,10 +2865,10 @@ function renderRequests(){
 }
 function renderRequestTable(rows, searchable){
   if (!rows || !rows.length) { return '<div class="empty">No requests found.</div>'; }
-  var html = '<div class="table-wrap"><table><thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Due</th><th>Actions</th></tr></thead><tbody id="requestTableBody">';
+  var html = '<div class="table-wrap"><table><thead><tr><th data-sort="title">Title</th><th data-sort="type">Type</th><th data-sort="status">Status</th><th data-sort="priority">Priority</th><th data-sort="assigned">Assigned</th><th data-sort="due">Due</th><th>Actions</th></tr></thead><tbody id="requestTableBody">';
   rows.forEach(function(r){
     var search = [r.Title, r.RequestType, r.Status, r.Priority, r.RequestID, r.Details].join(' ').toLowerCase();
-    html += '<tr data-search-card="' + escAttr(search) + '"><td><strong>' + escHtml(r.Title || r.RequestID || '') + '</strong><div class="mini muted">' + escHtml(r.RequestID || '') + '</div></td><td>' + escHtml(r.RequestType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(r.Priority || '') + '</td><td>' + escHtml((r.AssignedTo && r.AssignedTo.Title) || (r.AssignedOrgID && r.AssignedOrgID.Title) || '') + '</td><td>' + escHtml(formatDate(r.DueDate)) + '</td><td><button class="btn subtle" data-action="view-request" data-id="' + escAttr(r.Id) + '">View</button></td></tr>';
+    html += '<tr data-search-card="' + escAttr(search) + '"><td><strong>' + escHtml(r.Title || r.RequestID || '') + '</strong><div class="mini muted">' + escHtml(r.RequestID || '') + '</div></td><td>' + escHtml(r.RequestType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(r.Priority || '') + '</td><td>' + escHtml((r.AssignedTo && r.AssignedTo.Title) || (r.AssignedOrgID && r.AssignedOrgID.Title) || '') + '</td><td>' + escHtml(formatDate(r.DueDate)) + '</td><td><button class="btn subtle" data-action="view-request" data-id="' + escAttr(r.Id) + '">View</button>' + (canSeeAllRequests() ? ' <button class="btn subtle" data-action="edit-request" data-id="' + escAttr(r.Id) + '">Edit</button>' : '') + '</td></tr>';
   });
   html += '</tbody></table></div>';
   return html;
@@ -2914,18 +2953,18 @@ function renderInOut(){
 }
 function renderInOutTable(rows){
   if (!rows || !rows.length) { return '<div class="empty">No in/out cases found.</div>'; }
-  var html = '<div class="table-wrap"><table><thead><tr><th>Case</th><th>Type</th><th>Status</th><th>Current Step</th><th>Opened</th><th>Priority</th></tr></thead><tbody>';
+  var html = '<div class="table-wrap"><table><thead><tr><th data-sort="case">Case</th><th data-sort="type">Type</th><th data-sort="status">Status</th><th data-sort="step">Current Step</th><th data-sort="opened">Opened</th><th data-sort="priority">Priority</th><th>Actions</th></tr></thead><tbody>';
   rows.forEach(function(r){
-    html += '<tr><td><strong>' + escHtml(r.InOutID || r.Title || '') + '</strong><div class="mini muted">' + escHtml((r.PersonID && r.PersonID.Title) || '') + '</div></td><td>' + escHtml(r.ProcessType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(r.CurrentStep || '') + '</td><td>' + escHtml(formatDate(r.OpenedOn)) + '</td><td>' + escHtml(r.Priority || '') + '</td></tr>';
+    html += '<tr><td><strong>' + escHtml(r.InOutID || r.Title || '') + '</strong><div class="mini muted">' + escHtml((r.PersonID && r.PersonID.Title) || '') + '</div></td><td>' + escHtml(r.ProcessType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(r.CurrentStep || '') + '</td><td>' + escHtml(formatDate(r.OpenedOn)) + '</td><td>' + escHtml(r.Priority || '') + '</td><td><button class="btn subtle" data-action="view-inout-detail" data-id="' + escAttr(r.Id) + '">View</button></td></tr>';
   });
   html += '</tbody></table></div>';
   return html;
 }
 function renderStepQueue(rows){
   if (!rows || !rows.length) { return '<div class="empty">No office steps found.</div>'; }
-  var html = '<div class="table-wrap"><table><thead><tr><th>Case</th><th>Step</th><th>Status</th><th>Due</th><th>Assigned</th></tr></thead><tbody>';
+  var html = '<div class="table-wrap"><table><thead><tr><th data-sort="case">Case</th><th data-sort="step">Step</th><th data-sort="status">Status</th><th data-sort="due">Due</th><th data-sort="assigned">Assigned</th><th>Action</th></tr></thead><tbody>';
   rows.forEach(function(r){
-    html += '<tr><td>' + escHtml((r.InOutID && r.InOutID.Title) || '') + '</td><td>' + escHtml((r.StepNumber || '') + (r.Title ? ' - ' + r.Title : '')) + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(formatDate(r.DueDate)) + '</td><td>' + escHtml((r.AssignedTo && r.AssignedTo.Title) || (r.OwningOrgID && r.OwningOrgID.Title) || '') + '</td></tr>';
+    html += '<tr><td>' + escHtml((r.InOutID && r.InOutID.Title) || '') + '</td><td>' + escHtml((r.StepNumber || '') + (r.Title ? ' - ' + r.Title : '')) + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(formatDate(r.DueDate)) + '</td><td>' + escHtml((r.AssignedTo && r.AssignedTo.Title) || (r.OwningOrgID && r.OwningOrgID.Title) || '') + '</td><td><button class="btn subtle" data-action="complete-step" data-id="' + escAttr(r.Id) + '">Complete</button></td></tr>';
   });
   html += '</tbody></table></div>';
   return html;
@@ -3372,7 +3411,7 @@ function renderAssets(){
     html += metricCard('Portable Devices', portableCount, 'Laptops and other portable equipment', Math.min(100, portableCount / 3));
     html += metricCard('Software Titles Near ATO Attention', atoSoon, 'Titles with ATO expiry within 90 days', Math.min(100, atoSoon * 12));
     html += '</div>';
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
     if (ui.personId) {
       var focusPerson = findPersonById(ui.personId);
       if (focusPerson) {
@@ -3576,6 +3615,388 @@ function refreshAll(){
   toast('Caches cleared.', 'ok');
   renderRoute();
 }
+/* ─── Sortable Table Headers ─── */
+function initSortableHeaders(){
+  document.addEventListener('click', function(e){
+    var th = e.target.closest ? e.target.closest('th[data-sort]') : null;
+    if (!th) { var el = e.target; while (el && el.tagName !== 'TH') { el = el.parentNode; } if (el && el.getAttribute && el.getAttribute('data-sort')) { th = el; } }
+    if (!th) { return; }
+    var col = th.getAttribute('data-sort');
+    var table = th.closest ? th.closest('table') : th.parentNode && th.parentNode.parentNode && th.parentNode.parentNode.parentNode;
+    if (!table || !table.tBodies || !table.tBodies[0]) { return; }
+    var tbody = table.tBodies[0];
+    var rows = Array.prototype.slice.call(tbody.rows);
+    var idx = Array.prototype.slice.call(th.parentNode.children).indexOf(th);
+    var asc = !th.classList.contains('sort-asc');
+    var ths = th.parentNode.querySelectorAll('th[data-sort]');
+    for (var i = 0; i < ths.length; i++) { ths[i].classList.remove('sort-asc','sort-desc'); }
+    th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+    rows.sort(function(a, b){
+      var aVal = (a.cells[idx] && a.cells[idx].textContent || '').trim().toLowerCase();
+      var bVal = (b.cells[idx] && b.cells[idx].textContent || '').trim().toLowerCase();
+      var aNum = parseFloat(aVal); var bNum = parseFloat(bVal);
+      if (!isNaN(aNum) && !isNaN(bNum)) { return asc ? aNum - bNum : bNum - aNum; }
+      var aDate = Date.parse(aVal); var bDate = Date.parse(bVal);
+      if (!isNaN(aDate) && !isNaN(bDate)) { return asc ? aDate - bDate : bDate - aDate; }
+      return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    rows.forEach(function(r){ tbody.appendChild(r); });
+  });
+}
+
+/* ─── Request Lifecycle Management ─── */
+function openRequestEditModal(id){
+  var row = null;
+  (APP.state.data.requests || []).some(function(r){ if (String(r.Id) === String(id)) { row = r; return true; } return false; });
+  if (!row) { toast('Request not found.', 'danger'); return; }
+  APP.modalState.requestId = row.Id;
+  var statusOpts = ['Submitted','In Progress','On Hold','Escalated','Completed','Closed','Rejected'].map(function(s){
+    return '<option value="' + escAttr(s) + '"' + (String(row.Status || '') === s ? ' selected' : '') + '>' + escHtml(s) + '</option>';
+  }).join('');
+  var priorityOpts = ['Routine','High','Urgent'].map(function(s){
+    return '<option value="' + escAttr(s) + '"' + (String(row.Priority || '') === s ? ' selected' : '') + '>' + escHtml(s) + '</option>';
+  }).join('');
+  var body = '<div class="kv" style="margin-bottom:14px">'
+    + '<div class="k">Request ID</div><div class="v">' + escHtml(row.RequestID || '') + '</div>'
+    + '<div class="k">Title</div><div class="v">' + escHtml(row.Title || '') + '</div>'
+    + '<div class="k">Requester</div><div class="v">' + escHtml((row.Requester && row.Requester.Title) || '') + '</div>'
+    + '<div class="k">Type</div><div class="v">' + escHtml(row.RequestType || '') + '</div>'
+    + '<div class="k">Submitted</div><div class="v">' + escHtml(formatDate(row.SubmittedOn)) + '</div>'
+    + '<div class="k">Details</div><div class="v">' + escHtml(row.Details || '') + '</div>'
+    + '</div>';
+  body += '<div class="form-grid">'
+    + formField('Status', '<select id="reqEditStatus" class="select">' + statusOpts + '</select>')
+    + formField('Priority', '<select id="reqEditPriority" class="select">' + priorityOpts + '</select>')
+    + formField('Due Date', '<input id="reqEditDueDate" type="date" class="input" value="' + escAttr(formatDate(row.DueDate)) + '" />')
+    + formField('Workflow Step', '<input id="reqEditWorkflowStep" class="input" value="' + escAttr(row.WorkflowStep || '') + '" />')
+    + '<div class="full">' + formField('Add Comment', '<textarea id="reqEditComment" class="textarea" style="min-height:60px" placeholder="Add a comment or note about this status change..."></textarea>') + '</div>'
+    + '</div>';
+  var comments = parseRequestComments(row);
+  if (comments.length) {
+    body += '<div style="margin-top:14px"><div class="small-note" style="margin-bottom:6px">COMMENT HISTORY</div><div class="comment-thread">';
+    comments.forEach(function(c){
+      body += '<div class="comment-item"><div class="comment-meta">' + escHtml(c.by || '') + ' &mdash; ' + escHtml(c.on || '') + '</div><div class="comment-text">' + escHtml(c.text || '') + '</div></div>';
+    });
+    body += '</div></div>';
+  }
+  openModal('Edit Request', body, '<div><button class="btn danger" data-action="close-request" data-id="' + escAttr(row.Id) + '">Close Request</button></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-request-edit">Save Changes</button></div>', row.RequestID || '');
+}
+function parseRequestComments(row){
+  var raw = row.WorkflowJson || '';
+  if (!raw) { return []; }
+  try {
+    var parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) { return parsed; }
+    if (parsed.comments && Array.isArray(parsed.comments)) { return parsed.comments; }
+  } catch(e) {}
+  return [];
+}
+function saveRequestEdit(){
+  var id = APP.modalState.requestId;
+  if (!id) { toast('Missing request context.', 'danger'); return; }
+  var row = null;
+  (APP.state.data.requests || []).some(function(r){ if (String(r.Id) === String(id)) { row = r; return true; } return false; });
+  if (!row) { toast('Request not found.', 'danger'); return; }
+  var newStatus = document.getElementById('reqEditStatus').value;
+  var commentText = (document.getElementById('reqEditComment').value || '').trim();
+  var comments = parseRequestComments(row);
+  if (commentText) {
+    comments.push({ by: APP.state.currentUser ? APP.state.currentUser.title : 'System', on: new Date().toISOString().slice(0, 10), text: commentText });
+  }
+  var values = {
+    Status: newStatus,
+    Priority: document.getElementById('reqEditPriority').value,
+    DueDate: document.getElementById('reqEditDueDate').value || null,
+    WorkflowStep: document.getElementById('reqEditWorkflowStep').value,
+    WorkflowJson: JSON.stringify(comments)
+  };
+  if (newStatus === 'Completed' || newStatus === 'Closed') { values.ClosedOn = new Date().toISOString(); }
+  updateListItem(APP.lists.AppRequests, id, values, { entityType: 'App Request', before: row, reason: 'SPA request edit' }).then(function(){
+    toast('Request updated.', 'ok');
+    closeModal();
+    return ensureRequestsLoaded(true).then(function(){ if (APP.state.route === 'requests') { renderRequests(); } });
+  }).catch(function(){ toast('Request update failed.', 'danger'); });
+}
+function closeRequest(id){
+  var row = null;
+  (APP.state.data.requests || []).some(function(r){ if (String(r.Id) === String(id)) { row = r; return true; } return false; });
+  if (!row) { toast('Request not found.', 'danger'); return; }
+  updateListItem(APP.lists.AppRequests, id, { Status: 'Closed', ClosedOn: new Date().toISOString(), WorkflowStep: 'Closed' }, { entityType: 'App Request', before: row, reason: 'SPA close request' }).then(function(){
+    toast('Request closed.', 'ok');
+    closeModal();
+    return ensureRequestsLoaded(true).then(function(){ if (APP.state.route === 'requests') { renderRequests(); } });
+  }).catch(function(){ toast('Failed to close request.', 'danger'); });
+}
+
+/* ─── In/Out Step Completion ─── */
+function completeInOutStep(stepId){
+  var steps = APP.state.data.inoutSteps || [];
+  var step = null;
+  steps.some(function(s){ if (String(s.Id) === String(stepId)) { step = s; return true; } return false; });
+  if (!step) { toast('Step not found.', 'danger'); return; }
+  var values = {
+    Status: 'Completed',
+    CompletedOn: new Date().toISOString(),
+    CompletedBy: APP.state.currentUser ? APP.state.currentUser.id : null
+  };
+  updateListItem(APP.lists.InOutSteps, step.Id, values, { entityType: 'In/Out Step', before: step, reason: 'SPA step completion' }).then(function(){
+    toast('Step completed.', 'ok');
+    if (step.InOutID && step.InOutID.Id) { advanceInOutCase(step.InOutID.Id); }
+    return ensureInOutStepsLoaded(true).then(function(){ if (APP.state.route === 'inout') { renderInOut(); } });
+  }).catch(function(){ toast('Step completion failed.', 'danger'); });
+}
+function advanceInOutCase(caseId){
+  var steps = APP.state.data.inoutSteps || [];
+  var caseSteps = steps.filter(function(s){ return s.InOutID && String(s.InOutID.Id) === String(caseId); });
+  var incomplete = caseSteps.filter(function(s){ return String(s.Status || '').toLowerCase().indexOf('complete') < 0; });
+  var nextStep = incomplete.length ? (incomplete[0].Title || 'Step ' + (incomplete[0].StepNumber || '')) : 'All Steps Completed';
+  var caseStatus = incomplete.length === 0 ? 'Completed' : 'In Progress';
+  var cases = APP.state.data.inout || [];
+  var caseRow = null;
+  cases.some(function(c){ if (String(c.Id) === String(caseId)) { caseRow = c; return true; } return false; });
+  if (!caseRow) { return; }
+  var update = { CurrentStep: nextStep, Status: caseStatus };
+  if (caseStatus === 'Completed') { update.ClosedOn = new Date().toISOString(); }
+  updateListItem(APP.lists.InOut, caseId, update, { entityType: 'In/Out Case', before: caseRow, reason: 'Auto-advance from step completion' }).then(function(){
+    return ensureInOutLoaded(true);
+  }).catch(function(){});
+}
+function openInOutDetail(caseId){
+  var cases = APP.state.data.inout || [];
+  var row = null;
+  cases.some(function(c){ if (String(c.Id) === String(caseId)) { row = c; return true; } return false; });
+  if (!row) { toast('Case not found.', 'danger'); return; }
+  var steps = (APP.state.data.inoutSteps || []).filter(function(s){ return s.InOutID && String(s.InOutID.Id) === String(caseId); });
+  var totalSteps = steps.length;
+  var doneSteps = steps.filter(function(s){ return String(s.Status || '').toLowerCase().indexOf('complete') >= 0; }).length;
+  var pct = totalSteps ? Math.round((doneSteps / totalSteps) * 100) : 0;
+  var body = '<div class="kv">'
+    + '<div class="k">Case ID</div><div class="v">' + escHtml(row.InOutID || row.Title || '') + '</div>'
+    + '<div class="k">Person</div><div class="v">' + escHtml((row.PersonID && row.PersonID.Title) || '') + '</div>'
+    + '<div class="k">Type</div><div class="v">' + escHtml(row.ProcessType || '') + '</div>'
+    + '<div class="k">Status</div><div class="v">' + statusBadge(row.Status || 'Open') + '</div>'
+    + '<div class="k">Current Step</div><div class="v">' + escHtml(row.CurrentStep || '') + '</div>'
+    + '<div class="k">Opened</div><div class="v">' + escHtml(formatDate(row.OpenedOn)) + '</div>'
+    + '<div class="k">Progress</div><div class="v">' + escHtml(doneSteps + ' / ' + totalSteps + ' (' + pct + '%)') + '</div>'
+    + '</div>';
+  body += '<div style="margin-top:10px" class="progress"><span style="width:' + pct + '%"></span></div>';
+  if (steps.length) {
+    body += '<div style="margin-top:14px"><div class="table-wrap"><table><thead><tr><th data-sort="step">#</th><th data-sort="name">Step</th><th data-sort="status">Status</th><th data-sort="assigned">Assigned</th><th data-sort="due">Due</th><th>Action</th></tr></thead><tbody>';
+    steps.forEach(function(s){
+      var isDone = String(s.Status || '').toLowerCase().indexOf('complete') >= 0;
+      body += '<tr><td>' + escHtml(String(s.StepNumber || '')) + '</td><td>' + escHtml(s.Title || '') + '</td><td>' + statusBadge(s.Status || 'Open') + '</td><td>' + escHtml((s.AssignedTo && s.AssignedTo.Title) || (s.OwningOrgID && s.OwningOrgID.Title) || '') + '</td><td>' + escHtml(formatDate(s.DueDate)) + '</td><td>' + (!isDone ? '<button class="btn subtle" data-action="complete-step" data-id="' + escAttr(s.Id) + '">Complete</button>' : '<span class="badge ok">Done</span>') + '</td></tr>';
+    });
+    body += '</tbody></table></div></div>';
+  }
+  openModal('In/Out Case Detail', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', row.ProcessType || '');
+}
+
+/* ─── Supervisor Team Training Dashboard ─── */
+function getTeamTrainingModel(){
+  var people = APP.state.data.people || [];
+  var currentPerson = APP.state.currentPersonnel;
+  if (!currentPerson) { return []; }
+  var currentOrgId = currentPerson.OrgID && currentPerson.OrgID.Id ? currentPerson.OrgID.Id : null;
+  var team = people.filter(function(p){
+    if (p.Id === currentPerson.Id) { return false; }
+    if (p.SupervisorID && p.SupervisorID.Id === currentPerson.Id) { return true; }
+    if (currentOrgId && p.OrgID && p.OrgID.Id === currentOrgId) { return true; }
+    return false;
+  });
+  var catalog = APP.state.data.trainingCatalog || [];
+  var records = APP.state.data.trainingRecords || [];
+  return team.map(function(p){
+    var applicable = catalog.filter(function(t){ return normalizeBoolean(t.Required); });
+    var personRecords = records.filter(function(r){ return r.PersonID && r.PersonID.Id === p.Id; });
+    var current = 0; var expired = 0; var missing = 0;
+    applicable.forEach(function(t){
+      var rec = null;
+      personRecords.some(function(r){ if (r.TrainingID && r.TrainingID.Id === t.Id) { rec = r; return true; } return false; });
+      if (!rec) { missing++; return; }
+      var s = String(rec.Status || '').toLowerCase();
+      if (s.indexOf('current') >= 0) { current++; }
+      else if (s.indexOf('expired') >= 0) { expired++; }
+      else { current++; }
+    });
+    var total = applicable.length;
+    var pct = total ? Math.round((current / total) * 100) : 100;
+    return { person: p, total: total, current: current, expired: expired, missing: missing, pct: pct };
+  });
+}
+function renderTeamTraining(){
+  var model = getTeamTrainingModel();
+  if (!model.length) { return '<div class="empty">No team members found in your organization or reporting chain.</div>'; }
+  model.sort(function(a, b){ return a.pct - b.pct; });
+  var avgPct = model.length ? Math.round(model.reduce(function(sum, m){ return sum + m.pct; }, 0) / model.length) : 100;
+  var html = '<div class="stats-row"><div class="stat-mini">Team Members <div class="n">' + model.length + '</div></div><div class="stat-mini">Avg Compliance <div class="n">' + avgPct + '%</div></div><div class="stat-mini">At Risk <div class="n">' + model.filter(function(m){ return m.pct < 80; }).length + '</div></div></div>';
+  html += '<div class="team-grid">';
+  model.forEach(function(m){
+    var riskClass = m.pct >= 90 ? 'ok' : (m.pct >= 70 ? 'warn' : 'danger');
+    html += '<div class="team-card"><div class="name">' + escHtml(formatPerson(m.person)) + '</div><div class="role">' + escHtml((m.person.OrgID && m.person.OrgID.Title) || '') + ' • ' + escHtml((m.person.PositionID && m.person.PositionID.Title) || '') + '</div><div class="training-bar" style="margin-top:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="badge ' + riskClass + '">' + m.pct + '% Compliant</span><span class="mini muted">' + m.current + '/' + m.total + '</span></div><div class="progress"><span style="width:' + m.pct + '%"></span></div></div><div class="mini muted" style="margin-top:6px">' + (m.expired ? '<span class="badge danger">Expired: ' + m.expired + '</span> ' : '') + (m.missing ? '<span class="badge warn">Missing: ' + m.missing + '</span>' : '') + (!m.expired && !m.missing ? '<span class="badge ok">All Current</span>' : '') + '</div><div style="margin-top:8px"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(m.person.Id) + '">View</button></div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ─── SF182 Edit Modal ─── */
+function openSF182EditModal(id){
+  var rows = APP.state.data.sf182 || [];
+  var row = null;
+  rows.some(function(r){ if (String(r.Id) === String(id)) { row = r; return true; } return false; });
+  if (!row) { toast('SF182 record not found.', 'danger'); return; }
+  APP.modalState.sf182Id = row.Id;
+  var statusOpts = ['Submitted','Supervisor Approved','HR Approved','Funding Approved','Completed','Rejected'].map(function(s){
+    return '<option value="' + escAttr(s) + '"' + (String(row.Status || '') === s ? ' selected' : '') + '>' + escHtml(s) + '</option>';
+  }).join('');
+  var body = '<div class="kv" style="margin-bottom:14px">'
+    + '<div class="k">Title</div><div class="v">' + escHtml(row.Title || '') + '</div>'
+    + '<div class="k">Requestor</div><div class="v">' + escHtml((row.Requestor && row.Requestor.Title) || '') + '</div>'
+    + '<div class="k">Training</div><div class="v">' + escHtml((row.Training && row.Training.Title) || '') + '</div>'
+    + '<div class="k">Approval ID</div><div class="v">' + escHtml(row.ApprovalID || '') + '</div>'
+    + '</div>';
+  body += '<div class="form-grid">'
+    + formField('Status', '<select id="sf182EditStatus" class="select">' + statusOpts + '</select>')
+    + formField('Training Start Date', '<input id="sf182StartDate" type="date" class="input" value="' + escAttr(formatDate(row.TrainingStartDate)) + '" />')
+    + formField('Training End Date', '<input id="sf182EndDate" type="date" class="input" value="' + escAttr(formatDate(row.TrainingEndDate)) + '" />')
+    + formField('Special Accommodation', '<input id="sf182Accommodation" class="input" value="' + escAttr(row.SpecialAccommodation || '') + '" />')
+    + '<div class="full">' + formField('Rejection Comments', '<textarea id="sf182RejComments" class="textarea" style="min-height:60px">' + escHtml(row.RejectionComments || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit SF182 Request', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-sf182-edit">Save Changes</button></div>', row.ApprovalID || '');
+}
+function saveSF182Edit(){
+  var id = APP.modalState.sf182Id;
+  if (!id) { toast('Missing SF182 context.', 'danger'); return; }
+  var row = null;
+  (APP.state.data.sf182 || []).some(function(r){ if (String(r.Id) === String(id)) { row = r; return true; } return false; });
+  if (!row) { toast('SF182 not found.', 'danger'); return; }
+  var values = {
+    Status: document.getElementById('sf182EditStatus').value,
+    TrainingStartDate: document.getElementById('sf182StartDate').value || null,
+    TrainingEndDate: document.getElementById('sf182EndDate').value || null,
+    SpecialAccommodation: document.getElementById('sf182Accommodation').value,
+    RejectionComments: document.getElementById('sf182RejComments').value
+  };
+  updateListItem(APP.lists.SF182Requests, id, values, { entityType: 'SF182 Request', before: row, reason: 'SPA SF182 edit' }).then(function(){
+    toast('SF182 updated.', 'ok');
+    closeModal();
+    return ensureSF182Loaded(true).then(function(){ if (APP.state.route === 'sf182') { renderSF182(); } });
+  }).catch(function(){ toast('SF182 update failed.', 'danger'); });
+}
+
+/* ─── Asset Assignment Creation ─── */
+function openCreateHardwareAssignmentModal(){
+  return Promise.all([ensureAssetsLoaded(), ensurePeopleLoaded()]).then(function(){
+    var idx = buildAssetIndex();
+    var hwOpts = idx.hardwareAssets.map(function(a){ return '<option value="' + escAttr(a.Id) + '">' + escHtml((a.AssetTag || a.Title || a.HardwareAssetID || 'Asset') + ' - ' + (a.Make || '') + ' ' + (a.Model || '')) + '</option>'; }).join('');
+    var personOpts = (APP.state.data.people || []).map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
+    var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){ return '<option value="' + escAttr(e) + '">' + escHtml(e) + '</option>'; }).join('');
+    var body = '<div class="form-grid">'
+      + formField('Hardware Asset', '<select id="hwAssignAsset" class="select"><option value="">-- Select --</option>' + hwOpts + '</select>')
+      + formField('Assign To Person', '<select id="hwAssignPerson" class="select"><option value="">-- Select --</option>' + personOpts + '</select>')
+      + formField('Environment', '<select id="hwAssignEnv" class="select">' + envOpts + '</select>')
+      + formField('Assigned Date', '<input id="hwAssignDate" type="date" class="input" value="' + escAttr(new Date().toISOString().slice(0,10)) + '" />')
+      + '<div class="full">' + formField('Notes', '<textarea id="hwAssignNotes" class="textarea" style="min-height:60px" placeholder="Assignment context, justification, or ticket reference."></textarea>') + '</div>'
+      + '</div>';
+    openModal('New Hardware Assignment', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-hw-assignment">Create Assignment</button></div>', 'Links a hardware asset to a person');
+  });
+}
+function saveHardwareAssignment(){
+  var assetId = document.getElementById('hwAssignAsset').value;
+  var personId = document.getElementById('hwAssignPerson').value;
+  var errors = runValidation([
+    function(){ return validateRequired(assetId, 'Hardware Asset'); },
+    function(){ return validateRequired(personId, 'Person'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var values = {
+    Title: 'Assignment - ' + new Date().toISOString().slice(0,10),
+    HardwareAssetID: parseInt(assetId, 10),
+    PersonID: parseInt(personId, 10),
+    Environment: document.getElementById('hwAssignEnv').value,
+    AssignedDate: document.getElementById('hwAssignDate').value,
+    Status: 'Active',
+    Notes: document.getElementById('hwAssignNotes').value
+  };
+  createListItem(APP.lists.HardwareAssignments, values, { entityType: 'Hardware Assignment', reason: 'SPA new assignment' }).then(function(){
+    toast('Hardware assignment created.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Assignment creation failed.', 'danger'); });
+}
+function openCreateSoftwareAssignmentModal(){
+  return Promise.all([ensureAssetsLoaded(), ensurePeopleLoaded()]).then(function(){
+    var idx = buildAssetIndex();
+    var swOpts = idx.softwareAssets.map(function(a){ return '<option value="' + escAttr(a.Id) + '">' + escHtml((a.SoftwareName || a.Title || 'Software') + (a.Version ? ' v' + a.Version : '')) + '</option>'; }).join('');
+    var personOpts = (APP.state.data.people || []).map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
+    var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){ return '<option value="' + escAttr(e) + '">' + escHtml(e) + '</option>'; }).join('');
+    var body = '<div class="form-grid">'
+      + formField('Software Title', '<select id="swAssignSoftware" class="select"><option value="">-- Select --</option>' + swOpts + '</select>')
+      + formField('Assign To Person', '<select id="swAssignPerson" class="select"><option value="">-- Select --</option>' + personOpts + '</select>')
+      + formField('Environment', '<select id="swAssignEnv" class="select">' + envOpts + '</select>')
+      + formField('License Key', '<input id="swAssignLicense" class="input" placeholder="Optional license key or seat number" />')
+      + '<div class="full">' + formField('Notes', '<textarea id="swAssignNotes" class="textarea" style="min-height:60px" placeholder="Justification, ticket number, or exception details."></textarea>') + '</div>'
+      + '</div>';
+    openModal('New Software Assignment', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-sw-assignment">Create Assignment</button></div>', 'Links a software title to a person');
+  });
+}
+function saveSoftwareAssignment(){
+  var swId = document.getElementById('swAssignSoftware').value;
+  var personId = document.getElementById('swAssignPerson').value;
+  var errors = runValidation([
+    function(){ return validateRequired(swId, 'Software Title'); },
+    function(){ return validateRequired(personId, 'Person'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var values = {
+    Title: 'Assignment - ' + new Date().toISOString().slice(0,10),
+    SoftwareAssetID: parseInt(swId, 10),
+    PersonID: parseInt(personId, 10),
+    Environment: document.getElementById('swAssignEnv').value,
+    LicenseKey: document.getElementById('swAssignLicense').value,
+    Status: 'Active',
+    Notes: document.getElementById('swAssignNotes').value
+  };
+  createListItem(APP.lists.SoftwareAssignments, values, { entityType: 'Software Assignment', reason: 'SPA new assignment' }).then(function(){
+    toast('Software assignment created.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Assignment creation failed.', 'danger'); });
+}
+
+/* ─── People Supervisor Chain ─── */
+function getSupervisorChain(personId){
+  var people = APP.state.data.people || [];
+  var chain = [];
+  var visited = {};
+  var currentId = personId;
+  while (currentId && !visited[currentId] && chain.length < 10) {
+    visited[currentId] = true;
+    var person = null;
+    people.some(function(p){ if (String(p.Id) === String(currentId)) { person = p; return true; } return false; });
+    if (!person) { break; }
+    if (String(person.Id) !== String(personId)) { chain.push(person); }
+    currentId = person.SupervisorID && person.SupervisorID.Id ? person.SupervisorID.Id : null;
+  }
+  return chain;
+}
+function renderSupervisorChain(personId){
+  var chain = getSupervisorChain(personId);
+  if (!chain.length) { return '<div class="small-note">No supervisor chain found.</div>'; }
+  var html = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+  chain.forEach(function(p, i){
+    if (i > 0) { html += '<span class="muted">→</span>'; }
+    html += '<span class="badge info" style="cursor:pointer" data-action="view-person" data-id="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</span>';
+  });
+  html += '</div>';
+  return html;
+}
+function getOrgPeopleStats(orgId){
+  var people = APP.state.data.people || [];
+  var orgPeople = people.filter(function(p){ return p.OrgID && String(p.OrgID.Id) === String(orgId); });
+  var active = orgPeople.filter(function(p){ var s = String(p.Status || '').toLowerCase(); return s.indexOf('active') >= 0 || s === '' || s === 'unknown'; }).length;
+  return { total: orgPeople.length, active: active, departed: orgPeople.length - active };
+}
+
 function renderRoute(){
   APP.state.renderToken += 1;
   var route = APP.state.route = getHashRoute();
@@ -3682,11 +4103,24 @@ function handleClick(e){
   if (action === 'run-data-quality') { toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
   if (action === 'print-view') { printView(); return; }
   if (action === 'toggle-notifications') { var panel = document.getElementById('notificationPanel'); if (panel) { panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; } return; }
+  if (action === 'edit-request') { openRequestEditModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-request-edit') { saveRequestEdit(); return; }
+  if (action === 'close-request') { closeRequest(el.getAttribute('data-id')); return; }
+  if (action === 'complete-step') { completeInOutStep(el.getAttribute('data-id')); return; }
+  if (action === 'view-inout-detail') { openInOutDetail(el.getAttribute('data-id')); return; }
+  if (action === 'toggle-team-training') { APP.state.showTeamTraining = !APP.state.showTeamTraining; renderTraining(); return; }
+  if (action === 'edit-sf182') { openSF182EditModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-sf182-edit') { saveSF182Edit(); return; }
+  if (action === 'create-hw-assignment') { openCreateHardwareAssignmentModal(); return; }
+  if (action === 'save-hw-assignment') { saveHardwareAssignment(); return; }
+  if (action === 'create-sw-assignment') { openCreateSoftwareAssignmentModal(); return; }
+  if (action === 'save-sw-assignment') { saveSoftwareAssignment(); return; }
   if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
 function bootstrap(){
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
+  initSortableHeaders();
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') { closeModal(); return; }
     if (!e.altKey) { return; }
