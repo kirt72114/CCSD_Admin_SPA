@@ -450,8 +450,21 @@ tr:hover td{background:#eef5ff}
 'use strict';
 
 var APP = {
-  version: '2026.03.30.1',
-  rootUrl: 'https://usaf.dps.mil/teams/aetc-lak-cpsg/Database',
+  version: '2026.03.31.1',
+  /* ─── Multi-Site Configuration ─── */
+  sites: {
+    'usaf.dps.mil': {
+      rootUrl: 'https://usaf.dps.mil/teams/aetc-lak-cpsg/Database',
+      label: 'USAF AETC-LAK CPSG (Production)',
+      environment: 'production'
+    },
+    'patriavirtus.sharepoint.com': {
+      rootUrl: 'https://patriavirtus.sharepoint.com/sites/CCSDAdminSPA',
+      label: 'Patria Virtus (Replica)',
+      environment: 'production'
+    }
+  },
+  rootUrl: '',
   nav: [
     { key: 'home', label: 'Home' },
     { key: 'people', label: 'People' },
@@ -1247,14 +1260,66 @@ function retryWithBackoff(fn, maxRetries, baseDelay){
   return attempt(0);
 }
 
-/* ─── Environment Configuration ─── */
-function detectEnvironment(){
-  var url = window.location.href.toLowerCase();
-  if (url.indexOf('localhost') >= 0 || url.indexOf('127.0.0.1') >= 0) { return 'development'; }
-  if (url.indexOf('-test') >= 0 || url.indexOf('test.') >= 0 || url.indexOf('/test/') >= 0) { return 'test'; }
-  return 'production';
+/* ─── Environment & Site Resolution ─── */
+function detectSiteConfig(){
+  var hostname = (window.location.hostname || '').toLowerCase();
+  var href = (window.location.href || '').toLowerCase();
+  var pathname = (window.location.pathname || '').toLowerCase();
+
+  /* 1. Try exact hostname match from APP.sites */
+  if (APP.sites[hostname]) {
+    return APP.sites[hostname];
+  }
+
+  /* 2. Try partial hostname match (subdomain-safe) */
+  var siteKeys = Object.keys(APP.sites);
+  for (var i = 0; i < siteKeys.length; i++) {
+    if (hostname.indexOf(siteKeys[i]) >= 0) {
+      return APP.sites[siteKeys[i]];
+    }
+  }
+
+  /* 3. Derive from current URL — works when pasted into any SharePoint site */
+  if (href.indexOf('sharepoint.com') >= 0 || href.indexOf('.dps.mil') >= 0) {
+    var origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+    var siteMatch = pathname.match(/^(\/sites\/[^\/]+|\/teams\/[^\/]+(?:\/[^\/]+)?)/i);
+    var sitePath = siteMatch ? siteMatch[1] : '';
+    return {
+      rootUrl: origin + sitePath,
+      label: 'Auto-detected (' + hostname + ')',
+      environment: 'production'
+    };
+  }
+
+  /* 4. Local / dev fallback */
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '') {
+    return { rootUrl: '', label: 'Local Development', environment: 'development' };
+  }
+
+  /* 5. Test environment heuristic */
+  if (href.indexOf('-test') >= 0 || href.indexOf('test.') >= 0 || href.indexOf('/test/') >= 0) {
+    return { rootUrl: '', label: 'Test Environment', environment: 'test' };
+  }
+
+  /* 6. Unknown — leave rootUrl as-is (fallback to whatever was hardcoded) */
+  return null;
 }
-APP.environment = detectEnvironment();
+function initializeSiteConfig(){
+  var config = detectSiteConfig();
+  if (config) {
+    if (config.rootUrl) { APP.rootUrl = config.rootUrl; }
+    APP.environment = config.environment || 'production';
+    APP.siteLabel = config.label || '';
+  } else {
+    APP.environment = 'production';
+    APP.siteLabel = 'Default Configuration';
+    /* Keep whatever rootUrl was already set as fallback */
+    if (!APP.rootUrl) {
+      APP.rootUrl = 'https://usaf.dps.mil/teams/aetc-lak-cpsg/Database';
+    }
+  }
+}
+initializeSiteConfig();
 
 /* ─── Export Utilities ─── */
 function exportTableToCSV(tableSelector, filename){
@@ -1645,7 +1710,8 @@ function renderContextBar(){
   }
   roles.forEach(function(role){ html += '<div class="role-chip"><span class="dot"></span><span>' + escHtml(role) + '</span></div>'; });
   html += '<div class="spacer"></div>';
-  html += '<div class="small-note">Root: ' + escHtml(APP.rootUrl) + '</div>';
+  if (APP.siteLabel) { html += '<div class="status-pill" title="' + escAttr(APP.rootUrl) + '"><span class="dot" style="background:var(--accent-2)"></span><span>' + escHtml(APP.siteLabel) + '</span></div>'; }
+  html += '<div class="small-note" title="SharePoint site root URL">' + escHtml(APP.rootUrl) + '</div>';
   document.getElementById('contextBar').innerHTML = html;
 }
 function setView(html){ document.getElementById('viewHost').innerHTML = html; }
@@ -3343,7 +3409,7 @@ function renderAdmin(){
     reqs.forEach(function(r){ var t = r.RequestType || 'Other'; reqsByType[t] = (reqsByType[t] || 0) + 1; });
     var openReqs = reqs.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('complete') < 0 && s.indexOf('closed') < 0; }).length;
     var html = '';
-    html += '<div class="exec-strip"><div class="title">Administration</div><div class="item"><span class="swatch"></span>Environment: ' + escHtml(APP.environment) + '</div><div class="item"><span class="swatch"></span>Version ' + escHtml(APP.version) + '</div><div class="item"><span class="swatch"></span>Data Quality Issues ' + escHtml(String(dqIssues.length)) + '</div><div class="item"><span class="swatch"></span>People ' + escHtml(String(people.length)) + '</div><div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(openReqs)) + '</div></div>';
+    html += '<div class="exec-strip"><div class="title">Administration</div><div class="item"><span class="swatch"></span>' + escHtml(APP.siteLabel || APP.environment) + '</div><div class="item"><span class="swatch"></span>Version ' + escHtml(APP.version) + '</div><div class="item"><span class="swatch"></span>Data Quality Issues ' + escHtml(String(dqIssues.length)) + '</div><div class="item"><span class="swatch"></span>People ' + escHtml(String(people.length)) + '</div><div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(openReqs)) + '</div></div>';
     html += '<div class="grid cols-4">';
     html += metricCard('Total Personnel', people.length, 'Loaded personnel records', Math.min(100, people.length / 6));
     html += metricCard('Organizations', orgs.length, 'Active organizational units', Math.min(100, orgs.length * 4));
@@ -3351,7 +3417,7 @@ function renderAdmin(){
     html += metricCard('Data Quality', dqIssues.length ? dqIssues.length + ' Issues' : 'Clean', dangerIssues + ' critical, ' + warnIssues + ' warnings', dqIssues.length ? Math.max(10, Math.min(100, dqIssues.length * 3)) : 100);
     html += '</div>';
     html += '<div class="grid cols-2" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Admin Controls</div><div class="card-sub">Platform operations, cache management, diagnostics, and export.</div></div></div><div class="card-body"><div class="quick-actions"><button class="btn primary" data-action="run-self-test">Run Self-Test</button><button class="btn" data-action="flush-telemetry">Flush Telemetry</button><button class="btn" data-action="refresh-all">Refresh All Caches</button><button class="btn" data-action="run-data-quality">Data Quality Check</button><button class="btn subtle" data-action="print-view">Print Current View</button></div><div class="kv" style="margin-top:14px"><div class="k">Queued Telemetry</div><div class="v">' + escHtml(String(APP.state.pendingTelemetry.length)) + '</div><div class="k">Queued Audit</div><div class="v">' + escHtml(String(APP.state.pendingAudit.length)) + '</div><div class="k">Cached Schemas</div><div class="v">' + escHtml(String(Object.keys(APP.state.schemas).length)) + '</div><div class="k">Session ID</div><div class="v mini">' + escHtml(getSessionId()) + '</div><div class="k">Environment</div><div class="v">' + statusBadge(APP.environment) + '</div><div class="k">Root URL</div><div class="v mini">' + escHtml(APP.rootUrl) + '</div></div></div></div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Admin Controls</div><div class="card-sub">Platform operations, cache management, diagnostics, and export.</div></div></div><div class="card-body"><div class="quick-actions"><button class="btn primary" data-action="run-self-test">Run Self-Test</button><button class="btn" data-action="flush-telemetry">Flush Telemetry</button><button class="btn" data-action="refresh-all">Refresh All Caches</button><button class="btn" data-action="run-data-quality">Data Quality Check</button><button class="btn subtle" data-action="print-view">Print Current View</button></div><div class="kv" style="margin-top:14px"><div class="k">Queued Telemetry</div><div class="v">' + escHtml(String(APP.state.pendingTelemetry.length)) + '</div><div class="k">Queued Audit</div><div class="v">' + escHtml(String(APP.state.pendingAudit.length)) + '</div><div class="k">Cached Schemas</div><div class="v">' + escHtml(String(Object.keys(APP.state.schemas).length)) + '</div><div class="k">Session ID</div><div class="v mini">' + escHtml(getSessionId()) + '</div><div class="k">Environment</div><div class="v">' + statusBadge(APP.environment) + '</div><div class="k">Active Site</div><div class="v">' + escHtml(APP.siteLabel || 'Default') + '</div><div class="k">Root URL</div><div class="v mini">' + escHtml(APP.rootUrl) + '</div><div class="k">Hostname</div><div class="v mini">' + escHtml(window.location.hostname || 'N/A') + '</div><div class="k">Known Sites</div><div class="v mini">' + escHtml(Object.keys(APP.sites).join(', ')) + '</div></div></div></div>';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">Request Volume by Type</div><div class="card-sub">Distribution of all requests across workflow types.</div></div></div><div class="card-body">';
     var typeKeys = Object.keys(reqsByType).sort(function(a,b){ return reqsByType[b] - reqsByType[a]; });
     if (!typeKeys.length) { html += '<div class="empty">No requests loaded yet.</div>'; }
