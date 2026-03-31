@@ -155,6 +155,47 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .asset-slim-card .hd{font-size:13px;color:#5c7085;font-weight:700}
 .asset-slim-card .val{font-size:22px;color:#10304f;font-weight:800;margin-top:4px}
 
+/* ─── Smooth Page Transitions ─── */
+#viewHost{animation:fadeSlideIn .28s ease-out}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.modal-mask[style*="flex"]{animation:fadeIn .2s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{animation:slideUp .25s ease-out}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast{animation:toastSlide .3s ease-out}
+@keyframes toastSlide{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ─── Card hover lift ─── */
+.card{transition:.22s transform,.22s box-shadow}
+.card:hover{transform:translateY(-1px)}
+
+/* ─── Focus styles for accessibility ─── */
+.btn:focus-visible,.nav-link:focus-visible,.tile:focus-visible,.input:focus-visible,.select:focus-visible,.textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.close-x:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+
+/* ─── Print Styles ─── */
+@media print{
+  body:before,body:after{display:none!important}
+  .hero,.toast-host,.modal-mask,.context-bar,.quick-actions,.btn,.nav-tabs,.header-actions,.filter-row{display:none!important}
+  #app{padding:0!important}
+  .card,.tile{break-inside:avoid;box-shadow:none!important;border:1px solid #ccc!important}
+  .card:hover{transform:none!important}
+  body,html{background:#fff!important;color:#000!important}
+  .table-wrap{overflow:visible!important}
+  table{min-width:0!important}
+  *{color:#000!important;background:transparent!important;border-color:#ccc!important}
+  .badge{border:1px solid #999!important}
+  .progress > span{background:#333!important}
+}
+
+/* ─── Notification badge ─── */
+.notif-badge{position:relative}
+.notif-badge:after{content:attr(data-count);position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* ─── Seat map styles ─── */
+.seat-map-wrap{position:relative;border:1px solid var(--line);border-radius:14px;padding:12px;overflow:auto}
+.seat-map-wrap svg text{user-select:none}
+
 </style>
 
 <style id="projectorThemeOverrides">
@@ -385,12 +426,12 @@ tr:hover td{background:#eef5ff}
         <button class="btn primary" data-action="open-create-request">New Request</button>
       </div>
     </div>
-    <div id="moduleTabs" class="nav-tabs"></div>
+    <nav id="moduleTabs" class="nav-tabs" role="tablist" aria-label="Application modules"></nav>
   </div>
-  <div id="contextBar" class="context-bar"></div>
-  <div id="viewHost"></div>
+  <div id="contextBar" class="context-bar" role="status" aria-label="User context and role information"></div>
+  <main id="viewHost" role="main" aria-label="Application content area"></main>
 </div>
-<div id="modalMask" class="modal-mask">
+<div id="modalMask" class="modal-mask" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal">
     <div class="modal-head">
       <div>
@@ -409,8 +450,21 @@ tr:hover td{background:#eef5ff}
 'use strict';
 
 var APP = {
-  version: '2026.03.24.1',
-  rootUrl: 'https://usaf.dps.mil/teams/aetc-lak-cpsg/Database',
+  version: '2026.03.31.1',
+  /* ─── Multi-Site Configuration ─── */
+  sites: {
+    'usaf.dps.mil': {
+      rootUrl: 'https://usaf.dps.mil/teams/aetc-lak-cpsg/Database',
+      label: 'USAF AETC-LAK CPSG (Production)',
+      environment: 'production'
+    },
+    'patriavirtus.sharepoint.com': {
+      rootUrl: 'https://patriavirtus.sharepoint.com/sites/CCSDAdminSPA',
+      label: 'Patria Virtus (Replica)',
+      environment: 'production'
+    }
+  },
+  rootUrl: '',
   nav: [
     { key: 'home', label: 'Home' },
     { key: 'people', label: 'People' },
@@ -802,10 +856,11 @@ function parseSharePointJson(text){
 }
 function spGetJson(path, context){
   var url = apiUrl(path);
-  var started = new Date().getTime();
-  return xhr({ method: 'GET', url: url, headers: { 'Accept': 'application/json;odata=nometadata' } }).then(function(res){
-    return parseSharePointJson(res.text);
-  }).catch(function(err){
+  return retryWithBackoff(function(){
+    return xhr({ method: 'GET', url: url, headers: { 'Accept': 'application/json;odata=nometadata' } }).then(function(res){
+      return parseSharePointJson(res.text);
+    });
+  }, 2, 800).catch(function(err){
     var meta = { url: url, status: err.status, detail: err.text, context: context || '' };
     if (!suppressDuplicate('GET|' + url + '|' + err.status, 12000)) {
       addDiagnostic('error', context || 'spGetJson', 'HTTP ' + err.status + ' for GET ' + url, meta);
@@ -1142,6 +1197,268 @@ function getSessionId(){
   if (!APP.cache.sessionId) { APP.cache.sessionId = guid(); }
   return APP.cache.sessionId;
 }
+
+/* ─── Debounce ─── */
+function debounce(fn, delay){
+  var timer = null;
+  return function(){
+    var args = arguments;
+    var ctx = this;
+    clearTimeout(timer);
+    timer = setTimeout(function(){ fn.apply(ctx, args); }, delay || 200);
+  };
+}
+
+/* ─── Input Validation ─── */
+function validateRequired(value, label){
+  if (value == null || String(value).trim() === '') { return label + ' is required.'; }
+  return '';
+}
+function validateEmail(value){
+  if (!value) { return ''; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim())) { return 'Invalid email format.'; }
+  return '';
+}
+function validatePhone(value){
+  if (!value) { return ''; }
+  if (!/^[\d\s\-\(\)\+\.ext]+$/i.test(String(value).trim())) { return 'Invalid phone number format.'; }
+  return '';
+}
+function validateDate(value, label){
+  if (!value) { return ''; }
+  var d = parseDate(value);
+  if (!d) { return (label || 'Date') + ' is not a valid date.'; }
+  return '';
+}
+function validateMinLength(value, min, label){
+  if (value && String(value).trim().length < min) { return (label || 'Field') + ' must be at least ' + min + ' characters.'; }
+  return '';
+}
+function runValidation(rules){
+  var errors = [];
+  rules.forEach(function(r){ var msg = r(); if (msg) { errors.push(msg); } });
+  return errors;
+}
+function showValidationErrors(errors){
+  if (!errors || !errors.length) { return false; }
+  toast(errors[0], 'danger');
+  return true;
+}
+
+/* ─── Retry with Exponential Backoff ─── */
+function retryWithBackoff(fn, maxRetries, baseDelay){
+  maxRetries = maxRetries || 3;
+  baseDelay = baseDelay || 1000;
+  function attempt(n){
+    return fn().catch(function(err){
+      if (n >= maxRetries) { throw err; }
+      if (err && err.status && err.status < 500 && err.status !== 429) { throw err; }
+      var delay = baseDelay * Math.pow(2, n);
+      return new Promise(function(resolve){ setTimeout(resolve, delay); }).then(function(){ return attempt(n + 1); });
+    });
+  }
+  return attempt(0);
+}
+
+/* ─── Environment & Site Resolution ─── */
+function detectSiteConfig(){
+  var hostname = (window.location.hostname || '').toLowerCase();
+  var href = (window.location.href || '').toLowerCase();
+  var pathname = (window.location.pathname || '').toLowerCase();
+
+  /* 1. Try exact hostname match from APP.sites */
+  if (APP.sites[hostname]) {
+    return APP.sites[hostname];
+  }
+
+  /* 2. Try partial hostname match (subdomain-safe) */
+  var siteKeys = Object.keys(APP.sites);
+  for (var i = 0; i < siteKeys.length; i++) {
+    if (hostname.indexOf(siteKeys[i]) >= 0) {
+      return APP.sites[siteKeys[i]];
+    }
+  }
+
+  /* 3. Derive from current URL — works when pasted into any SharePoint site */
+  if (href.indexOf('sharepoint.com') >= 0 || href.indexOf('.dps.mil') >= 0) {
+    var origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+    var siteMatch = pathname.match(/^(\/sites\/[^\/]+|\/teams\/[^\/]+(?:\/[^\/]+)?)/i);
+    var sitePath = siteMatch ? siteMatch[1] : '';
+    return {
+      rootUrl: origin + sitePath,
+      label: 'Auto-detected (' + hostname + ')',
+      environment: 'production'
+    };
+  }
+
+  /* 4. Local / dev fallback */
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '') {
+    return { rootUrl: '', label: 'Local Development', environment: 'development' };
+  }
+
+  /* 5. Test environment heuristic */
+  if (href.indexOf('-test') >= 0 || href.indexOf('test.') >= 0 || href.indexOf('/test/') >= 0) {
+    return { rootUrl: '', label: 'Test Environment', environment: 'test' };
+  }
+
+  /* 6. Unknown — leave rootUrl as-is (fallback to whatever was hardcoded) */
+  return null;
+}
+function initializeSiteConfig(){
+  var config = detectSiteConfig();
+  if (config) {
+    if (config.rootUrl) { APP.rootUrl = config.rootUrl; }
+    APP.environment = config.environment || 'production';
+    APP.siteLabel = config.label || '';
+  } else {
+    APP.environment = 'production';
+    APP.siteLabel = 'Default Configuration';
+    /* Keep whatever rootUrl was already set as fallback */
+    if (!APP.rootUrl) {
+      APP.rootUrl = 'https://usaf.dps.mil/teams/aetc-lak-cpsg/Database';
+    }
+  }
+}
+initializeSiteConfig();
+
+/* ─── Export Utilities ─── */
+function exportTableToCSV(tableSelector, filename){
+  var table = document.querySelector(tableSelector);
+  if (!table) { toast('No table found to export.', 'warn'); return; }
+  var rows = table.querySelectorAll('tr');
+  var csv = [];
+  for (var i = 0; i < rows.length; i++) {
+    var cells = rows[i].querySelectorAll('th, td');
+    var row = [];
+    for (var j = 0; j < cells.length; j++) {
+      var text = String(cells[j].textContent || '').replace(/"/g, '""').replace(/\n/g, ' ').trim();
+      row.push('"' + text + '"');
+    }
+    csv.push(row.join(','));
+  }
+  var blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = (filename || 'export') + '_' + formatDate(new Date()) + '.csv';
+  link.click();
+  toast('Export complete.', 'ok');
+}
+function printView(){
+  window.print();
+}
+
+/* ─── Data Quality Rules Engine ─── */
+function runDataQualityChecks(){
+  var issues = [];
+  var people = APP.state.data.people || [];
+  var orgs = APP.state.data.organizations || [];
+  people.forEach(function(p){
+    if (!p.Email && String(p.Status || '').toLowerCase() !== 'departed') {
+      issues.push({ entity: 'Person', id: p.Id, name: formatPerson(p), rule: 'Missing Email', severity: 'warn' });
+    }
+    if (!p.OrgID || !p.OrgID.Id) {
+      issues.push({ entity: 'Person', id: p.Id, name: formatPerson(p), rule: 'No Organization Assigned', severity: 'warn' });
+    }
+    if (!p.PositionID || !p.PositionID.Id) {
+      issues.push({ entity: 'Person', id: p.Id, name: formatPerson(p), rule: 'No Position Assigned', severity: 'info' });
+    }
+    if (!p.SupervisorPersonID || !p.SupervisorPersonID.Id) {
+      if (String(p.Status || '').toLowerCase() !== 'departed') {
+        issues.push({ entity: 'Person', id: p.Id, name: formatPerson(p), rule: 'No Supervisor Linked', severity: 'info' });
+      }
+    }
+    if (p.DateArrived && p.DateDeparted) {
+      var arr = parseDate(p.DateArrived);
+      var dep = parseDate(p.DateDeparted);
+      if (arr && dep && dep.getTime() < arr.getTime()) {
+        issues.push({ entity: 'Person', id: p.Id, name: formatPerson(p), rule: 'Departure before Arrival', severity: 'danger' });
+      }
+    }
+  });
+  orgs.forEach(function(o){
+    if (!o.OrgCode && !o.OrgID) {
+      issues.push({ entity: 'Organization', id: o.Id, name: getOrgDisplayName(o), rule: 'Missing Org Code', severity: 'warn' });
+    }
+  });
+  return issues;
+}
+
+/* ─── Notification Center ─── */
+function getNotifications(){
+  var items = [];
+  var training = [];
+  try { training = getMyTrainingModel(); } catch (e) {}
+  training.forEach(function(r){
+    if (r.status === 'Expired') { items.push({ type: 'danger', icon: '!', title: 'Training Expired', detail: (r.training.TrainingName || r.training.Title) + ' has expired.', time: r.latest && r.latest.ExpirationDate ? formatDate(r.latest.ExpirationDate) : '', route: 'training' }); }
+    else if (r.status === 'Due Soon') { items.push({ type: 'warn', icon: '!', title: 'Training Due Soon', detail: (r.training.TrainingName || r.training.Title) + ' expires in ' + (r.dueText || 'soon') + '.', time: r.latest && r.latest.ExpirationDate ? formatDate(r.latest.ExpirationDate) : '', route: 'training' }); }
+  });
+  var reqs = APP.state.data.requests || [];
+  var userId = APP.state.currentUser ? APP.state.currentUser.id : null;
+  reqs.forEach(function(r){
+    if (r.AssignedTo && r.AssignedTo.Id === userId && String(r.Status || '').toLowerCase().indexOf('complete') < 0 && String(r.Status || '').toLowerCase().indexOf('closed') < 0) {
+      var d = daysUntil(r.DueDate);
+      if (d != null && d < 0) { items.push({ type: 'danger', icon: '!', title: 'Overdue Request', detail: (r.Title || r.RequestID) + ' is overdue.', time: formatDate(r.DueDate), route: 'requests' }); }
+      else if (d != null && d <= 3) { items.push({ type: 'warn', icon: '!', title: 'Request Due Soon', detail: (r.Title || r.RequestID) + ' due in ' + d + ' day(s).', time: formatDate(r.DueDate), route: 'requests' }); }
+    }
+  });
+  return items.slice(0, 20);
+}
+function renderNotificationCenter(){
+  var items = getNotifications();
+  if (!items.length) { return '<div class="empty">No notifications right now. All clear.</div>'; }
+  var html = '<div class="spotlight-list">';
+  items.forEach(function(n){
+    html += '<div class="spotlight-item" style="cursor:pointer" data-action="nav" data-route="' + escAttr(n.route || 'home') + '"><div><div class="l1">' + escHtml(n.title) + '</div><div class="l2">' + escHtml(n.detail) + '</div></div><div>' + statusBadge(n.type === 'danger' ? 'Overdue' : (n.type === 'warn' ? 'Due Soon' : 'Info')) + '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ─── Missing functions: findTrainingById, renderTrainingSubmissionTable, openTrainingModal ─── */
+function findTrainingById(id){
+  var rows = APP.state.data.trainingCatalog || [];
+  var found = null;
+  rows.some(function(t){ if (String(t.Id) === String(id)) { found = t; return true; } return false; });
+  return found;
+}
+function renderTrainingSubmissionTable(rows){
+  if (!rows || !rows.length) { return '<div class="empty">No pending submissions.</div>'; }
+  var html = '<div class="table-wrap"><table><thead><tr><th>Person</th><th>Training</th><th>Completion Date</th><th>Proof</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>';
+  rows.forEach(function(s){
+    var personName = (s.PersonID && s.PersonID.Title) || (s.Person && s.Person.Title) || '';
+    var trainingName = (s.TrainingID && s.TrainingID.Title) || '';
+    html += '<tr><td>' + escHtml(personName) + '</td><td>' + escHtml(trainingName) + '</td><td>' + escHtml(formatDate(s.CompletionDate)) + '</td><td>' + escHtml(normalizeBoolean(s.ProofAttached) ? 'Yes' : 'No') + '</td><td>' + statusBadge(s.Status || 'Pending') + '</td><td class="mini">' + escHtml(trimText(s.Notes || '', 80)) + '</td><td><div class="quick-actions"><button class="btn subtle success" data-action="review-submission-approve" data-id="' + escAttr(s.Id) + '">Approve</button><button class="btn subtle danger" data-action="review-submission-reject" data-id="' + escAttr(s.Id) + '">Reject</button></div></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+function openTrainingModal(id){
+  var t = findTrainingById(id);
+  if (!t) { toast('Training not found.', 'danger'); return; }
+  var body = '<div class="kv">'
+    + '<div class="k">Name</div><div class="v">' + escHtml(t.TrainingName || t.Title || '') + '</div>'
+    + '<div class="k">Code</div><div class="v">' + escHtml(t.TrainingCode || '') + '</div>'
+    + '<div class="k">Category</div><div class="v">' + escHtml(t.Category || '') + '</div>'
+    + '<div class="k">Frequency</div><div class="v">' + escHtml(t.FrequencyMonths ? t.FrequencyMonths + ' months' : 'One-time') + '</div>'
+    + '<div class="k">Required For</div><div class="v">' + escHtml(t.RequiredFor || 'Not specified') + '</div>'
+    + '<div class="k">Mandatory</div><div class="v">' + escHtml(normalizeBoolean(t.IsMandatory) ? 'Yes' : 'No') + '</div>'
+    + '<div class="k">Cost</div><div class="v">' + escHtml(t.CostPerPerson ? formatCurrencySafe(t.CostPerPerson) : 'N/A') + '</div>'
+    + '<div class="k">Duty Hours</div><div class="v">' + escHtml(t.TrainingDutyHours || '') + '</div>'
+    + '<div class="k">Non-Duty Hours</div><div class="v">' + escHtml(t.TrainingNonDutyHours || '') + '</div>'
+    + '<div class="k">SF182 Required</div><div class="v">' + escHtml(normalizeBoolean(t.SF182) || String(t.SF182 || '').toLowerCase() === 'yes' ? 'Yes' : 'No') + '</div>'
+    + '<div class="k">Notes</div><div class="v">' + escHtml(t.Notes || '') + '</div>'
+    + '</div>';
+  if (t.TrainingLink) {
+    body += '<div style="margin-top:14px"><a class="btn primary" href="' + escAttr(t.TrainingLink) + '" target="_blank" rel="noopener">Open Training Link</a></div>';
+  }
+  var footer = '<div><button class="btn subtle" data-action="open-training-submit" data-id="' + escAttr(t.Id) + '">Submit Completion</button>';
+  if (normalizeBoolean(t.SF182) || String(t.SF182 || '').toLowerCase() === 'yes') {
+    footer += ' <button class="btn subtle" data-action="open-sf182-from-training" data-id="' + escAttr(t.Id) + '">Start SF182</button>';
+  }
+  footer += '</div><button class="btn" data-action="close-modal">Close</button>';
+  openModal('Training Detail', body, footer, t.TrainingCode || '');
+}
+
 function hasRole(role){ return APP.state.roleNames.indexOf(role) >= 0; }
 function hasAnyRole(roles){ return roles.some(function(r){ return hasRole(r); }); }
 function canEditPeople(){ return hasAnyRole(['HR','Admin','App Admin']); }
@@ -1375,8 +1692,9 @@ function ensureHowToLoaded(force){
 }
 function renderNav(){
   var html = APP.nav.map(function(item){
-    return '<button class="nav-link' + (APP.state.route === item.key ? ' active' : '') + '" data-action="nav" data-route="' + escAttr(item.key) + '">' + escHtml(item.label) + '</button>';
+    return '<button class="nav-link' + (APP.state.route === item.key ? ' active' : '') + '" role="tab" aria-selected="' + (APP.state.route === item.key ? 'true' : 'false') + '" data-action="nav" data-route="' + escAttr(item.key) + '">' + escHtml(item.label) + '</button>';
   }).join('');
+  html += '<button class="nav-link" data-action="keyboard-shortcuts" title="Keyboard Shortcuts" aria-label="Keyboard Shortcuts" style="font-size:16px">&#9000;</button>';
   document.getElementById('moduleTabs').innerHTML = html;
 }
 function renderContextBar(){
@@ -1392,7 +1710,8 @@ function renderContextBar(){
   }
   roles.forEach(function(role){ html += '<div class="role-chip"><span class="dot"></span><span>' + escHtml(role) + '</span></div>'; });
   html += '<div class="spacer"></div>';
-  html += '<div class="small-note">Root: ' + escHtml(APP.rootUrl) + '</div>';
+  if (APP.siteLabel) { html += '<div class="status-pill" title="' + escAttr(APP.rootUrl) + '"><span class="dot" style="background:var(--accent-2)"></span><span>' + escHtml(APP.siteLabel) + '</span></div>'; }
+  html += '<div class="small-note" title="SharePoint site root URL">' + escHtml(APP.rootUrl) + '</div>';
   document.getElementById('contextBar').innerHTML = html;
 }
 function setView(html){ document.getElementById('viewHost').innerHTML = html; }
@@ -1652,6 +1971,13 @@ function renderHome(){
     html += '<div class="card"><div class="card-head"><div><div class="card-title">My Requests</div><div class="card-sub">Recent requests tied to the current user or personnel record.</div></div><button class="btn subtle" data-action="nav" data-route="requests">Open Requests</button></div><div class="card-body">' + renderMiniRequestList(req.mine.slice(0, 6)) + '</div></div>';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">My In/Out Cases</div><div class="card-sub">Current in-processing, out-processing, and transfer cases.</div></div><button class="btn subtle" data-action="nav" data-route="inout">Open In/Out</button></div><div class="card-body">' + renderMiniInOutList(inout.mine.slice(0, 6)) + '</div></div>';
     html += '</div>';
+    html += '<div class="grid cols-2" style="margin-top:16px">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Notification Center</div><div class="card-sub">Alerts surfaced from training deadlines, overdue requests, and upcoming due dates.</div></div><div class="health-pill">' + escHtml(String(getNotifications().length)) + ' Active</div></div><div class="card-body">' + renderNotificationCenter() + '</div></div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Quick Navigation</div><div class="card-sub">Jump to any module with one click.</div></div></div><div class="card-body"><div class="tile-grid">';
+    APP.nav.forEach(function(item){
+      html += '<div class="tile" data-action="nav" data-route="' + escAttr(item.key) + '" style="cursor:pointer;text-align:center"><div class="tile-title">' + escHtml(item.label) + '</div></div>';
+    });
+    html += '</div></div></div></div>';
     if (howto.length) {
       html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">How-To Highlights</div><div class="card-sub">Pulled from CCSD_HowTo for in-app guidance.</div></div><div class="health-pill">Self-Service Enablement</div></div><div class="card-body"><div class="tile-grid">';
       howto.forEach(function(h){
@@ -1768,10 +2094,21 @@ function savePersonEdit(){
   var personId = APP.modalState.personId;
   var person = findPersonById(personId);
   if (!personId || !person) { toast('Missing person context.', 'danger'); return; }
+  var firstName = document.getElementById('personFirstName').value;
+  var lastName = document.getElementById('personLastName').value;
+  var email = document.getElementById('personEmail').value;
+  var errors = runValidation([
+    function(){ return validateRequired(lastName, 'Last Name'); },
+    function(){ return validateRequired(firstName, 'First Name'); },
+    function(){ return validateEmail(email); },
+    function(){ return validatePhone(document.getElementById('personOfficePhone').value); },
+    function(){ return validatePhone(document.getElementById('personPrimaryPhone').value); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
   var values = {
-    FirstName: document.getElementById('personFirstName').value,
-    LastName: document.getElementById('personLastName').value,
-    Email: document.getElementById('personEmail').value,
+    FirstName: firstName,
+    LastName: lastName,
+    Email: email,
     Status: document.getElementById('personStatus').value,
     OrgID: document.getElementById('personOrg').value ? parseInt(document.getElementById('personOrg').value, 10) : null,
     PositionID: document.getElementById('personPosition').value ? parseInt(document.getElementById('personPosition').value, 10) : null,
@@ -2346,6 +2683,17 @@ function openTrainingSubmissionModal(id){
 function saveTrainingSubmission(){
   var trainingId = APP.modalState.trainingId;
   if (!trainingId) { toast('Missing training context.', 'danger'); return; }
+  var completionDate = document.getElementById('trainingCompletionDate').value;
+  var errors = runValidation([
+    function(){ return validateRequired(completionDate, 'Completion Date'); },
+    function(){ return validateDate(completionDate, 'Completion Date'); },
+    function(){
+      var d = parseDate(completionDate);
+      if (d && d.getTime() > Date.now() + 86400000) { return 'Completion date cannot be in the future.'; }
+      return '';
+    }
+  ]);
+  if (showValidationErrors(errors)) { return; }
   var t = findTrainingById(trainingId);
   var person = APP.state.currentPersonnel;
   var user = APP.state.currentUser;
@@ -2519,6 +2867,13 @@ function openCreateRequestModal(){
 function saveRequest(){
   var type = document.getElementById('requestType').value;
   var title = document.getElementById('requestTitle').value || (type + ' Request');
+  var details = document.getElementById('requestDetails').value;
+  var errors = runValidation([
+    function(){ return validateRequired(title, 'Title'); },
+    function(){ return validateMinLength(details, 10, 'Details'); },
+    function(){ return validateDate(document.getElementById('requestDueDate').value, 'Due Date'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
   var corr = guid();
   ensureWorkflowsLoaded().then(function(){
     var wf = null;
@@ -2586,6 +2941,11 @@ function openCreateInOutModal(){
   openModal('New In/Out Case', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-inout">Create Case</button></div>', 'Creates header and workflow-linked case');
 }
 function saveInOut(){
+  var category = document.getElementById('inoutCategory').value;
+  var errors = runValidation([
+    function(){ return validateRequired(category, 'Category'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
   var corr = guid();
   var title = (APP.state.currentPersonnel ? formatPerson(APP.state.currentPersonnel) : 'Member') + ' - ' + document.getElementById('inoutProcessType').value;
   createListItem(APP.lists.InOut, {
@@ -2607,27 +2967,110 @@ function saveInOut(){
     return ensureInOutLoaded(true).then(function(){ renderInOut(); });
   }).catch(function(){ toast('In/Out creation failed.', 'danger'); });
 }
+function ensureFacilityUi(){
+  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null }; }
+  return APP.state.facilityUi;
+}
+function renderSeatMap(seats, room){
+  if (!seats || !seats.length) { return '<div class="empty">No seats mapped in this room.</div>'; }
+  var hasCoords = seats.some(function(s){ return s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== ''; });
+  if (!hasCoords) {
+    var html = '<div class="tile-grid">';
+    seats.forEach(function(s){
+      var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
+      var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
+      var statusClass = occupant ? 'ok' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'warn' : 'info');
+      html += '<div class="tile"><div class="tile-title">' + escHtml(s.SeatLabel || s.Title || s.SeatID || 'Seat') + '</div><div class="tile-sub">' + escHtml(occupant || 'Available') + '</div><div style="margin-top:8px">' + statusBadge(occupant ? 'Occupied' : (s.SeatStatus || 'Available')) + '</div><div class="small-note" style="margin-top:8px">' + escHtml(networks.trim() || 'No network info') + (s.PhoneNumber ? ' • ' + escHtml(s.PhoneNumber) : '') + (normalizeBoolean(s.VTCEnabled) ? ' • VTC' : '') + '</div>';
+      if (s.PortNumber) { html += '<div class="small-note">Port: ' + escHtml(s.PortNumber) + '</div>'; }
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+  var maxX = 0, maxY = 0;
+  seats.forEach(function(s){ var x = Number(s.XCoord) || 0; var y = Number(s.YCoord) || 0; if (x > maxX) { maxX = x; } if (y > maxY) { maxY = y; } });
+  maxX = Math.max(maxX + 60, 400); maxY = Math.max(maxY + 60, 300);
+  var svgHtml = '<div style="overflow:auto;border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(255,255,255,.03)"><svg viewBox="0 0 ' + maxX + ' ' + maxY + '" style="width:100%;max-height:480px" role="img" aria-label="Seat map for ' + escAttr((room && room.RoomNumber) || 'room') + '">';
+  seats.forEach(function(s){
+    var x = Number(s.XCoord) || 0; var y = Number(s.YCoord) || 0;
+    var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
+    var fill = occupant ? '#17794f' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? '#a06b04' : '#1f7ae0');
+    svgHtml += '<g><rect x="' + (x - 18) + '" y="' + (y - 14) + '" width="36" height="28" rx="6" fill="' + fill + '" opacity=".85"/><text x="' + x + '" y="' + (y + 4) + '" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">' + escHtml(s.SeatLabel || s.SeatID || '') + '</text></g>';
+  });
+  svgHtml += '</svg></div>';
+  svgHtml += '<div class="list-inline" style="margin-top:10px"><span class="badge ok">Occupied</span><span class="badge info">Available</span><span class="badge warn">Maintenance</span></div>';
+  return svgHtml;
+}
+function renderRoomDetail(facilityId, roomId){
+  var rooms = APP.state.data.rooms || [];
+  var seats = APP.state.data.seats || [];
+  var room = null;
+  rooms.some(function(r){ if (String(r.Id) === String(roomId)) { room = r; return true; } return false; });
+  if (!room) { return '<div class="empty">Select a room to view seat details.</div>'; }
+  var roomSeats = seats.filter(function(s){ return s.RoomID && s.RoomID.Id === room.Id; });
+  var occupied = roomSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
+  var html = '<div class="org-detail-hero" style="margin-bottom:16px">';
+  html += '<div class="org-detail-title">Room ' + escHtml(room.RoomNumber || room.Title || room.RoomID || '') + '</div>';
+  html += '<div class="org-detail-sub">' + escHtml(room.RoomType || 'Room') + (room.Floor ? ' • Floor ' + escHtml(room.Floor) : '') + (normalizeBoolean(room.IsSCIF) ? ' • SCIF' : '') + '</div>';
+  html += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length)) + '</div><div class="t">Total Seats</div></div><div class="org-kpi"><div class="n">' + escHtml(String(occupied)) + '</div><div class="t">Occupied</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length - occupied)) + '</div><div class="t">Available</div></div><div class="org-kpi"><div class="n">' + escHtml(String(room.MaxSeats || roomSeats.length)) + '</div><div class="t">Max Capacity</div></div></div>';
+  html += '</div>';
+  html += '<div class="section-head"><div class="section-title">Seat Map</div></div>';
+  html += renderSeatMap(roomSeats, room);
+  return html;
+}
 function renderFacilities(){
   renderLoading('Loading facilities...');
-  return ensureFacilitiesLoaded().then(function(){
+  return Promise.all([ensureFacilitiesLoaded(), ensurePeopleLoaded()]).then(function(){
     var facilities = APP.state.data.facilities || [];
     var rooms = APP.state.data.rooms || [];
     var seats = APP.state.data.seats || [];
-    var html = '<div class="grid cols-3">';
+    var ui = ensureFacilityUi();
+    var occupiedSeats = seats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
+    var scifRooms = rooms.filter(function(r){ return normalizeBoolean(r.IsSCIF); }).length;
+    var html = '<div class="exec-strip"><div class="title">Facilities Overview</div><div class="item"><span class="swatch"></span>Buildings ' + escHtml(String(facilities.length)) + '</div><div class="item"><span class="swatch"></span>Rooms ' + escHtml(String(rooms.length)) + '</div><div class="item"><span class="swatch"></span>Seats ' + escHtml(String(seats.length)) + '</div><div class="item"><span class="swatch"></span>Occupied ' + escHtml(String(occupiedSeats)) + '</div><div class="item"><span class="swatch"></span>SCIF Rooms ' + escHtml(String(scifRooms)) + '</div></div>';
+    html += '<div class="grid cols-4">';
     html += metricCard('Facilities', facilities.length, 'Known buildings / facilities', Math.min(100, facilities.length * 12));
-    html += metricCard('Rooms', rooms.length, 'Room inventory', Math.min(100, rooms.length / 5));
-    html += metricCard('Seats', seats.length, 'Seat inventory and placement', Math.min(100, seats.length / 20));
+    html += metricCard('Total Seats', seats.length, 'Seat inventory and placement', Math.min(100, seats.length / 20));
+    html += metricCard('Occupancy Rate', occupiedSeats && seats.length ? Math.round((occupiedSeats / seats.length) * 100) + '%' : '0%', 'Current seat utilization', seats.length ? Math.round((occupiedSeats / seats.length) * 100) : 0);
+    html += metricCard('SCIF Spaces', scifRooms, 'Rooms flagged as SCIF', Math.min(100, scifRooms * 15));
     html += '</div>';
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Facilities / Rooms / Seats</div><div class="card-sub">Browse spaces, seat availability, and network capability footprint.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /></div></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Facility</th><th>Base</th><th>Rooms</th><th>Seats</th><th>Networks</th><th>POC</th></tr></thead><tbody id="facilitiesTableBody">';
+    html += '<div class="org-branch-shell" style="margin-top:16px">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="export-facilities">Export CSV</button></div></div><div class="card-body">';
     facilities.forEach(function(f){
-      var roomCount = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; }).length;
+      var fRooms = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; });
       var roomIds = {};
-      rooms.forEach(function(r){ if (r.FacilityID && r.FacilityID.Id === f.Id) { roomIds[r.Id] = true; } });
-      var seatCount = seats.filter(function(s){ return s.RoomID && roomIds[s.RoomID.Id]; }).length;
-      var search = [f.Title, f.BuildingNumber, f.Base, f.Address].join(' ').toLowerCase();
-      html += '<tr data-search-card="' + escAttr(search) + '"><td><strong>' + escHtml(f.BuildingNumber || f.Title || f.FacilityID || '') + '</strong><div class="mini muted">' + escHtml(f.Address || '') + '</div></td><td>' + escHtml(f.Base || '') + '</td><td>' + escHtml(String(roomCount)) + '</td><td>' + escHtml(String(seatCount)) + '</td><td>' + escHtml((normalizeBoolean(f.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(f.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(f.HasJWICS) ? 'JWICS' : '')) + '</td><td>' + escHtml(f.FacilityPOC || '') + '</td></tr>';
+      fRooms.forEach(function(r){ roomIds[r.Id] = true; });
+      var fSeats = seats.filter(function(s){ return s.RoomID && roomIds[s.RoomID.Id]; });
+      var fOccupied = fSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
+      var networks = (normalizeBoolean(f.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(f.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(f.HasJWICS) ? 'JWICS' : '');
+      var search = [f.Title, f.BuildingNumber, f.Base, f.Address, networks].join(' ').toLowerCase();
+      var isSelected = ui.selectedFacilityId === f.Id;
+      html += '<div class="org-card' + (isSelected ? ' selected' : '') + '" data-search-card="' + escAttr(search) + '" style="margin-bottom:10px">';
+      html += '<div class="org-card-top"><div><div class="org-card-title">' + escHtml(f.BuildingNumber || f.Title || f.FacilityID || 'Facility') + '</div><div class="org-card-sub">' + escHtml(f.Base || '') + (f.Address ? ' • ' + escHtml(f.Address) : '') + '</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">' + (networks.trim() ? networks.trim().split(' ').map(function(n){ return statusBadge(n); }).join('') : statusBadge('No Networks')) + '</div></div>';
+      html += '<div class="org-stats"><span class="org-stat-pill">Rooms ' + escHtml(String(fRooms.length)) + '</span><span class="org-stat-pill">Seats ' + escHtml(String(fSeats.length)) + '</span><span class="org-stat-pill">Occupied ' + escHtml(String(fOccupied)) + '</span>' + (f.FacilityPOC ? '<span class="org-stat-pill">POC: ' + escHtml(f.FacilityPOC) + '</span>' : '') + '</div>';
+      if (isSelected && fRooms.length) {
+        html += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">';
+        fRooms.sort(function(a,b){ return String(a.RoomNumber || a.Title || '').localeCompare(String(b.RoomNumber || b.Title || '')); });
+        fRooms.forEach(function(r){
+          var rSeats = seats.filter(function(s){ return s.RoomID && s.RoomID.Id === r.Id; });
+          var rOccupied = rSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
+          html += '<button class="btn' + (ui.selectedRoomId === r.Id ? ' primary' : ' subtle') + '" data-action="select-room" data-id="' + escAttr(r.Id) + '" data-facility="' + escAttr(f.Id) + '">' + escHtml(r.RoomNumber || r.Title || 'Room') + ' (' + rOccupied + '/' + rSeats.length + ')' + (normalizeBoolean(r.IsSCIF) ? ' [SCIF]' : '') + '</button>';
+        });
+        html += '</div>';
+      }
+      html += '<div class="org-card-actions"><button class="btn subtle" data-action="select-facility" data-id="' + escAttr(f.Id) + '">' + (isSelected ? 'Hide Rooms' : 'Show Rooms') + '</button></div>';
+      html += '</div>';
     });
-    html += '</tbody></table></div></div></div>';
+    html += '</div></div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Room Detail & Seat Map</div><div class="card-sub">Select a facility then a room to see the interactive seat layout.</div></div></div><div class="card-body">';
+    if (ui.selectedRoomId) {
+      html += renderRoomDetail(ui.selectedFacilityId, ui.selectedRoomId);
+    } else if (ui.selectedFacilityId) {
+      html += '<div class="empty">Select a room from the facility panel to view its seat map.</div>';
+    } else {
+      html += '<div class="empty">Select a facility and room to explore the seat layout, occupancy, and network capability map.</div>';
+    }
+    html += '</div></div></div>';
     setView(html);
   }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">Facilities failed to load.</div></div></div>'); });
 }
@@ -2954,15 +3397,59 @@ function renderSimpleAssetTable(title, rows){
 }
 function renderAdmin(){
   renderLoading('Loading admin...');
-  return Promise.all([ensureWorkflowsLoaded(), ensureHowToLoaded()]).then(function(){
-    var html = '<div class="grid cols-2">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Admin Controls</div><div class="card-sub">Configuration, workflow registry, telemetry flush, and platform status.</div></div></div><div class="card-body"><div class="quick-actions"><button class="btn" data-action="run-self-test">Run Self-Test</button><button class="btn" data-action="flush-telemetry">Flush Telemetry</button><button class="btn" data-action="refresh-all">Refresh All Caches</button></div><div class="small-note" style="margin-top:14px">Queued telemetry: ' + escHtml(String(APP.state.pendingTelemetry.length)) + ' • Queued audit: ' + escHtml(String(APP.state.pendingAudit.length)) + '</div></div></div>';
+  return Promise.all([ensureWorkflowsLoaded(), ensureHowToLoaded(), ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureRequestsLoaded(), ensureTrainingCatalogLoaded()]).then(function(){
+    var people = APP.state.data.people || [];
+    var orgs = APP.state.data.organizations || [];
+    var reqs = APP.state.data.requests || [];
+    var catalog = APP.state.data.trainingCatalog || [];
+    var dqIssues = runDataQualityChecks();
+    var dangerIssues = dqIssues.filter(function(i){ return i.severity === 'danger'; }).length;
+    var warnIssues = dqIssues.filter(function(i){ return i.severity === 'warn'; }).length;
+    var reqsByType = {};
+    reqs.forEach(function(r){ var t = r.RequestType || 'Other'; reqsByType[t] = (reqsByType[t] || 0) + 1; });
+    var openReqs = reqs.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('complete') < 0 && s.indexOf('closed') < 0; }).length;
+    var html = '';
+    html += '<div class="exec-strip"><div class="title">Administration</div><div class="item"><span class="swatch"></span>' + escHtml(APP.siteLabel || APP.environment) + '</div><div class="item"><span class="swatch"></span>Version ' + escHtml(APP.version) + '</div><div class="item"><span class="swatch"></span>Data Quality Issues ' + escHtml(String(dqIssues.length)) + '</div><div class="item"><span class="swatch"></span>People ' + escHtml(String(people.length)) + '</div><div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(openReqs)) + '</div></div>';
+    html += '<div class="grid cols-4">';
+    html += metricCard('Total Personnel', people.length, 'Loaded personnel records', Math.min(100, people.length / 6));
+    html += metricCard('Organizations', orgs.length, 'Active organizational units', Math.min(100, orgs.length * 4));
+    html += metricCard('Training Catalog', catalog.length, 'Training items in catalog', Math.min(100, catalog.length / 10));
+    html += metricCard('Data Quality', dqIssues.length ? dqIssues.length + ' Issues' : 'Clean', dangerIssues + ' critical, ' + warnIssues + ' warnings', dqIssues.length ? Math.max(10, Math.min(100, dqIssues.length * 3)) : 100);
+    html += '</div>';
+    html += '<div class="grid cols-2" style="margin-top:16px">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Admin Controls</div><div class="card-sub">Platform operations, cache management, diagnostics, and export.</div></div></div><div class="card-body"><div class="quick-actions"><button class="btn primary" data-action="run-self-test">Run Self-Test</button><button class="btn" data-action="flush-telemetry">Flush Telemetry</button><button class="btn" data-action="refresh-all">Refresh All Caches</button><button class="btn" data-action="run-data-quality">Data Quality Check</button><button class="btn subtle" data-action="print-view">Print Current View</button></div><div class="kv" style="margin-top:14px"><div class="k">Queued Telemetry</div><div class="v">' + escHtml(String(APP.state.pendingTelemetry.length)) + '</div><div class="k">Queued Audit</div><div class="v">' + escHtml(String(APP.state.pendingAudit.length)) + '</div><div class="k">Cached Schemas</div><div class="v">' + escHtml(String(Object.keys(APP.state.schemas).length)) + '</div><div class="k">Session ID</div><div class="v mini">' + escHtml(getSessionId()) + '</div><div class="k">Environment</div><div class="v">' + statusBadge(APP.environment) + '</div><div class="k">Active Site</div><div class="v">' + escHtml(APP.siteLabel || 'Default') + '</div><div class="k">Root URL</div><div class="v mini">' + escHtml(APP.rootUrl) + '</div><div class="k">Hostname</div><div class="v mini">' + escHtml(window.location.hostname || 'N/A') + '</div><div class="k">Known Sites</div><div class="v mini">' + escHtml(Object.keys(APP.sites).join(', ')) + '</div></div></div></div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Request Volume by Type</div><div class="card-sub">Distribution of all requests across workflow types.</div></div></div><div class="card-body">';
+    var typeKeys = Object.keys(reqsByType).sort(function(a,b){ return reqsByType[b] - reqsByType[a]; });
+    if (!typeKeys.length) { html += '<div class="empty">No requests loaded yet.</div>'; }
+    else {
+      var maxCount = Math.max.apply(null, typeKeys.map(function(k){ return reqsByType[k]; }));
+      typeKeys.forEach(function(type){
+        var count = reqsByType[type];
+        var pct = maxCount ? Math.round((count / maxCount) * 100) : 0;
+        html += '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:700">' + escHtml(type) + '</span><span class="muted mini">' + escHtml(String(count)) + '</span></div><div class="progress"><span style="width:' + pct + '%"></span></div></div>';
+      });
+    }
+    html += '</div></div>';
+    html += '</div>';
+    html += '<div class="grid cols-2" style="margin-top:16px">';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">Workflow Registry</div><div class="card-sub">Request types loaded from CCSD_Workflows.</div></div></div><div class="card-body">';
     if (!(APP.state.data.workflows || []).length) { html += '<div class="empty">No workflows loaded.</div>'; }
     else {
       html += '<div class="table-wrap"><table><thead><tr><th>Title</th><th>Request Type</th><th>Active</th><th>SLA Days</th><th>Default Office</th></tr></thead><tbody>';
       (APP.state.data.workflows || []).forEach(function(w){ html += '<tr><td>' + escHtml(w.Title || '') + '</td><td>' + escHtml(w.RequestType || '') + '</td><td>' + escHtml(normalizeBoolean(w.IsActive) ? 'Yes' : 'No') + '</td><td>' + escHtml(String(w.SlaDays || '')) + '</td><td>' + escHtml((w.DefaultAssignedOrgID && w.DefaultAssignedOrgID.Title) || '') + '</td></tr>'; });
       html += '</tbody></table></div>';
+    }
+    html += '</div></div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Data Quality Report</div><div class="card-sub">Automated checks for missing fields, invalid relationships, and data integrity.</div></div><div class="quick-actions"><button class="btn subtle" data-action="export-data-quality">Export CSV</button></div></div><div class="card-body">';
+    if (!dqIssues.length) { html += '<div class="empty" style="border-color:rgba(109,240,182,.28);background:rgba(109,240,182,.06)">All automated data quality checks passed. No issues detected.</div>'; }
+    else {
+      html += '<div class="list-inline" style="margin-bottom:12px">' + statusBadge('Critical: ' + dangerIssues) + statusBadge('Warnings: ' + warnIssues) + statusBadge('Info: ' + dqIssues.filter(function(i){ return i.severity === 'info'; }).length) + '</div>';
+      html += '<div class="table-wrap"><table><thead><tr><th>Entity</th><th>Name</th><th>Rule</th><th>Severity</th></tr></thead><tbody>';
+      dqIssues.slice(0, 50).forEach(function(issue){
+        html += '<tr><td>' + escHtml(issue.entity) + '</td><td>' + escHtml(issue.name) + '</td><td>' + escHtml(issue.rule) + '</td><td>' + statusBadge(issue.severity === 'danger' ? 'Critical' : (issue.severity === 'warn' ? 'Warning' : 'Info')) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      if (dqIssues.length > 50) { html += '<div class="small-note" style="margin-top:8px">Showing 50 of ' + dqIssues.length + ' issues.</div>'; }
     }
     html += '</div></div>';
     html += '</div>';
@@ -3130,14 +3617,17 @@ function filterAssetTables(term){
     node.style.display = !q || hay.indexOf(q) >= 0 ? '' : 'none';
   }
 }
+var debouncedFilterCards = debounce(function(selector, value){ filterCards(selector, value); }, 180);
+var debouncedOrgSearch = debounce(function(value){ ensureOrgChartUi(); APP.state.orgUi.search = value || ''; renderOrganizationsView(); }, 250);
+var debouncedAssetFilter = debounce(function(value){ getAssetUi(); APP.state.assetUi.search = value || ''; filterAssetTables(value); }, 180);
 function handleInput(e){
   var id = e.target && e.target.id;
-  if (id === 'peopleSearchInput') { filterCards('#peopleGrid', e.target.value); }
-  if (id === 'orgSearchInput') { ensureOrgChartUi(); APP.state.orgUi.search = e.target.value || ''; renderOrganizationsView(); return; }
-  if (id === 'trainingSearchInput') { filterCards('#trainingGrid', e.target.value); }
-  if (id === 'requestsSearchInput') { filterCards('#requestTableBody', e.target.value); }
-  if (id === 'facilitiesSearchInput') { filterCards('#facilitiesTableBody', e.target.value); }
-  if (id === 'assetSearchInput') { getAssetUi(); APP.state.assetUi.search = e.target.value || ''; filterAssetTables(e.target.value); return; }
+  if (id === 'peopleSearchInput') { debouncedFilterCards('#peopleGrid', e.target.value); }
+  if (id === 'orgSearchInput') { debouncedOrgSearch(e.target.value); return; }
+  if (id === 'trainingSearchInput') { debouncedFilterCards('#trainingGrid', e.target.value); }
+  if (id === 'requestsSearchInput') { debouncedFilterCards('#requestTableBody', e.target.value); }
+  if (id === 'facilitiesSearchInput') { debouncedFilterCards('#facilitiesTableBody', e.target.value); }
+  if (id === 'assetSearchInput') { debouncedAssetFilter(e.target.value); return; }
 }
 function findActionEl(start){
   var el = start;
@@ -3172,9 +3662,9 @@ function handleClick(e){
   if (action === 'edit-person') { openPersonModal(el.getAttribute('data-id'), true); return; }
   if (action === 'save-person') { savePersonEdit(); return; }
   if (action === 'view-training') { openTrainingModal(el.getAttribute('data-id')); return; }
-  if (action === 'submit-training') { openTrainingSubmissionModal(el.getAttribute('data-id')); return; }
+  if (action === 'submit-training' || action === 'open-training-submit') { openTrainingSubmissionModal(el.getAttribute('data-id')); return; }
   if (action === 'save-training-submission') { saveTrainingSubmission(); return; }
-  if (action === 'request-sf182') { createSF182FromTrainingId(el.getAttribute('data-id')); return; }
+  if (action === 'request-sf182' || action === 'open-sf182-from-training') { createSF182FromTrainingId(el.getAttribute('data-id')); return; }
   if (action === 'review-submission-approve') { reviewSubmission(el.getAttribute('data-id'), true); return; }
   if (action === 'review-submission-reject') { reviewSubmission(el.getAttribute('data-id'), false); return; }
   if (action === 'view-request') { openRequestDetail(el.getAttribute('data-id')); return; }
@@ -3185,10 +3675,26 @@ function handleClick(e){
   if (action === 'run-self-test') { runSelfTest().then(function(){ if (APP.state.route === 'diagnostics' || APP.state.route === 'admin') { renderRoute(); } }); return; }
   if (action === 'flush-telemetry') { flushTelemetryQueue(); return; }
   if (action === 'refresh-all') { refreshAll(); return; }
+  if (action === 'select-facility') { ensureFacilityUi(); var fid = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = APP.state.facilityUi.selectedFacilityId === fid ? null : fid; APP.state.facilityUi.selectedRoomId = null; renderFacilities(); return; }
+  if (action === 'select-room') { ensureFacilityUi(); APP.state.facilityUi.selectedRoomId = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = Number(el.getAttribute('data-facility')); renderFacilities(); return; }
+  if (action === 'export-facilities') { exportTableToCSV('.table-wrap table', 'facilities_export'); return; }
+  if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
+  if (action === 'run-data-quality') { toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
+  if (action === 'print-view') { printView(); return; }
+  if (action === 'toggle-notifications') { var panel = document.getElementById('notificationPanel'); if (panel) { panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; } return; }
+  if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
 function bootstrap(){
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (!e.altKey) { return; }
+    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', a: 'assets', d: 'diagnostics' };
+    var route = shortcuts[e.key.toLowerCase()];
+    if (route) { e.preventDefault(); routeTo(route); return; }
+    if (e.key.toLowerCase() === 'n') { e.preventDefault(); openCreateRequestModal(); return; }
+  });
   window.addEventListener('hashchange', function(){ APP.state.route = getHashRoute(); renderRoute(); });
   renderNav();
   renderLoading('Initializing app...');
