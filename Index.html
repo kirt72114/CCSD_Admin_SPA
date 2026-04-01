@@ -366,18 +366,26 @@ tr:hover td{background:#eef5ff}
 .org-tree-panel .card-body{max-height:980px;overflow:auto}
 .org-root-group{margin-bottom:12px}
 .org-node{position:relative;padding-left:0}
-.org-node.depth-1,.org-node.depth-2,.org-node.depth-3,.org-node.depth-4,.org-node.depth-5{margin-left:18px}
-.org-node.depth-1:before,.org-node.depth-2:before,.org-node.depth-3:before,.org-node.depth-4:before,.org-node.depth-5:before{content:'';position:absolute;left:-10px;top:0;bottom:8px;width:2px;background:linear-gradient(180deg,#d9e4ef,#eef3f8)}
-.org-card{border:1px solid #d6e1ec;border-radius:18px;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);box-shadow:0 10px 22px rgba(15,36,61,.05);padding:14px 14px 12px;margin-bottom:10px}
-.org-card.selected{border-color:#0f5ab8;box-shadow:0 14px 28px rgba(15,90,184,.16), inset 0 0 0 1px rgba(15,90,184,.08);background:linear-gradient(180deg,#ffffff 0%,#eef6ff 100%)}
+.org-node.depth-1,.org-node.depth-2,.org-node.depth-3,.org-node.depth-4,.org-node.depth-5{margin-left:28px}
+.org-node.depth-1:before,.org-node.depth-2:before,.org-node.depth-3:before,.org-node.depth-4:before,.org-node.depth-5:before{content:'';position:absolute;left:-14px;top:0;bottom:8px;width:2px;background:linear-gradient(180deg,#b0c5db 0%,#d9e4ef 100%)}
+.org-node.depth-1:after,.org-node.depth-2:after,.org-node.depth-3:after,.org-node.depth-4:after,.org-node.depth-5:after{content:'';position:absolute;left:-14px;top:22px;width:14px;height:2px;background:#b0c5db}
+.org-card{border:1px solid #d6e1ec;border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);box-shadow:0 6px 16px rgba(15,36,61,.04);padding:12px 14px 10px;margin-bottom:8px;transition:.18s border-color,.18s box-shadow}
+.org-card:hover{border-color:#8db5de;box-shadow:0 10px 24px rgba(15,36,61,.08)}
+.org-card.selected{border-color:#0f5ab8;box-shadow:0 10px 24px rgba(15,90,184,.14), inset 0 0 0 1px rgba(15,90,184,.06);background:linear-gradient(180deg,#ffffff 0%,#eef6ff 100%)}
+.org-card.my-org{border-color:#17794f;box-shadow:0 10px 24px rgba(23,121,79,.14);background:linear-gradient(180deg,#ffffff 0%,#eefaf4 100%)}
+.org-card.my-org:before{content:'YOUR ORG';position:absolute;top:-8px;right:12px;font-size:9px;font-weight:900;letter-spacing:.12em;color:#fff;background:linear-gradient(135deg,#17794f,#1fa862);padding:2px 8px;border-radius:8px;z-index:2}
 .org-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.org-card-title{font-size:17px;font-weight:800;color:#0a2948;line-height:1.15}
-.org-card-sub{font-size:12px;color:#5b7085;margin-top:5px}
-.org-card-code{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:#edf4fb;border:1px solid #d5e1ee;color:#20486b;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
-.org-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.org-stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.org-stat-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#f4f8fd;border:1px solid #d7e2ed;color:#173a5d;font-size:12px;font-weight:700}
-.org-children{margin-top:8px;padding-left:0}
+.org-card-title{font-size:15px;font-weight:800;color:#0a2948;line-height:1.15}
+.org-card-sub{font-size:11px;color:#5b7085;margin-top:3px}
+.org-card-code{display:inline-flex;align-items:center;gap:6px;padding:3px 7px;border-radius:999px;background:#edf4fb;border:1px solid #d5e1ee;color:#20486b;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.org-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.org-card-leader{margin-top:8px;padding:8px 10px;border-radius:10px;background:#f6faff;border:1px solid #e1eaf3;display:flex;flex-direction:column;gap:3px}
+.org-card-leader .ldr-name{font-weight:700;font-size:12px;color:#0d2f50}
+.org-card-leader .ldr-role{font-size:11px;color:#5d7488}
+.org-card-leader .ldr-contact{font-size:11px;color:#3a7bc8;margin-top:1px}
+.org-stats{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.org-stat-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:#f4f8fd;border:1px solid #d7e2ed;color:#173a5d;font-size:11px;font-weight:700}
+.org-children{margin-top:4px;padding-left:0}
 .org-tree-empty{padding:26px;border:1px dashed #c9d6e3;border-radius:16px;background:#fbfdff;color:#5b7085;text-align:center}
 
 .org-overview{margin-bottom:18px}
@@ -1654,7 +1662,7 @@ function ensurePeopleLoaded(force){
 }
 function ensureOrganizationsLoaded(force){
   if (APP.state.data.organizations && !force) { return Promise.resolve(APP.state.data.organizations); }
-  return queryList(APP.lists.Organizations, ['Title','OrgID','OrgName','ParentOrgID/Id','ParentOrgID/Title','OrgType','OrgDisplayOrder','IsActive','OrgCode','Notes','SharePointURL','OrganizationAddressNumber','OrganizationAddressBldgNumber','OrganizationAddressStreet','OrganizationAddressCity','OrganizationAddressState','OrganizationAddressZip'], { orderby: 'OrgDisplayOrder asc', top: 600 }, 'ensureOrganizationsLoaded').then(function(rows){ APP.state.data.organizations = rows || []; return rows || []; });
+  return queryList(APP.lists.Organizations, ['Title','OrgID','OrgName','ParentOrgID/Id','ParentOrgID/Title','OrgType','OrgDisplayOrder','IsActive','OrgCode','Notes','SharePointURL','OrgEmail','OrganizationAddressNumber','OrganizationAddressBldgNumber','OrganizationAddressStreet','OrganizationAddressCity','OrganizationAddressState','OrganizationAddressZip'], { orderby: 'OrgDisplayOrder asc', top: 600 }, 'ensureOrganizationsLoaded').then(function(rows){ APP.state.data.organizations = rows || []; return rows || []; });
 }
 function ensurePositionsLoaded(force){
   if (APP.state.data.positions && !force) { return Promise.resolve(APP.state.data.positions); }
@@ -2405,11 +2413,13 @@ function seedOrgChartUi(index, baseRootId){
   var ui = ensureOrgChartUi();
   var hasExpanded = false;
   Object.keys(ui.expanded || {}).forEach(function(key){ if (ui.expanded[key]) { hasExpanded = true; } });
-  if (!ui.selectedOrgId && baseRootId) { ui.selectedOrgId = baseRootId; }
+  var myOrgId = getCurrentOrgId();
+  if (!ui.selectedOrgId) { ui.selectedOrgId = myOrgId || baseRootId; }
   if (!hasExpanded && baseRootId) {
     ui.expanded[baseRootId] = true;
-    if (ui.selectedOrgId) {
-      var chain = getOrgBreadcrumb(index, ui.selectedOrgId);
+    var targetOrgId = myOrgId || ui.selectedOrgId;
+    if (targetOrgId) {
+      var chain = getOrgBreadcrumb(index, targetOrgId);
       chain.forEach(function(org){ ui.expanded[org.Id] = true; });
     }
   }
@@ -2448,6 +2458,10 @@ function renderOrgLeadershipRows(index, orgId, maxItems){
   html += '</div>';
   return html;
 }
+function isCurrentUserOrg(orgId){
+  var p = APP.state.currentPersonnel;
+  return p && p.OrgID && p.OrgID.Id && String(p.OrgID.Id) === String(orgId);
+}
 function renderOrgChartNode(index, orgId, depth, visibleIds, search, matchMemo){
   var ui = ensureOrgChartUi();
   var org = index.byId[orgId];
@@ -2460,18 +2474,36 @@ function renderOrgChartNode(index, orgId, depth, visibleIds, search, matchMemo){
   var expanded = search ? true : !!ui.expanded[orgId];
   if (depth === 0) { expanded = true; }
   var active = normalizeBoolean(org.IsActive) || org.IsActive == null;
-  var primaryName = leadership.primary ? (leadership.primary.person ? formatPerson(leadership.primary.person) : 'Vacant') : 'Not resolved';
-  var primaryRole = leadership.primary && leadership.primary.position ? (leadership.primary.position.PositionTitle || leadership.primary.position.Title || 'Leadership Position') : 'Leadership not mapped';
+  var isMine = isCurrentUserOrg(orgId);
+  var cardClass = 'org-card' + (ui.selectedOrgId === orgId ? ' selected' : '') + (isMine ? ' my-org' : '');
   var html = '<div class="org-node depth-' + escAttr(String(Math.min(depth, 5))) + '">';
-  html += '<div class="org-card' + (ui.selectedOrgId === orgId ? ' selected' : '') + '">';
-  html += '<div class="org-card-top"><div><div class="org-card-title">' + escHtml(getOrgDisplayName(org)) + '</div><div class="org-card-sub">' + escHtml(org.OrgType || 'Organization') + ((org.OrgCode || org.OrgID) ? ' • ' + escHtml(org.OrgCode || org.OrgID) : '') + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="org-card-code">' + escHtml(org.OrgCode || org.OrgID || 'ORG') + '</span>' + statusBadge(active ? 'Active' : 'Inactive') + '</div></div>';
-  html += '<div class="org-summary-quick" style="margin-top:12px"><div class="label">Primary leadership</div><div class="value">' + escHtml(primaryName) + '</div><div class="sub">' + escHtml(primaryRole) + '</div></div>';
-  html += '<div class="org-stats"><span class="org-stat-pill">Direct ' + escHtml(String(roll.directPeople)) + '</span><span class="org-stat-pill">Branch ' + escHtml(String(roll.totalPeople)) + '</span><span class="org-stat-pill">Child Units ' + escHtml(String(roll.childCount)) + '</span><span class="org-stat-pill">Leadership ' + escHtml(String(leadership.leaders.length)) + '</span></div>';
+  html += '<div class="' + cardClass + '" style="position:relative">';
+  html += '<div class="org-card-top"><div><div class="org-card-title">' + escHtml(getOrgDisplayName(org)) + '</div><div class="org-card-sub">' + escHtml(org.OrgType || 'Organization') + ((org.OrgCode || org.OrgID) ? ' • ' + escHtml(org.OrgCode || org.OrgID) : '') + '</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><span class="org-card-code">' + escHtml(org.OrgCode || org.OrgID || 'ORG') + '</span>' + statusBadge(active ? 'Active' : 'Inactive') + '</div></div>';
+  var topLeaders = leadership.leaders.slice(0, 3);
+  if (topLeaders.length) {
+    html += '<div class="org-card-leader">';
+    topLeaders.forEach(function(entry){
+      var pName = entry.person ? formatPerson(entry.person) : 'Vacant';
+      var pRole = entry.position ? (entry.position.PositionTitle || entry.position.Title || '') : 'Supervisor';
+      var email = entry.person ? (entry.person.Email || '') : '';
+      var phone = entry.person ? (entry.person.OfficePhone || entry.person.PrimaryPhone || '') : '';
+      html += '<div><span class="ldr-name">' + escHtml(pName) + '</span> <span class="ldr-role">' + escHtml(pRole) + '</span>';
+      var contacts = [];
+      if (email) { contacts.push(email); }
+      if (phone) { contacts.push(phone); }
+      if (contacts.length) { html += '<div class="ldr-contact">' + escHtml(contacts.join(' • ')) + '</div>'; }
+      html += '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="org-card-leader"><span class="ldr-role">No leadership mapped</span></div>';
+  }
+  if (org.OrgEmail) { html += '<div style="margin-top:4px;font-size:11px;color:#3a7bc8">' + escHtml(org.OrgEmail) + '</div>'; }
+  html += '<div class="org-stats"><span class="org-stat-pill">Personnel ' + escHtml(String(roll.directPeople)) + '</span><span class="org-stat-pill">Branch ' + escHtml(String(roll.totalPeople)) + '</span>' + (children.length ? '<span class="org-stat-pill">Units ' + escHtml(String(roll.childCount)) + '</span>' : '') + '</div>';
   html += '<div class="org-card-actions">';
   if (children.length) { html += '<button class="btn subtle org-toggle-btn" data-action="org-toggle" data-id="' + escAttr(orgId) + '">' + (expanded ? 'Collapse' : 'Expand') + ' (' + escHtml(String(children.length)) + ')</button>'; }
-  html += '<button class="btn subtle" data-action="org-select" data-id="' + escAttr(orgId) + '">Open Detail</button>';
-  html += '<button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(orgId) + '">View Leadership</button>';
-  html += '<button class="btn subtle" data-action="org-focus" data-id="' + escAttr(orgId) + '">' + (ui.focusOrgId === orgId ? 'Focused Branch' : 'Focus Branch') + '</button>';
+  html += '<button class="btn subtle" data-action="org-select" data-id="' + escAttr(orgId) + '">Detail</button>';
+  html += '<button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(orgId) + '">Leadership</button>';
   html += '</div></div>';
   if (children.length && expanded) {
     html += '<div class="org-children">';
@@ -2570,12 +2602,26 @@ function renderOrgSummaryCard(index, org, bucketLabel, toneClass){
   var ui = ensureOrgChartUi();
   var roll = index.getRollup(org.Id);
   var leadership = getPrimaryLeadershipSummary(index, org.Id);
-  var primaryName = leadership.primary ? (leadership.primary.person ? formatPerson(leadership.primary.person) : 'Vacant') : 'Leadership not resolved';
-  var primaryRole = leadership.primary && leadership.primary.position ? (leadership.primary.position.PositionTitle || leadership.primary.position.Title || 'Leadership Position') : 'Leadership mapping not available yet';
+  var isMine = isCurrentUserOrg(org.Id);
   var childNames = getChildOrgNames(index, org.Id, 4);
-  var html = '<div class="org-summary-card ' + escAttr(toneClass || '') + (ui.selectedOrgId === org.Id ? ' selected' : '') + '">';
+  var html = '<div class="org-summary-card ' + escAttr(toneClass || '') + (ui.selectedOrgId === org.Id ? ' selected' : '') + (isMine ? ' my-org' : '') + '">';
+  if (isMine) { html += '<div style="position:absolute;top:-8px;right:12px;font-size:9px;font-weight:900;letter-spacing:.12em;color:#fff;background:linear-gradient(135deg,#17794f,#1fa862);padding:2px 8px;border-radius:8px;z-index:2">YOUR ORG</div>'; }
   html += '<div class="org-summary-top"><div><div class="org-summary-name">' + escHtml(getOrgDisplayName(org)) + '</div><div class="org-summary-meta">' + escHtml(bucketLabel || org.OrgType || 'Organization') + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="org-summary-code">' + escHtml(org.OrgCode || org.OrgID || 'ORG') + '</span>' + statusBadge(normalizeBoolean(org.IsActive) || org.IsActive == null ? 'Active' : 'Inactive') + '</div></div>';
-  html += '<div class="org-summary-quick"><div class="label">Leadership summary</div><div class="value">' + escHtml(primaryName) + '</div><div class="sub">' + escHtml(primaryRole) + '</div></div>';
+  html += '<div class="org-summary-quick"><div class="label">Leadership</div>';
+  var topLeaders = leadership.leaders.slice(0, 3);
+  if (topLeaders.length) {
+    topLeaders.forEach(function(entry){
+      var pName = entry.person ? formatPerson(entry.person) : 'Vacant';
+      var pRole = entry.position ? (entry.position.PositionTitle || entry.position.Title || '') : 'Supervisor';
+      var email = entry.person ? (entry.person.Email || '') : '';
+      var phone = entry.person ? (entry.person.OfficePhone || entry.person.PrimaryPhone || '') : '';
+      html += '<div class="value">' + escHtml(pName) + '</div><div class="sub">' + escHtml(pRole) + (email || phone ? ' • ' + escHtml([email, phone].filter(Boolean).join(' • ')) : '') + '</div>';
+    });
+  } else {
+    html += '<div class="value">No leadership mapped</div>';
+  }
+  if (org.OrgEmail) { html += '<div class="sub" style="margin-top:4px;color:#3a7bc8">' + escHtml(org.OrgEmail) + '</div>'; }
+  html += '</div>';
   html += '<div class="org-summary-metrics"><div class="org-summary-metric"><div class="n">' + escHtml(String(roll.directPeople)) + '</div><div class="t">Direct</div></div><div class="org-summary-metric"><div class="n">' + escHtml(String(roll.childCount)) + '</div><div class="t">Units</div></div><div class="org-summary-metric"><div class="n">' + escHtml(String(roll.totalPeople)) + '</div><div class="t">Branch</div></div></div>';
   if (childNames.length) {
     html += '<div class="org-summary-children">';
@@ -2616,8 +2662,10 @@ function openOrgLeadershipModal(orgId){
   var index = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []);
   var org = index.byId[Number(orgId)];
   if (!org) { toast('Organization not found.', 'danger'); return; }
-  var body = '<div class="proj-note" style="margin-bottom:14px">Leadership is prioritized using key leadership flags, position level, and title patterns such as commander, director, deputy, chief, branch chief, and senior enlisted leader.</div>' + renderOrgLeadershipRows(index, org.Id);
-  openModal('Leadership', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', getOrgDisplayName(org));
+  var body = '';
+  if (org.OrgEmail) { body += '<div style="margin-bottom:10px;font-size:13px"><strong>Org Email:</strong> <span style="color:#3a7bc8">' + escHtml(org.OrgEmail) + '</span></div>'; }
+  body += '<div class="proj-note" style="margin-bottom:14px">Leadership is prioritized using key leadership flags, position level, and title patterns such as commander, director, deputy, chief, branch chief, and senior enlisted leader.</div>' + renderOrgLeadershipRows(index, org.Id);
+  openModal('Leadership — ' + escHtml(getOrgDisplayName(org)), body, '<div></div><button class="btn" data-action="close-modal">Close</button>', org.OrgCode || org.OrgID || '');
 }
 function renderOrganizationsView(){
   var orgs = APP.state.data.organizations || [];
@@ -2652,7 +2700,8 @@ function renderOrganizationsView(){
     var roll = index.getRollup(selected.Id);
     var crumbs = getOrgBreadcrumb(index, selected.Id);
     var address = [selected.OrganizationAddressNumber, selected.OrganizationAddressBldgNumber, selected.OrganizationAddressStreet, selected.OrganizationAddressCity, selected.OrganizationAddressState, selected.OrganizationAddressZip].filter(Boolean).join(', ');
-    detailHtml += '<div class="org-detail-hero"><div class="org-detail-title">' + escHtml(getOrgDisplayName(selected)) + '</div><div class="org-detail-sub">' + escHtml(selected.OrgType || 'Organization') + ((selected.OrgCode || selected.OrgID) ? ' • ' + escHtml(selected.OrgCode || selected.OrgID) : '') + (selected.ParentOrgID && selected.ParentOrgID.Title ? ' • Parent: ' + escHtml(selected.ParentOrgID.Title) : '') + '</div>';
+    var isMyOrg = isCurrentUserOrg(selected.Id);
+    detailHtml += '<div class="org-detail-hero"' + (isMyOrg ? ' style="border-color:#17794f;background:linear-gradient(135deg,#ffffff 0%,#eefaf4 62%,#f4f9ff 100%)"' : '') + '>' + (isMyOrg ? '<div style="display:inline-block;font-size:10px;font-weight:900;letter-spacing:.12em;color:#fff;background:linear-gradient(135deg,#17794f,#1fa862);padding:3px 10px;border-radius:10px;margin-bottom:8px">YOUR ORGANIZATION</div>' : '') + '<div class="org-detail-title">' + escHtml(getOrgDisplayName(selected)) + '</div><div class="org-detail-sub">' + escHtml(selected.OrgType || 'Organization') + ((selected.OrgCode || selected.OrgID) ? ' • ' + escHtml(selected.OrgCode || selected.OrgID) : '') + (selected.ParentOrgID && selected.ParentOrgID.Title ? ' • Parent: ' + escHtml(selected.ParentOrgID.Title) : '') + (selected.OrgEmail ? ' • ' + escHtml(selected.OrgEmail) : '') + '</div>';
     detailHtml += '<div class="org-breadcrumbs">';
     crumbs.forEach(function(org){ detailHtml += '<button class="org-crumb" data-action="org-select" data-id="' + escAttr(org.Id) + '">' + escHtml(getOrgDisplayName(org)) + '</button>'; });
     detailHtml += '</div>';
