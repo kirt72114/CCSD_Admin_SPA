@@ -475,6 +475,26 @@ tr:hover td{background:#eef5ff}
   .org-root-title{font-size:30px}
   .org-chart-toolbar .input{min-width:220px;width:100%}
 }
+
+/* ─── Embedded / Fullscreen Dual-Mode ─── */
+.embedded #app{padding:4px 6px 0}
+.embedded .hero{padding:6px 10px 4px;border-radius:10px}
+.embedded .brand-mark{width:24px;height:24px;border-radius:8px}
+.embedded .brand-title{font-size:14px}
+.embedded .brand-sub{display:none}
+.embedded .nav-link{padding:5px 8px;font-size:11px;border-radius:8px}
+.embedded .nav-tabs{padding:4px 0 1px;gap:4px}
+.embedded .context-bar{margin:3px 0 2px;font-size:10px;gap:4px}
+.embedded .user-pill{padding:4px 8px;font-size:10px}
+.embedded .header-actions .btn{padding:6px 10px;font-size:11px;border-radius:8px}
+.embedded .card{padding:14px 16px;border-radius:12px}
+.embedded .card-title{font-size:15px}
+.embedded .modal .modal{max-width:90vw;max-height:85vh}
+.btn-popout{background:linear-gradient(135deg,var(--accent-3),var(--accent));border:none;color:#06101f;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:11px;display:none;align-items:center;gap:4px;transition:.2s transform}
+.btn-popout:hover{transform:translateY(-1px)}
+.embedded .btn-popout{display:inline-flex}
+.fullscreen-badge{display:none;font-size:9px;color:var(--accent-3);padding:2px 6px;border:1px solid rgba(37,244,199,.2);border-radius:6px;background:rgba(37,244,199,.06);margin-left:6px}
+body:not(.embedded) .fullscreen-badge{display:inline-block}
 </style>
 
 
@@ -495,6 +515,8 @@ tr:hover td{background:#eef5ff}
         <button class="btn subtle" data-action="refresh-route">Refresh</button>
         <button id="btnDiagHeader" class="btn subtle" data-action="open-diagnostics" style="display:none">Diagnostics</button>
         <button class="btn primary" data-action="open-create-request">New Request</button>
+        <button class="btn-popout" data-action="popout-fullscreen" title="Open in full screen">&#x26F6; Full Screen</button>
+        <span class="fullscreen-badge">Full Screen</span>
       </div>
     </div>
     <nav id="moduleTabs" class="nav-tabs" role="tablist" aria-label="Application modules"></nav>
@@ -521,7 +543,7 @@ tr:hover td{background:#eef5ff}
 'use strict';
 
 var APP = {
-  version: '2026.03.31.2',
+  version: '2026.04.01.1',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -4488,9 +4510,28 @@ function handleClick(e){
   if (action === 'save-hw-assignment') { saveHardwareAssignment(); return; }
   if (action === 'create-sw-assignment') { openCreateSoftwareAssignmentModal(); return; }
   if (action === 'save-sw-assignment') { saveSoftwareAssignment(); return; }
+  if (action === 'popout-fullscreen') { popoutFullscreen(); return; }
   if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
+function detectEmbeddedMode(){
+  var isEmbedded = false;
+  try { isEmbedded = window.self !== window.top; } catch(e){ isEmbedded = true; }
+  if (window.location.search.indexOf('fullscreen=1') !== -1) { isEmbedded = false; }
+  if (isEmbedded) {
+    document.body.classList.add('embedded');
+  } else {
+    document.body.classList.remove('embedded');
+  }
+  APP.state.embedded = isEmbedded;
+}
+function popoutFullscreen(){
+  var url = window.location.href.split('?')[0].split('#')[0];
+  var hash = window.location.hash || '';
+  window.open(url + '?fullscreen=1' + hash, '_blank');
+}
+
 function bootstrap(){
+  detectEmbeddedMode();
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
   initSortableHeaders();
