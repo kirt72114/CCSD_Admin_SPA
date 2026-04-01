@@ -4,6 +4,32 @@ All notable changes to the **CCSD All-Things Administrative SPA** are documented
 
 ---
 
+## [2026.04.01.3] - 2026-04-01
+
+### Calendar Module — Time Off, Federal Holidays, Senior Leaders
+- **New "Calendar" tab**: Full calendar module added to navigation between Facilities and Assets (Alt+C shortcut).
+- **Month view**: Traditional grid calendar showing all approved time-off entries with color-coded badges per person. Federal holidays displayed with red labels. Overflow indicator ("+N more") when days are busy.
+- **Week view**: 7-column layout with day headers showing date numbers, full entries per day with name and type, federal holidays highlighted.
+- **List view**: Chronological list of all time-off entries and holidays for the current month with color-coded type badges, date ranges, and notes preview.
+- **Senior Leaders Calendar**: Dedicated view showing key leadership personnel (based on `IsKeyLeadership` positions or supervisor flag). Each leader card shows current status (In Office, on Leave, TDY, etc.) and upcoming 3 weeks of scheduled time off.
+- **Organization scope filtering**: Dropdown to filter by any org/section — defaults to user's current section. Includes all descendant orgs in the filter. "Entire Organization" option shows everyone.
+- **Type filtering**: Filter by time-off type (Annual Leave, Sick Leave, TDY, Training, Comp Time, Telework, LWOP, Other).
+- **Name search**: Live search input to filter entries by person name.
+- **Color-coded legend**: Static legend with consistent colors — Annual Leave (green), Sick Leave (pink), TDY (orange), Training (purple), Comp Time (blue), Telework (teal), Holiday (red), Other (gray).
+- **Federal holidays**: Auto-calculated US OPM federal holiday schedule with observed date shifting (weekends → nearest weekday). Includes New Year's, MLK, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Columbus Day, Veterans Day, Thanksgiving, Christmas.
+- **Entry detail modal**: Click any entry to see full details (person, type, dates, hours, status, approver, notes).
+- **Admin: Add time off entries**: "+" button opens form to create entries with person, type, date range, hours, status, and notes.
+- **Admin: Delete entries**: Delete button available in entry detail modal.
+- **SharePoint list**: New `CCSD_TimeOff` list with fields: Title, PersonID (lookup), OrgID (lookup), StartDate, EndDate, TimeOffType, Status, Hours, Notes, ApprovedBy, CreatedBy.
+
+### TODO: Conference Room Scheduling
+- Commented implementation plan added for `CCSD_ConferenceRooms` and `CCSD_RoomReservations` lists with room availability grid, booking, recurring meetings, and conflict detection.
+
+### TODO: Microsoft Graph API — Outlook Calendar Integration
+- Detailed commented implementation guide with Azure AD app registration steps, MSAL.js integration plan, Graph API getSchedule endpoint usage, and admin config panel design.
+
+---
+
 ## [2026.04.01.2] - 2026-04-01
 
 ### Seating Chart Overhaul

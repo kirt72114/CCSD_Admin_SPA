@@ -516,6 +516,81 @@ tr:hover td{background:#eef5ff}
   .org-chart-toolbar .input{min-width:220px;width:100%}
 }
 
+/* ─── Calendar Module ─── */
+.cal-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.cal-header-left{display:flex;align-items:center;gap:8px}
+.cal-header-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cal-title{font-size:20px;font-weight:800}
+.cal-nav-btn{width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-nav-btn:hover{background:rgba(101,213,255,.12);border-color:rgba(101,213,255,.2)}
+.cal-view-toggle{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cal-view-toggle button{padding:6px 12px;border:none;background:rgba(255,255,255,.04);color:var(--muted);font-size:11px;cursor:pointer;font-weight:600}
+.cal-view-toggle button.active{background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#06101f}
+.cal-scope-select{padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-size:11px}
+.cal-legend{display:flex;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:8px}
+.cal-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+.cal-legend-swatch{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+
+/* Month View */
+.cal-month{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cal-month-head{background:rgba(255,255,255,.06);padding:6px 4px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.08em}
+.cal-day{background:var(--panel);min-height:90px;padding:4px;display:flex;flex-direction:column;position:relative;transition:.12s background}
+.cal-day:hover{background:rgba(255,255,255,.04)}
+.cal-day.outside{opacity:.35}
+.cal-day.today{background:rgba(101,213,255,.06);box-shadow:inset 0 2px 0 var(--accent)}
+.cal-day.weekend{background:rgba(255,255,255,.015)}
+.cal-day-num{font-size:11px;font-weight:700;padding:2px 4px;line-height:1;color:var(--muted)}
+.cal-day.today .cal-day-num{color:var(--accent);font-weight:800}
+.cal-day-entries{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px;margin-top:2px}
+.cal-entry{padding:2px 5px;border-radius:4px;font-size:9px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-left:3px solid transparent}
+.cal-entry:hover{filter:brightness(1.2)}
+.cal-entry.leave{background:rgba(109,240,182,.12);color:#6df0b6;border-left-color:#6df0b6}
+.cal-entry.tdy{background:rgba(255,199,105,.12);color:#ffc769;border-left-color:#ffc769}
+.cal-entry.training{background:rgba(140,123,255,.12);color:#8c7bff;border-left-color:#8c7bff}
+.cal-entry.comp{background:rgba(101,213,255,.12);color:#65d5ff;border-left-color:#65d5ff}
+.cal-entry.telework{background:rgba(37,244,199,.12);color:#25f4c7;border-left-color:#25f4c7}
+.cal-entry.holiday{background:rgba(255,111,142,.08);color:#ff6f8e;border-left-color:#ff6f8e}
+.cal-entry.other{background:rgba(167,183,214,.1);color:var(--muted);border-left-color:var(--muted)}
+.cal-entry.sick{background:rgba(255,84,129,.12);color:#ff5481;border-left-color:#ff5481}
+.cal-holiday-label{font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(255,111,142,.1);color:#ff6f8e;font-weight:700;display:block;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Week View */
+.cal-week{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cal-week-header{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line)}
+.cal-week-head{background:rgba(255,255,255,.06);padding:8px 6px;text-align:center}
+.cal-week-head .day-name{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.06em}
+.cal-week-head .day-num{font-size:18px;font-weight:800;margin-top:2px}
+.cal-week-head.today{background:rgba(101,213,255,.08)}
+.cal-week-head.today .day-num{color:var(--accent)}
+.cal-week-body{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);min-height:300px}
+.cal-week-col{background:var(--panel);padding:6px 4px;display:flex;flex-direction:column;gap:4px}
+.cal-week-col.today{background:rgba(101,213,255,.04)}
+.cal-week-entry{padding:6px 8px;border-radius:6px;font-size:11px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.cal-week-entry .entry-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-week-entry .entry-type{font-size:9px;opacity:.7}
+
+/* List View */
+.cal-list{display:flex;flex-direction:column;gap:2px}
+.cal-list-day{padding:8px 0 4px;font-size:11px;font-weight:800;color:var(--muted);border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.06em}
+.cal-list-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:.12s background}
+.cal-list-item:hover{background:rgba(255,255,255,.04)}
+.cal-list-item .swatch{width:6px;height:28px;border-radius:3px;flex-shrink:0}
+.cal-list-item .info{flex:1;min-width:0}
+.cal-list-item .info .name{font-weight:700;font-size:13px}
+.cal-list-item .info .meta{font-size:11px;color:var(--muted)}
+.cal-list-item .type-badge{padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700}
+
+/* Senior Leaders */
+.cal-leaders{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:12px}
+.cal-leader-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.cal-leader-card .ldr-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cal-leader-card .ldr-name{font-weight:800;font-size:13px}
+.cal-leader-card .ldr-role{font-size:10px;color:var(--muted)}
+.cal-leader-card .ldr-status{padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700}
+.cal-leader-card .ldr-entries{display:flex;flex-direction:column;gap:3px}
+.cal-leader-card .ldr-entry{font-size:11px;padding:4px 8px;border-radius:6px;display:flex;justify-content:space-between;gap:6px}
+.cal-leader-card .ldr-entry .dates{font-size:10px;color:var(--muted)}
+
 /* ─── Embedded / Fullscreen Dual-Mode ─── */
 .embedded #app{padding:4px 6px 0}
 .embedded .hero{padding:6px 10px 4px;border-radius:10px}
@@ -583,7 +658,7 @@ body:not(.embedded) .fullscreen-badge{display:inline-block}
 'use strict';
 
 var APP = {
-  version: '2026.04.01.2',
+  version: '2026.04.01.3',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -607,6 +682,7 @@ var APP = {
     { key: 'requests', label: 'Requests' },
     { key: 'inout', label: 'In/Out' },
     { key: 'facilities', label: 'Facilities' },
+    { key: 'calendar', label: 'Calendar' },
     { key: 'assets', label: 'Assets' },
     { key: 'admin', label: 'Admin' },
     { key: 'diagnostics', label: 'Diagnostics' }
@@ -640,7 +716,60 @@ var APP = {
     SoftwareAssets: 'CCSD_SoftwareAssets',
     SoftwareAssignments: 'CCSD_SoftwareAssignments',
     Systems: 'CCSD_Systems',
-    Config: 'CCSD_Config'
+    Config: 'CCSD_Config',
+    TimeOff: 'CCSD_TimeOff'
+    /* ───────────────────────────────────────────────────────────────────────
+     * TODO: Conference Room Scheduling
+     * ─────────────────────────────────────────────────────────────────────
+     * Add list:  ConferenceRooms: 'CCSD_ConferenceRooms'
+     *   Columns: Title, RoomName, FacilityID (lookup), Floor, Capacity,
+     *            HasProjector, HasVTC, HasPhone, HasWhiteboard, Notes
+     * Add list:  RoomReservations: 'CCSD_RoomReservations'
+     *   Columns: Title, ConferenceRoomID (lookup), ReservedBy (person),
+     *            StartTime (datetime), EndTime (datetime), Subject, Notes,
+     *            IsRecurring, RecurrencePattern, Status (choice: Confirmed/Cancelled)
+     * Features:
+     *   - Room availability grid (Scheduling Assistant style)
+     *   - Book / cancel reservations
+     *   - Recurring meeting support
+     *   - Conflict detection
+     *   - Room search by capacity / equipment
+     * ─────────────────────────────────────────────────────────────────────
+     * TODO: Microsoft Graph API - Outlook Calendar Integration
+     * ─────────────────────────────────────────────────────────────────────
+     * Purpose: Show real-time free/busy status from Outlook calendars
+     *          (like Scheduling Assistant) for personnel in the SPA.
+     *
+     * PREREQUISITES (Tenant Admin required):
+     *   1. Go to Azure Portal > Azure Active Directory > App Registrations
+     *   2. Click "New registration"
+     *      - Name: "CCSD Administrative SPA"
+     *      - Supported account types: "Accounts in this organizational directory only"
+     *      - Redirect URI: Single-page application (SPA)
+     *        - Add: https://usaf.dps.mil/teams/aetc-lak-cpsg/Database/SitePages/Index.aspx
+     *        - Add: https://patriavirtus.sharepoint.com/sites/CCSDAdminSPA/SitePages/Index.aspx
+     *   3. Under "API Permissions", add:
+     *      - Microsoft Graph > Delegated > Calendars.Read.Shared
+     *      - Microsoft Graph > Delegated > User.Read
+     *   4. Click "Grant admin consent for [tenant]"
+     *   5. Copy the Application (client) ID and Directory (tenant) ID
+     *
+     * IMPLEMENTATION STEPS:
+     *   1. Add MSAL.js 2.x via CDN: <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js">
+     *   2. Add config fields to APP object:
+     *        graphClientId: '',   // paste Client ID here
+     *        graphTenantId: '',   // paste Tenant ID here
+     *   3. Initialize MSAL PublicClientApplication in bootstrap
+     *   4. Add silent token acquisition with interactive fallback
+     *   5. Call POST /me/calendar/getSchedule with array of user emails
+     *      and time window to get free/busy blocks
+     *   6. Render availability bars alongside time-off calendar
+     *   7. Add admin config panel for Client ID / Tenant ID
+     *
+     * API endpoint: POST https://graph.microsoft.com/v1.0/me/calendar/getSchedule
+     * Request body: { schedules: [emails], startTime: {}, endTime: {}, availabilityViewInterval: 30 }
+     * Response: array of schedule items with availabilityView (free/busy/tentative/oof)
+     * ───────────────────────────────────────────────────────────────────── */
   },
   state: {
     route: 'home',
@@ -1819,6 +1948,50 @@ function ensureAssetsLoaded(force){
     });
   });
 }
+function ensureTimeOffLoaded(force){
+  if (APP.state.data.timeOff && !force) { return Promise.resolve(APP.state.data.timeOff); }
+  return queryList(APP.lists.TimeOff, ['Title','PersonID/Id','PersonID/Title','OrgID/Id','OrgID/Title','StartDate','EndDate','TimeOffType','Status','Hours','Notes','ApprovedBy/Id','ApprovedBy/Title','CreatedBy/Id','CreatedBy/Title'], { top: 2000, orderby: 'StartDate desc' }, 'ensureTimeOffLoaded').then(function(rows){ APP.state.data.timeOff = rows || []; return rows || []; }).catch(function(){ APP.state.data.timeOff = []; return []; });
+}
+
+/* ─── Federal Holidays (US OPM schedule) ─── */
+function getFederalHolidays(year){
+  var y = year || new Date().getFullYear();
+  var holidays = [];
+  function add(m, d, name){ holidays.push({ date: new Date(y, m - 1, d), name: name }); }
+  function observed(dt, name){
+    var d = dt.getDay();
+    if (d === 0) { dt = new Date(dt.getTime() + 86400000); }
+    if (d === 6) { dt = new Date(dt.getTime() - 86400000); }
+    holidays.push({ date: dt, name: name });
+  }
+  /* Fixed-date holidays (with observed shift for weekends) */
+  observed(new Date(y, 0, 1), "New Year's Day");
+  observed(new Date(y, 5, 19), 'Juneteenth');
+  observed(new Date(y, 6, 4), 'Independence Day');
+  observed(new Date(y, 10, 11), 'Veterans Day');
+  observed(new Date(y, 11, 25), 'Christmas Day');
+  /* Floating holidays */
+  /* MLK: 3rd Monday of January */
+  var jan1 = new Date(y, 0, 1); var mlk = 1 + ((8 - jan1.getDay()) % 7) + 14; add(1, mlk, 'MLK Jr. Day');
+  /* Presidents' Day: 3rd Monday of February */
+  var feb1 = new Date(y, 1, 1); var pres = 1 + ((8 - feb1.getDay()) % 7) + 14; add(2, pres, "Presidents' Day");
+  /* Memorial Day: last Monday of May */
+  var may31 = new Date(y, 4, 31); var mem = 31 - ((may31.getDay() + 6) % 7); add(5, mem, 'Memorial Day');
+  /* Labor Day: 1st Monday of September */
+  var sep1 = new Date(y, 8, 1); var lab = 1 + ((8 - sep1.getDay()) % 7); add(9, lab, 'Labor Day');
+  /* Columbus Day: 2nd Monday of October */
+  var oct1 = new Date(y, 9, 1); var col = 1 + ((8 - oct1.getDay()) % 7) + 7; add(10, col, 'Columbus Day');
+  /* Thanksgiving: 4th Thursday of November */
+  var nov1 = new Date(y, 10, 1); var thx = 1 + ((11 - nov1.getDay()) % 7) + 21; add(11, thx, 'Thanksgiving');
+  return holidays;
+}
+function getHolidayMap(year){
+  var holidays = getFederalHolidays(year);
+  var map = {};
+  holidays.forEach(function(h){ map[h.date.toISOString().slice(0, 10)] = h.name; });
+  return map;
+}
+
 function ensureHowToLoaded(force){
   if (APP.state.data.howto && !force) { return Promise.resolve(APP.state.data.howto); }
   return queryList(APP.lists.HowTo, ['Title','Module','Audience','Summary','Steps','Links','Tags','IsActive','DisplayOrder'], { top: 200, orderby: 'DisplayOrder asc' }, 'ensureHowToLoaded').then(function(rows){ APP.state.data.howto = rows || []; return rows || []; }).catch(function(){ APP.state.data.howto = []; return []; });
@@ -4076,6 +4249,537 @@ function renderAssetAssignmentTables(idx, search){
   html += '</div>';
   return html;
 }
+/* ═══════════════════════════════════════════════════════════════════════
+ *  CALENDAR MODULE – Time Off, Federal Holidays, Senior Leaders
+ * ═══════════════════════════════════════════════════════════════════════ */
+var CAL_TYPES = {
+  'Annual Leave':   { key: 'leave',    label: 'Annual Leave',   color: '#6df0b6' },
+  'Sick Leave':     { key: 'sick',     label: 'Sick Leave',     color: '#ff5481' },
+  'TDY':            { key: 'tdy',      label: 'TDY',            color: '#ffc769' },
+  'Training':       { key: 'training', label: 'Training',       color: '#8c7bff' },
+  'Comp Time':      { key: 'comp',     label: 'Comp Time',      color: '#65d5ff' },
+  'Telework':       { key: 'telework', label: 'Telework',       color: '#25f4c7' },
+  'LWOP':           { key: 'other',    label: 'LWOP',           color: '#a7b7d6' },
+  'Holiday':        { key: 'holiday',  label: 'Federal Holiday', color: '#ff6f8e' },
+  'Other':          { key: 'other',    label: 'Other',          color: '#a7b7d6' }
+};
+function getCalType(type){
+  return CAL_TYPES[type] || CAL_TYPES['Other'];
+}
+
+function ensureCalendarUi(){
+  if (!APP.state.calUi) {
+    var now = new Date();
+    var myOrgId = null;
+    var p = APP.state.currentPersonnel;
+    if (p && p.OrgID && p.OrgID.Id) { myOrgId = p.OrgID.Id; }
+    APP.state.calUi = {
+      view: 'month',          /* month | week | list | leaders */
+      year: now.getFullYear(),
+      month: now.getMonth(),   /* 0-indexed */
+      weekStart: null,         /* Date object for week view */
+      scopeOrgId: myOrgId,    /* null = all, else org filter */
+      scopeLabel: '',
+      search: '',
+      typeFilter: ''           /* empty = all, else filter by type key */
+    };
+  }
+  return APP.state.calUi;
+}
+
+function renderCalendar(){
+  renderLoading('Loading calendar...');
+  Promise.all([
+    ensureTimeOffLoaded(),
+    ensurePeopleLoaded(),
+    ensureOrganizationsLoaded(),
+    ensurePositionsLoaded()
+  ]).then(function(){
+    var host = document.getElementById('viewHost');
+    if (!host || APP.state.route !== 'calendar') { return; }
+    var ui = ensureCalendarUi();
+    var html = '<div class="section-panel">';
+    html += renderCalendarHeader(ui);
+    html += renderCalendarLegend();
+    if (ui.view === 'leaders') {
+      html += renderSeniorLeadersView(ui);
+    } else if (ui.view === 'week') {
+      html += renderCalendarWeek(ui);
+    } else if (ui.view === 'list') {
+      html += renderCalendarList(ui);
+    } else {
+      html += renderCalendarMonth(ui);
+    }
+    html += '</div>';
+    host.innerHTML = html;
+    initSortableHeaders();
+  });
+}
+
+function renderCalendarHeader(ui){
+  var orgs = APP.state.data.organizations || [];
+  var html = '<div class="cal-header">';
+  html += '<div class="cal-header-left">';
+  html += '<button class="cal-nav-btn" data-action="cal-prev" title="Previous">&lsaquo;</button>';
+  html += '<button class="cal-nav-btn" data-action="cal-next" title="Next">&rsaquo;</button>';
+  html += '<button class="cal-nav-btn" data-action="cal-today" title="Today" style="font-size:11px;width:auto;padding:0 10px">Today</button>';
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  if (ui.view === 'week' && ui.weekStart) {
+    var ws = ui.weekStart;
+    var we = new Date(ws.getTime() + 6 * 86400000);
+    html += '<div class="cal-title">' + monthNames[ws.getMonth()] + ' ' + ws.getDate() + ' – ' + (we.getMonth() !== ws.getMonth() ? monthNames[we.getMonth()] + ' ' : '') + we.getDate() + ', ' + ws.getFullYear() + '</div>';
+  } else {
+    html += '<div class="cal-title">' + monthNames[ui.month] + ' ' + ui.year + '</div>';
+  }
+  html += '</div>';
+  html += '<div class="cal-header-right">';
+  /* View toggle */
+  html += '<div class="cal-view-toggle">';
+  ['month','week','list','leaders'].forEach(function(v){
+    var label = v === 'leaders' ? 'Leaders' : v.charAt(0).toUpperCase() + v.slice(1);
+    html += '<button data-action="cal-set-view" data-view="' + v + '"' + (ui.view === v ? ' class="active"' : '') + '>' + label + '</button>';
+  });
+  html += '</div>';
+  /* Type filter */
+  html += '<select class="cal-scope-select" id="calTypeFilter" data-action-input="cal-type-filter">';
+  html += '<option value="">All Types</option>';
+  Object.keys(CAL_TYPES).forEach(function(k){
+    if (k === 'Holiday') { return; }
+    html += '<option value="' + escAttr(k) + '"' + (ui.typeFilter === k ? ' selected' : '') + '>' + escHtml(k) + '</option>';
+  });
+  html += '</select>';
+  /* Org scope */
+  html += '<select class="cal-scope-select" id="calOrgScope" data-action-input="cal-org-scope">';
+  html += '<option value="">Entire Organization</option>';
+  var sorted = orgs.slice().sort(function(a, b){ return (a.OrgName || a.Title || '').localeCompare(b.OrgName || b.Title || ''); });
+  sorted.forEach(function(o){
+    if (!normalizeBoolean(o.IsActive)) { return; }
+    html += '<option value="' + escAttr(o.Id) + '"' + (ui.scopeOrgId && ui.scopeOrgId == o.Id ? ' selected' : '') + '>' + escHtml(o.OrgCode || o.OrgName || o.Title) + '</option>';
+  });
+  html += '</select>';
+  /* Search */
+  html += '<input class="cal-scope-select" id="calSearchInput" placeholder="Search names..." value="' + escAttr(ui.search) + '" style="width:140px" />';
+  /* Add entry (admin) */
+  if (canSeeAdmin()) {
+    html += '<button class="btn primary" data-action="cal-add-entry" style="padding:6px 12px;font-size:11px">+ Time Off</button>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function renderCalendarLegend(){
+  var html = '<div class="cal-legend">';
+  Object.keys(CAL_TYPES).forEach(function(k){
+    var t = CAL_TYPES[k];
+    html += '<div class="cal-legend-item"><div class="cal-legend-swatch" style="background:' + t.color + '"></div>' + escHtml(t.label) + '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ─── Calendar Data Helpers ─── */
+function getCalendarEntries(ui){
+  var entries = (APP.state.data.timeOff || []).filter(function(e){
+    return e.Status === 'Approved' || e.Status === 'approved';
+  });
+  var people = APP.state.data.people || [];
+  var peopleById = {};
+  people.forEach(function(p){ peopleById[p.Id] = p; });
+  /* Org scope filter: include self + descendants */
+  if (ui.scopeOrgId) {
+    var orgIds = getOrgAndDescendants(ui.scopeOrgId);
+    entries = entries.filter(function(e){
+      if (!e.PersonID) { return false; }
+      var pid = e.PersonID.Id || e.PersonID;
+      var person = peopleById[pid];
+      if (!person) { return false; }
+      var pOrgId = person.OrgID ? (person.OrgID.Id || person.OrgID) : null;
+      return pOrgId && orgIds[pOrgId];
+    });
+  }
+  /* Type filter */
+  if (ui.typeFilter) {
+    entries = entries.filter(function(e){ return e.TimeOffType === ui.typeFilter; });
+  }
+  /* Search filter */
+  if (ui.search) {
+    var q = ui.search.toLowerCase();
+    entries = entries.filter(function(e){
+      var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : '';
+      return name.toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  return entries;
+}
+
+function getOrgAndDescendants(orgId){
+  var orgs = APP.state.data.organizations || [];
+  var childMap = {};
+  orgs.forEach(function(o){
+    var pid = o.ParentOrgID ? (o.ParentOrgID.Id || o.ParentOrgID) : null;
+    if (pid) {
+      if (!childMap[pid]) { childMap[pid] = []; }
+      childMap[pid].push(o.Id);
+    }
+  });
+  var result = {};
+  var stack = [orgId];
+  while (stack.length) {
+    var id = stack.pop();
+    result[id] = true;
+    (childMap[id] || []).forEach(function(cid){ if (!result[cid]) { stack.push(cid); } });
+  }
+  return result;
+}
+
+function entriesForDateRange(entries, startDate, endDate){
+  var result = [];
+  entries.forEach(function(e){
+    var s = new Date(e.StartDate); var ed = new Date(e.EndDate || e.StartDate);
+    s.setHours(0,0,0,0); ed.setHours(23,59,59,999);
+    if (s <= endDate && ed >= startDate) { result.push(e); }
+  });
+  return result;
+}
+
+function entriesForDate(entries, date){
+  var ds = date.toISOString().slice(0, 10);
+  return entries.filter(function(e){
+    var s = (e.StartDate || '').slice(0, 10);
+    var ed = (e.EndDate || e.StartDate || '').slice(0, 10);
+    return ds >= s && ds <= ed;
+  });
+}
+
+/* ─── Month View ─── */
+function renderCalendarMonth(ui){
+  var entries = getCalendarEntries(ui);
+  var holidays = getHolidayMap(ui.year);
+  /* Also get prev/next month holidays for edge days */
+  if (ui.month === 0) { Object.assign(holidays, getHolidayMap(ui.year - 1)); }
+  if (ui.month === 11) { Object.assign(holidays, getHolidayMap(ui.year + 1)); }
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().slice(0, 10);
+  var first = new Date(ui.year, ui.month, 1);
+  var startDay = first.getDay(); /* 0=Sun */
+  var daysInMonth = new Date(ui.year, ui.month + 1, 0).getDate();
+  /* Fill grid from Sunday before month start */
+  var gridStart = new Date(first); gridStart.setDate(gridStart.getDate() - startDay);
+  var totalCells = Math.ceil((startDay + daysInMonth) / 7) * 7;
+  var html = '<div class="cal-month">';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d){ html += '<div class="cal-month-head">' + d + '</div>'; });
+  for (var i = 0; i < totalCells; i++) {
+    var dt = new Date(gridStart); dt.setDate(dt.getDate() + i);
+    var ds = dt.toISOString().slice(0, 10);
+    var isOutside = dt.getMonth() !== ui.month;
+    var isToday = ds === todayStr;
+    var isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+    var cls = 'cal-day';
+    if (isOutside) { cls += ' outside'; }
+    if (isToday) { cls += ' today'; }
+    if (isWeekend) { cls += ' weekend'; }
+    html += '<div class="' + cls + '">';
+    html += '<div class="cal-day-num">' + dt.getDate() + '</div>';
+    /* Holiday */
+    var hol = holidays[ds];
+    if (hol) { html += '<div class="cal-holiday-label">' + escHtml(hol) + '</div>'; }
+    /* Entries for this day */
+    html += '<div class="cal-day-entries">';
+    var dayEntries = entriesForDate(entries, dt);
+    dayEntries.slice(0, 4).forEach(function(e){
+      var t = getCalType(e.TimeOffType);
+      var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title.split(',')[0] : 'Unknown';
+      html += '<div class="cal-entry ' + t.key + '" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '" title="' + escAttr(name + ' – ' + (e.TimeOffType || 'Time Off')) + '">' + escHtml(name) + '</div>';
+    });
+    if (dayEntries.length > 4) {
+      html += '<div class="cal-entry other" style="text-align:center;font-size:8px">+' + (dayEntries.length - 4) + ' more</div>';
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ─── Week View ─── */
+function renderCalendarWeek(ui){
+  if (!ui.weekStart) {
+    var now = new Date(); now.setHours(0,0,0,0);
+    ui.weekStart = new Date(now); ui.weekStart.setDate(now.getDate() - now.getDay());
+  }
+  var entries = getCalendarEntries(ui);
+  var holidays = getHolidayMap(ui.weekStart.getFullYear());
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().slice(0, 10);
+  var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var html = '<div class="cal-week">';
+  html += '<div class="cal-week-header">';
+  for (var d = 0; d < 7; d++) {
+    var dt = new Date(ui.weekStart); dt.setDate(dt.getDate() + d);
+    var ds = dt.toISOString().slice(0, 10);
+    html += '<div class="cal-week-head' + (ds === todayStr ? ' today' : '') + '"><div class="day-name">' + dayNames[d].slice(0, 3) + '</div><div class="day-num">' + dt.getDate() + '</div></div>';
+  }
+  html += '</div>';
+  html += '<div class="cal-week-body">';
+  for (var d = 0; d < 7; d++) {
+    var dt = new Date(ui.weekStart); dt.setDate(dt.getDate() + d);
+    var ds = dt.toISOString().slice(0, 10);
+    var isToday = ds === todayStr;
+    html += '<div class="cal-week-col' + (isToday ? ' today' : '') + '">';
+    var hol = holidays[ds];
+    if (hol) { html += '<div class="cal-week-entry holiday" style="background:rgba(255,111,142,.1)"><div class="entry-name" style="color:#ff6f8e">' + escHtml(hol) + '</div><div class="entry-type">Federal Holiday</div></div>'; }
+    var dayEntries = entriesForDate(entries, dt);
+    dayEntries.forEach(function(e){
+      var t = getCalType(e.TimeOffType);
+      var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : 'Unknown';
+      html += '<div class="cal-week-entry ' + t.key + '" style="background:' + t.color + '15" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '"><div class="entry-name">' + escHtml(name) + '</div><div class="entry-type">' + escHtml(e.TimeOffType || 'Time Off') + (e.Hours ? ' (' + e.Hours + 'h)' : '') + '</div></div>';
+    });
+    if (!dayEntries.length && !hol) { html += '<div style="padding:8px;font-size:10px;color:var(--muted);text-align:center">No entries</div>'; }
+    html += '</div>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+/* ─── List View ─── */
+function renderCalendarList(ui){
+  var entries = getCalendarEntries(ui);
+  var first = new Date(ui.year, ui.month, 1);
+  var last = new Date(ui.year, ui.month + 1, 0);
+  last.setHours(23,59,59,999);
+  var monthEntries = entriesForDateRange(entries, first, last);
+  var holidays = getFederalHolidays(ui.year).filter(function(h){ return h.date >= first && h.date <= last; });
+  /* Merge into a combined list sorted by date */
+  var combined = [];
+  monthEntries.forEach(function(e){
+    var sd = new Date(e.StartDate); sd.setHours(0,0,0,0);
+    var startInMonth = sd < first ? first : sd;
+    combined.push({ date: startInMonth, type: 'entry', data: e });
+  });
+  holidays.forEach(function(h){
+    combined.push({ date: h.date, type: 'holiday', data: h });
+  });
+  combined.sort(function(a, b){ return a.date - b.date; });
+  if (!combined.length) { return '<div class="empty">No time-off entries or holidays this month.</div>'; }
+  var html = '<div class="cal-list">';
+  var lastDateStr = '';
+  var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  combined.forEach(function(item){
+    var ds = item.date.toISOString().slice(0, 10);
+    if (ds !== lastDateStr) {
+      lastDateStr = ds;
+      html += '<div class="cal-list-day">' + dayNames[item.date.getDay()] + ', ' + monthNames[item.date.getMonth()] + ' ' + item.date.getDate() + '</div>';
+    }
+    if (item.type === 'holiday') {
+      html += '<div class="cal-list-item"><div class="swatch" style="background:#ff6f8e"></div><div class="info"><div class="name">' + escHtml(item.data.name) + '</div><div class="meta">Federal Holiday</div></div><div class="type-badge" style="background:rgba(255,111,142,.12);color:#ff6f8e">Holiday</div></div>';
+    } else {
+      var e = item.data;
+      var t = getCalType(e.TimeOffType);
+      var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : 'Unknown';
+      var sd = (e.StartDate || '').slice(0, 10);
+      var ed = (e.EndDate || e.StartDate || '').slice(0, 10);
+      var dateRange = sd === ed ? sd : sd + ' to ' + ed;
+      html += '<div class="cal-list-item" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '"><div class="swatch" style="background:' + t.color + '"></div><div class="info"><div class="name">' + escHtml(name) + '</div><div class="meta">' + escHtml(dateRange) + (e.Hours ? ' &middot; ' + e.Hours + 'h' : '') + (e.Notes ? ' &middot; ' + escHtml(e.Notes.substring(0, 60)) : '') + '</div></div><div class="type-badge" style="background:' + t.color + '18;color:' + t.color + '">' + escHtml(e.TimeOffType || 'Other') + '</div></div>';
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ─── Senior Leaders Calendar ─── */
+function renderSeniorLeadersView(ui){
+  var positions = APP.state.data.positions || [];
+  var people = APP.state.data.people || [];
+  var entries = getCalendarEntries({ scopeOrgId: null, typeFilter: ui.typeFilter, search: '' });
+  var holidays = getHolidayMap(ui.year);
+  /* Find key leadership: IsKeyLeadership positions */
+  var leaderPositionIds = {};
+  positions.forEach(function(pos){
+    if (normalizeBoolean(pos.IsKeyLeadership)) { leaderPositionIds[pos.Id] = pos; }
+  });
+  var leaders = people.filter(function(p){
+    if (p.Status && p.Status !== 'Active') { return false; }
+    var posId = p.PositionID ? (p.PositionID.Id || p.PositionID) : null;
+    return posId && leaderPositionIds[posId];
+  });
+  if (!leaders.length) {
+    /* Fallback: supervisors */
+    leaders = people.filter(function(p){
+      return p.Status === 'Active' && normalizeBoolean(p.IsSupervisor);
+    });
+  }
+  leaders.sort(function(a, b){ return (a.LastName || '').localeCompare(b.LastName || ''); });
+  /* Time window: current week + next 2 weeks */
+  var now = new Date(); now.setHours(0,0,0,0);
+  var weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+  var windowEnd = new Date(weekStart); windowEnd.setDate(windowEnd.getDate() + 20);
+  var html = '<div style="margin-bottom:8px;font-size:12px;color:var(--muted)">Showing key leadership schedules for the next 3 weeks</div>';
+  html += '<div class="cal-leaders">';
+  leaders.forEach(function(person){
+    var posId = person.PositionID ? (person.PositionID.Id || person.PositionID) : null;
+    var pos = leaderPositionIds[posId] || {};
+    var personEntries = entries.filter(function(e){
+      var pid = e.PersonID ? (e.PersonID.Id || e.PersonID) : null;
+      return pid && pid == person.Id;
+    });
+    var windowEntries = entriesForDateRange(personEntries, weekStart, windowEnd);
+    /* Determine current status */
+    var todayEntries = entriesForDate(personEntries, now);
+    var todayHol = holidays[now.toISOString().slice(0, 10)];
+    var currentStatus = 'In Office';
+    var statusStyle = 'background:rgba(109,240,182,.12);color:#6df0b6';
+    if (todayHol) { currentStatus = 'Holiday'; statusStyle = 'background:rgba(255,111,142,.12);color:#ff6f8e'; }
+    else if (todayEntries.length) {
+      var te = todayEntries[0];
+      var tt = getCalType(te.TimeOffType);
+      currentStatus = te.TimeOffType || 'Out';
+      statusStyle = 'background:' + tt.color + '18;color:' + tt.color;
+    }
+    html += '<div class="cal-leader-card">';
+    html += '<div class="ldr-head"><div style="flex:1"><div class="ldr-name">' + escHtml(person.LastName + ', ' + person.FirstName) + '</div><div class="ldr-role">' + escHtml(pos.PositionTitle || person.Grade || '') + '</div></div><div class="ldr-status" style="' + statusStyle + '">' + escHtml(currentStatus) + '</div></div>';
+    html += '<div class="ldr-entries">';
+    if (!windowEntries.length) {
+      html += '<div style="font-size:11px;color:var(--muted);padding:4px 0">No upcoming time off</div>';
+    }
+    windowEntries.slice(0, 5).forEach(function(e){
+      var t = getCalType(e.TimeOffType);
+      var sd = (e.StartDate || '').slice(0, 10);
+      var ed = (e.EndDate || e.StartDate || '').slice(0, 10);
+      html += '<div class="ldr-entry" style="background:' + t.color + '10"><span style="color:' + t.color + ';font-weight:700">' + escHtml(e.TimeOffType || 'Off') + '</span><span class="dates">' + sd + (sd !== ed ? ' – ' + ed : '') + '</span></div>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ─── Calendar Navigation Helpers ─── */
+function calNavigate(direction){
+  var ui = ensureCalendarUi();
+  if (ui.view === 'week') {
+    if (!ui.weekStart) { var n = new Date(); n.setHours(0,0,0,0); ui.weekStart = new Date(n); ui.weekStart.setDate(n.getDate() - n.getDay()); }
+    var delta = direction === 'next' ? 7 : -7;
+    ui.weekStart.setDate(ui.weekStart.getDate() + delta);
+    ui.year = ui.weekStart.getFullYear();
+    ui.month = ui.weekStart.getMonth();
+  } else {
+    if (direction === 'next') {
+      ui.month += 1;
+      if (ui.month > 11) { ui.month = 0; ui.year += 1; }
+    } else {
+      ui.month -= 1;
+      if (ui.month < 0) { ui.month = 11; ui.year -= 1; }
+    }
+  }
+  renderCalendar();
+}
+function calToday(){
+  var ui = ensureCalendarUi();
+  var now = new Date();
+  ui.year = now.getFullYear();
+  ui.month = now.getMonth();
+  if (ui.view === 'week') {
+    ui.weekStart = new Date(now); ui.weekStart.setHours(0,0,0,0);
+    ui.weekStart.setDate(now.getDate() - now.getDay());
+  }
+  renderCalendar();
+}
+
+/* ─── Time Off Entry Detail Modal ─── */
+function openCalEntryDetail(entryId){
+  var entries = APP.state.data.timeOff || [];
+  var entry = null;
+  for (var i = 0; i < entries.length; i++) { if (String(entries[i].Id) === String(entryId)) { entry = entries[i]; break; } }
+  if (!entry) { toast('Entry not found.', 'danger'); return; }
+  var t = getCalType(entry.TimeOffType);
+  var name = entry.PersonID && entry.PersonID.Title ? entry.PersonID.Title : 'Unknown';
+  var sd = (entry.StartDate || '').slice(0, 10);
+  var ed = (entry.EndDate || entry.StartDate || '').slice(0, 10);
+  var body = '<div class="kv">';
+  body += '<div class="k">Person</div><div class="v">' + escHtml(name) + '</div>';
+  body += '<div class="k">Type</div><div class="v"><span style="color:' + t.color + ';font-weight:700">' + escHtml(entry.TimeOffType || 'Other') + '</span></div>';
+  body += '<div class="k">Start</div><div class="v">' + escHtml(sd) + '</div>';
+  body += '<div class="k">End</div><div class="v">' + escHtml(ed) + '</div>';
+  if (entry.Hours) { body += '<div class="k">Hours</div><div class="v">' + escHtml(entry.Hours) + '</div>'; }
+  body += '<div class="k">Status</div><div class="v">' + statusBadge(entry.Status || 'Approved') + '</div>';
+  if (entry.ApprovedBy && entry.ApprovedBy.Title) { body += '<div class="k">Approved By</div><div class="v">' + escHtml(entry.ApprovedBy.Title) + '</div>'; }
+  if (entry.Notes) { body += '<div class="k">Notes</div><div class="v">' + escHtml(entry.Notes) + '</div>'; }
+  body += '</div>';
+  var footer = '<div>';
+  if (canSeeAdmin()) {
+    footer += '<button class="btn danger" data-action="cal-delete-entry" data-entry-id="' + escAttr(entryId) + '">Delete</button>';
+  }
+  footer += '</div><div><button class="btn" data-action="close-modal">Close</button></div>';
+  openModal('Time Off: ' + escHtml(name), body, footer, entry.TimeOffType || 'Detail');
+}
+
+/* ─── Add / Delete Time Off Entries ─── */
+function openAddTimeOffModal(){
+  var people = APP.state.data.people || [];
+  var personOpts = people.filter(function(p){ return p.Status === 'Active'; }).map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var typeOpts = Object.keys(CAL_TYPES).filter(function(k){ return k !== 'Holiday'; }).map(function(k){
+    return '<option value="' + escAttr(k) + '">' + escHtml(k) + '</option>';
+  }).join('');
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + formField('Person', '<select id="toPersonId" class="select"><option value="">-- Select --</option>' + personOpts + '</select>')
+    + formField('Type', '<select id="toType" class="select">' + typeOpts + '</select>')
+    + formField('Start Date', '<input id="toStart" class="input" type="date" value="' + today + '" />')
+    + formField('End Date', '<input id="toEnd" class="input" type="date" value="' + today + '" />')
+    + formField('Hours', '<input id="toHours" class="input" type="number" placeholder="8" />')
+    + formField('Status', '<select id="toStatus" class="select"><option value="Approved" selected>Approved</option><option value="Pending">Pending</option><option value="Denied">Denied</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="toNotes" class="textarea" style="min-height:60px" placeholder="Optional notes"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Add Time Off Entry', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="cal-save-entry">Save Entry</button></div>', 'Create a new time off record');
+}
+
+function saveTimeOffEntry(){
+  var personId = document.getElementById('toPersonId').value;
+  var type = document.getElementById('toType').value;
+  var start = document.getElementById('toStart').value;
+  var end = document.getElementById('toEnd').value;
+  var errors = runValidation([
+    function(){ return validateRequired(personId, 'Person'); },
+    function(){ return validateRequired(start, 'Start Date'); },
+    function(){ return validateRequired(end, 'End Date'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  /* Look up person's org */
+  var people = APP.state.data.people || [];
+  var person = null;
+  for (var i = 0; i < people.length; i++) { if (String(people[i].Id) === String(personId)) { person = people[i]; break; } }
+  var orgId = person && person.OrgID ? (person.OrgID.Id || person.OrgID) : null;
+  var values = {
+    Title: type + ' - ' + start,
+    PersonID: parseInt(personId, 10),
+    TimeOffType: type,
+    StartDate: start,
+    EndDate: end,
+    Hours: document.getElementById('toHours').value ? parseFloat(document.getElementById('toHours').value) : null,
+    Status: document.getElementById('toStatus').value,
+    Notes: document.getElementById('toNotes').value
+  };
+  if (orgId) { values.OrgID = parseInt(orgId, 10); }
+  createListItem(APP.lists.TimeOff, values, { entityType: 'TimeOff', reason: 'Add time off entry' }).then(function(){
+    toast('Time off entry created.', 'ok');
+    closeModal();
+    APP.state.data.timeOff = null;
+    renderCalendar();
+  }).catch(function(){ toast('Failed to create entry.', 'danger'); });
+}
+
+function deleteTimeOffEntry(entryId){
+  if (!confirm('Delete this time-off entry?')) { return; }
+  deleteListItem(APP.lists.TimeOff, entryId, { entityType: 'TimeOff', reason: 'Delete time off entry' }).then(function(){
+    toast('Entry deleted.', 'ok');
+    closeModal();
+    APP.state.data.timeOff = null;
+    renderCalendar();
+  }).catch(function(){ toast('Delete failed.', 'danger'); });
+}
+
 function renderAssets(){
   renderLoading('Loading assets...');
   return Promise.all([ensureAssetsLoaded(), ensurePeopleLoaded(), ensureFacilitiesLoaded(), ensureOrganizationsLoaded()]).then(function(){
@@ -4690,6 +5394,7 @@ function renderRoute(){
   if (route === 'requests') { return renderRequests(); }
   if (route === 'inout') { return renderInOut(); }
   if (route === 'facilities') { return renderFacilities(); }
+  if (route === 'calendar') { return renderCalendar(); }
   if (route === 'assets') { return renderAssets(); }
   if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
   if (route === 'diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderDiagnostics(); }
@@ -4731,6 +5436,9 @@ function handleInput(e){
   if (id === 'facilitiesSearchInput') { debouncedFilterCards('#facilitiesTableBody', e.target.value); }
   if (id === 'assetSearchInput') { debouncedAssetFilter(e.target.value); return; }
   if (id === 'seatSidebarSearch') { filterSeatSidebar(e.target.value); return; }
+  if (id === 'calOrgScope') { var ui = ensureCalendarUi(); ui.scopeOrgId = e.target.value ? Number(e.target.value) : null; renderCalendar(); return; }
+  if (id === 'calTypeFilter') { ensureCalendarUi().typeFilter = e.target.value; renderCalendar(); return; }
+  if (id === 'calSearchInput') { ensureCalendarUi().search = e.target.value; renderCalendar(); return; }
 }
 function findActionEl(start){
   var el = start;
@@ -4792,6 +5500,15 @@ function handleClick(e){
   if (action === 'floorplan-zoom-in') { floorPlanZoom('in'); return; }
   if (action === 'floorplan-zoom-out') { floorPlanZoom('out'); return; }
   if (action === 'floorplan-zoom-reset') { floorPlanZoom('reset'); return; }
+  /* Calendar actions */
+  if (action === 'cal-prev') { calNavigate('prev'); return; }
+  if (action === 'cal-next') { calNavigate('next'); return; }
+  if (action === 'cal-today') { calToday(); return; }
+  if (action === 'cal-set-view') { var v = el.getAttribute('data-view'); ensureCalendarUi().view = v; if (v === 'week') { var n = new Date(); n.setHours(0,0,0,0); ensureCalendarUi().weekStart = new Date(n); ensureCalendarUi().weekStart.setDate(n.getDate() - n.getDay()); } renderCalendar(); return; }
+  if (action === 'cal-entry-detail') { openCalEntryDetail(el.getAttribute('data-entry-id')); return; }
+  if (action === 'cal-add-entry') { openAddTimeOffModal(); return; }
+  if (action === 'cal-save-entry') { saveTimeOffEntry(); return; }
+  if (action === 'cal-delete-entry') { deleteTimeOffEntry(el.getAttribute('data-entry-id')); return; }
   if (action === 'export-facilities') { exportTableToCSV('.table-wrap table', 'facilities_export'); return; }
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
   if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
@@ -4810,7 +5527,7 @@ function handleClick(e){
   if (action === 'create-sw-assignment') { openCreateSoftwareAssignmentModal(); return; }
   if (action === 'save-sw-assignment') { saveSoftwareAssignment(); return; }
   if (action === 'popout-fullscreen') { popoutFullscreen(); return; }
-  if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
+  if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
 function detectEmbeddedMode(){
   var isEmbedded = false;
@@ -4837,7 +5554,7 @@ function bootstrap(){
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') { closeModal(); return; }
     if (!e.altKey) { return; }
-    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', a: 'assets' };
+    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', c: 'calendar', a: 'assets' };
     if (canSeeAdmin()) { shortcuts.d = 'diagnostics'; }
     var route = shortcuts[e.key.toLowerCase()];
     if (route) { e.preventDefault(); routeTo(route); return; }
