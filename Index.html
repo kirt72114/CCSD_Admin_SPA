@@ -225,8 +225,39 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .notif-badge:after{content:attr(data-count);position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 
 /* ─── Seat map styles ─── */
-.seat-map-wrap{position:relative;border:1px solid var(--line);border-radius:14px;padding:12px;overflow:auto}
+.seat-map-wrap{position:relative;border:1px solid var(--line);border-radius:14px;padding:0;overflow:hidden}
 .seat-map-wrap svg text{user-select:none}
+
+/* ─── Floor Plan Viewer ─── */
+.floorplan-container{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#0a1628;cursor:grab;user-select:none;min-height:400px;max-height:70vh}
+.floorplan-container.dragging{cursor:grabbing}
+.floorplan-inner{position:relative;transform-origin:0 0;will-change:transform}
+.floorplan-inner img{display:block;max-width:none;pointer-events:none}
+.floorplan-controls{position:absolute;top:10px;right:10px;z-index:10;display:flex;flex-direction:column;gap:4px}
+.floorplan-controls button{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(7,17,31,.85);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.floorplan-controls button:hover{background:rgba(31,122,224,.4);border-color:rgba(101,213,255,.3)}
+.floorplan-legend{position:absolute;bottom:10px;left:10px;z-index:10;display:flex;gap:6px;flex-wrap:wrap}
+
+/* ─── Seat Markers on Floor Plan ─── */
+.seat-marker{position:absolute;width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,.7);cursor:pointer;transform:translate(-50%,-50%);transition:.15s transform,.15s box-shadow;z-index:5;display:flex;align-items:center;justify-content:center;font-size:0}
+.seat-marker:hover{transform:translate(-50%,-50%) scale(1.5);z-index:15;box-shadow:0 0 12px rgba(101,213,255,.5)}
+.seat-marker.occupied{background:#17794f}
+.seat-marker.available{background:#1f7ae0}
+.seat-marker.maintenance{background:#a06b04}
+.seat-marker-label{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none}
+
+/* ─── Seat Tooltip ─── */
+.seat-tooltip{position:fixed;z-index:100;background:linear-gradient(180deg,#0d1a31,#081120);border:1px solid rgba(101,213,255,.25);border-radius:14px;padding:12px 14px;box-shadow:0 16px 40px rgba(0,0,0,.5);pointer-events:none;min-width:220px;max-width:320px;font-size:12px}
+.seat-tooltip .st-name{font-weight:800;font-size:14px;margin-bottom:6px}
+.seat-tooltip .st-row{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+.seat-tooltip .st-label{color:var(--muted)}
+.seat-tooltip .st-nets{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+
+/* ─── Coordinate Picker ─── */
+.picker-crosshair{cursor:crosshair!important}
+.picker-crosshair .seat-marker{pointer-events:none}
+.picker-pending{position:absolute;width:24px;height:24px;border-radius:50%;border:3px dashed var(--accent);background:rgba(101,213,255,.25);transform:translate(-50%,-50%);z-index:20;animation:pulse 1s ease-in-out infinite}
+.picker-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0}
 
 </style>
 
@@ -1667,8 +1698,8 @@ function ensureInOutStepsLoaded(force){
 function ensureFacilitiesLoaded(force){
   if (APP.state.data.facilities && !force) { return Promise.resolve(APP.state.data.facilities); }
   return Promise.all([
-    queryList(APP.lists.Facilities, ['Title','FacilityID','BuildingNumber','Base','Address','HasNIPR','HasSIPR','HasJWICS','FacilityPOC','Notes'], { top: 400 }, 'ensureFacilitiesLoaded.Facilities'),
-    queryList(APP.lists.Rooms, ['Title','RoomID','FacilityID/Id','FacilityID/Title','RoomNumber','Floor','RoomType','MaxSeats','IsSCIF','Notes'], { top: 1500 }, 'ensureFacilitiesLoaded.Rooms'),
+    queryList(APP.lists.Facilities, ['Title','FacilityID','BuildingNumber','Base','Address','HasNIPR','HasSIPR','HasJWICS','FacilityPOC','Notes','FloorPlanUrl'], { top: 400 }, 'ensureFacilitiesLoaded.Facilities'),
+    queryList(APP.lists.Rooms, ['Title','RoomID','FacilityID/Id','FacilityID/Title','RoomNumber','Floor','RoomType','MaxSeats','IsSCIF','Notes','FloorPlanUrl'], { top: 1500 }, 'ensureFacilitiesLoaded.Rooms'),
     queryList(APP.lists.Seats, ['Title','SeatID','RoomID/Id','RoomID/Title','SeatLabel','PortNumber','HasNIPR','HasSIPR','HasJWICS','PhoneNumber','VTCEnabled','CurrentPersonID/Id','CurrentPersonID/Title','XCoord','YCoord','SeatStatus','Notes'], { top: 3000 }, 'ensureFacilitiesLoaded.Seats')
   ]).then(function(all){
     APP.state.data.facilities = all[0] || [];
@@ -3014,18 +3045,28 @@ function saveInOut(){
   }).catch(function(){ toast('In/Out creation failed.', 'danger'); });
 }
 function ensureFacilityUi(){
-  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null }; }
+  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null, floorPlanMode: 'view', pickerPending: null, zoom: 1, panX: 0, panY: 0 }; }
   return APP.state.facilityUi;
 }
-function renderSeatMap(seats, room){
-  if (!seats || !seats.length) { return '<div class="empty">No seats mapped in this room.</div>'; }
-  var hasCoords = seats.some(function(s){ return s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== ''; });
+function getFloorPlanUrl(facility, room){
+  if (room && room.FloorPlanUrl) { return room.FloorPlanUrl; }
+  if (facility && facility.FloorPlanUrl) { return facility.FloorPlanUrl; }
+  return '';
+}
+function renderSeatMap(seats, room, facility){
+  var floorPlanUrl = getFloorPlanUrl(facility, room);
+  var ui = ensureFacilityUi();
+  var allSeats = seats || [];
+  if (floorPlanUrl) {
+    return renderFloorPlanView(allSeats, room, facility, floorPlanUrl);
+  }
+  if (!allSeats.length) { return '<div class="empty">No seats mapped in this room.</div>'; }
+  var hasCoords = allSeats.some(function(s){ return s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== ''; });
   if (!hasCoords) {
     var html = '<div class="tile-grid">';
-    seats.forEach(function(s){
+    allSeats.forEach(function(s){
       var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
       var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
-      var statusClass = occupant ? 'ok' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'warn' : 'info');
       html += '<div class="tile"><div class="tile-title">' + escHtml(s.SeatLabel || s.Title || s.SeatID || 'Seat') + '</div><div class="tile-sub">' + escHtml(occupant || 'Available') + '</div><div style="margin-top:8px">' + statusBadge(occupant ? 'Occupied' : (s.SeatStatus || 'Available')) + '</div><div class="small-note" style="margin-top:8px">' + escHtml(networks.trim() || 'No network info') + (s.PhoneNumber ? ' • ' + escHtml(s.PhoneNumber) : '') + (normalizeBoolean(s.VTCEnabled) ? ' • VTC' : '') + '</div>';
       if (s.PortNumber) { html += '<div class="small-note">Port: ' + escHtml(s.PortNumber) + '</div>'; }
       html += '</div>';
@@ -3034,10 +3075,10 @@ function renderSeatMap(seats, room){
     return html;
   }
   var maxX = 0, maxY = 0;
-  seats.forEach(function(s){ var x = Number(s.XCoord) || 0; var y = Number(s.YCoord) || 0; if (x > maxX) { maxX = x; } if (y > maxY) { maxY = y; } });
+  allSeats.forEach(function(s){ var x = Number(s.XCoord) || 0; var y = Number(s.YCoord) || 0; if (x > maxX) { maxX = x; } if (y > maxY) { maxY = y; } });
   maxX = Math.max(maxX + 60, 400); maxY = Math.max(maxY + 60, 300);
   var svgHtml = '<div style="overflow:auto;border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(255,255,255,.03)"><svg viewBox="0 0 ' + maxX + ' ' + maxY + '" style="width:100%;max-height:480px" role="img" aria-label="Seat map for ' + escAttr((room && room.RoomNumber) || 'room') + '">';
-  seats.forEach(function(s){
+  allSeats.forEach(function(s){
     var x = Number(s.XCoord) || 0; var y = Number(s.YCoord) || 0;
     var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
     var fill = occupant ? '#17794f' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? '#a06b04' : '#1f7ae0');
@@ -3047,6 +3088,259 @@ function renderSeatMap(seats, room){
   svgHtml += '<div class="list-inline" style="margin-top:10px"><span class="badge ok">Occupied</span><span class="badge info">Available</span><span class="badge warn">Maintenance</span></div>';
   return svgHtml;
 }
+
+/* ─── Floor Plan Image Viewer with Seat Overlays ─── */
+function renderFloorPlanView(seats, room, facility, imageUrl){
+  var ui = ensureFacilityUi();
+  var isPicker = ui.floorPlanMode === 'picker' && canSeeAdmin();
+  var containerId = 'floorplanContainer';
+  var html = '';
+  if (canSeeAdmin()) {
+    html += '<div class="picker-toolbar">';
+    if (isPicker) {
+      html += '<span class="badge warn">SEAT PLACEMENT MODE</span> <span class="mini muted">Click on the floor plan to place a seat marker, then fill in details.</span> ';
+      html += '<button class="btn subtle" data-action="exit-seat-picker">Exit Picker</button>';
+    } else {
+      html += '<button class="btn primary" data-action="enter-seat-picker">Place Seats on Map</button>';
+      html += '<button class="btn subtle" data-action="enter-floorplan-url">Set Floor Plan URL</button>';
+    }
+    html += '</div>';
+  }
+  html += '<div id="' + containerId + '" class="floorplan-container' + (isPicker ? ' picker-crosshair' : '') + '" data-image-url="' + escAttr(imageUrl) + '" data-facility-id="' + escAttr(facility ? facility.Id : '') + '" data-room-id="' + escAttr(room ? room.Id : '') + '">';
+  html += '<div id="floorplanInner" class="floorplan-inner">';
+  html += '<img id="floorplanImg" src="' + escAttr(imageUrl) + '" alt="Floor plan" onload="onFloorPlanLoad()" onerror="onFloorPlanError()" />';
+  seats.forEach(function(s){
+    if (s.XCoord == null || s.YCoord == null || s.XCoord === '' || s.YCoord === '') { return; }
+    var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
+    var cls = occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available');
+    var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
+    var tooltip = JSON.stringify({ label: s.SeatLabel || s.SeatID || 'Seat', occupant: occupant, port: s.PortNumber || '', phone: s.PhoneNumber || '', networks: networks.trim(), vtc: normalizeBoolean(s.VTCEnabled), status: s.SeatStatus || (occupant ? 'Occupied' : 'Available'), notes: s.Notes || '', seatId: s.Id });
+    html += '<div class="seat-marker ' + cls + '" style="left:' + s.XCoord + 'px;top:' + s.YCoord + 'px" data-seat-tooltip="' + escAttr(tooltip) + '" data-seat-id="' + escAttr(s.Id) + '"><span class="seat-marker-label">' + escHtml(s.SeatLabel || s.SeatID || '') + '</span></div>';
+  });
+  if (isPicker && ui.pickerPending) {
+    html += '<div class="picker-pending" style="left:' + ui.pickerPending.x + 'px;top:' + ui.pickerPending.y + 'px"></div>';
+  }
+  html += '</div>';
+  html += '<div class="floorplan-controls"><button data-action="floorplan-zoom-in" title="Zoom in">+</button><button data-action="floorplan-zoom-out" title="Zoom out">−</button><button data-action="floorplan-zoom-reset" title="Fit to view">⊡</button></div>';
+  html += '<div class="floorplan-legend"><span class="badge ok">Occupied</span><span class="badge info">Available</span><span class="badge warn">Maintenance</span><span class="badge dim">' + seats.filter(function(s){ return s.XCoord != null && s.XCoord !== ''; }).length + ' placed / ' + seats.length + ' total seats</span></div>';
+  html += '</div>';
+  html += '<div id="seatTooltip" class="seat-tooltip" style="display:none"></div>';
+  return html;
+}
+
+/* ─── Floor Plan Load / Error / Pan / Zoom ─── */
+function onFloorPlanLoad(){
+  var img = document.getElementById('floorplanImg');
+  var container = document.getElementById('floorplanContainer');
+  if (!img || !container) { return; }
+  var ui = ensureFacilityUi();
+  var cw = container.clientWidth;
+  var iw = img.naturalWidth;
+  if (iw > cw) { ui.zoom = cw / iw; } else { ui.zoom = 1; }
+  ui.panX = 0; ui.panY = 0;
+  applyFloorPlanTransform();
+  initFloorPlanInteraction();
+}
+function onFloorPlanError(){
+  var container = document.getElementById('floorplanContainer');
+  if (container) { container.innerHTML = '<div class="empty" style="padding:40px">Floor plan image failed to load. Check the URL or SharePoint permissions.</div>'; }
+}
+function applyFloorPlanTransform(){
+  var inner = document.getElementById('floorplanInner');
+  if (!inner) { return; }
+  var ui = ensureFacilityUi();
+  inner.style.transform = 'translate(' + ui.panX + 'px,' + ui.panY + 'px) scale(' + ui.zoom + ')';
+}
+function initFloorPlanInteraction(){
+  var container = document.getElementById('floorplanContainer');
+  if (!container || container._fpInit) { return; }
+  container._fpInit = true;
+  var ui = ensureFacilityUi();
+  var dragging = false; var startX = 0; var startY = 0; var startPanX = 0; var startPanY = 0; var moved = false;
+  container.addEventListener('mousedown', function(e){
+    if (e.button !== 0) { return; }
+    if (ui.floorPlanMode === 'picker') { return; }
+    dragging = true; moved = false; startX = e.clientX; startY = e.clientY; startPanX = ui.panX; startPanY = ui.panY;
+    container.classList.add('dragging');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e){
+    if (!dragging) { return; }
+    var dx = e.clientX - startX; var dy = e.clientY - startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) { moved = true; }
+    ui.panX = startPanX + dx; ui.panY = startPanY + dy;
+    applyFloorPlanTransform();
+  });
+  document.addEventListener('mouseup', function(){
+    if (dragging) { dragging = false; container.classList.remove('dragging'); }
+  });
+  container.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var delta = e.deltaY > 0 ? -0.1 : 0.1;
+    ui.zoom = Math.max(0.15, Math.min(5, ui.zoom + delta));
+    applyFloorPlanTransform();
+  }, { passive: false });
+  container.addEventListener('click', function(e){
+    if (moved) { return; }
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      handlePickerClick(e);
+    }
+  });
+  container.addEventListener('mouseover', function(e){
+    var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
+    if (!marker && e.target.classList && e.target.classList.contains('seat-marker')) { marker = e.target; }
+    if (marker) { showSeatTooltip(marker, e); }
+  });
+  container.addEventListener('mouseout', function(e){
+    var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
+    if (!marker && e.target.classList && e.target.classList.contains('seat-marker')) { marker = e.target; }
+    if (marker) { hideSeatTooltip(); }
+  });
+}
+function floorPlanZoom(direction){
+  var ui = ensureFacilityUi();
+  if (direction === 'in') { ui.zoom = Math.min(5, ui.zoom * 1.25); }
+  else if (direction === 'out') { ui.zoom = Math.max(0.15, ui.zoom * 0.8); }
+  else { onFloorPlanLoad(); return; }
+  applyFloorPlanTransform();
+}
+
+/* ─── Seat Tooltip ─── */
+function showSeatTooltip(marker, e){
+  var raw = marker.getAttribute('data-seat-tooltip');
+  if (!raw) { return; }
+  var data; try { data = JSON.parse(raw); } catch(err) { return; }
+  var tip = document.getElementById('seatTooltip');
+  if (!tip) { return; }
+  var html = '<div class="st-name">' + escHtml(data.label) + '</div>';
+  html += '<div class="st-row"><span class="st-label">Occupant</span><span>' + escHtml(data.occupant || 'Available') + '</span></div>';
+  html += '<div class="st-row"><span class="st-label">Status</span><span>' + statusBadge(data.status) + '</span></div>';
+  if (data.port) { html += '<div class="st-row"><span class="st-label">Port</span><span>' + escHtml(data.port) + '</span></div>'; }
+  if (data.phone) { html += '<div class="st-row"><span class="st-label">Phone</span><span>' + escHtml(data.phone) + '</span></div>'; }
+  if (data.vtc) { html += '<div class="st-row"><span class="st-label">VTC</span><span class="badge ok">Yes</span></div>'; }
+  if (data.networks) { html += '<div class="st-nets">' + data.networks.split(' ').map(function(n){ return '<span class="badge info">' + escHtml(n) + '</span>'; }).join('') + '</div>'; }
+  if (data.notes) { html += '<div class="st-row" style="margin-top:4px"><span class="mini muted">' + escHtml(data.notes) + '</span></div>'; }
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  var rect = marker.getBoundingClientRect();
+  tip.style.left = Math.min(rect.left + 20, window.innerWidth - 340) + 'px';
+  tip.style.top = Math.max(10, rect.top - 10) + 'px';
+}
+function hideSeatTooltip(){
+  var tip = document.getElementById('seatTooltip');
+  if (tip) { tip.style.display = 'none'; }
+}
+
+/* ─── Coordinate Picker Tool ─── */
+function handlePickerClick(e){
+  var container = document.getElementById('floorplanContainer');
+  var inner = document.getElementById('floorplanInner');
+  if (!container || !inner) { return; }
+  var ui = ensureFacilityUi();
+  var rect = inner.getBoundingClientRect();
+  var x = Math.round((e.clientX - rect.left) / ui.zoom);
+  var y = Math.round((e.clientY - rect.top) / ui.zoom);
+  ui.pickerPending = { x: x, y: y };
+  openSeatPlacementModal(x, y);
+}
+function openSeatPlacementModal(x, y){
+  var ui = ensureFacilityUi();
+  var facilityId = ui.selectedFacilityId;
+  var rooms = (APP.state.data.rooms || []).filter(function(r){ return r.FacilityID && r.FacilityID.Id === facilityId; });
+  var roomOpts = rooms.map(function(r){
+    var sel = ui.selectedRoomId && r.Id === ui.selectedRoomId ? ' selected' : '';
+    return '<option value="' + escAttr(r.Id) + '"' + sel + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + '</option>';
+  }).join('');
+  var personOpts = (APP.state.data.people || []).map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  APP.modalState.pickerCoords = { x: x, y: y };
+  var body = '<div class="form-grid">'
+    + formField('Coordinates', '<input class="input" value="X: ' + x + ', Y: ' + y + '" disabled />')
+    + formField('Room', '<select id="pickerRoom" class="select"><option value="">-- Select --</option>' + roomOpts + '</select>')
+    + formField('Seat Label', '<input id="pickerSeatLabel" class="input" placeholder="e.g., A-01, B-12, Seat 5" />')
+    + formField('Assign Person', '<select id="pickerPerson" class="select"><option value="">-- None (Available) --</option>' + personOpts + '</select>')
+    + formField('Port Number', '<input id="pickerPort" class="input" placeholder="e.g., P-1A-04" />')
+    + formField('Phone Number', '<input id="pickerPhone" class="input" placeholder="DSN or commercial" />')
+    + formField('NIPR', '<select id="pickerNIPR" class="select"><option value="Yes">Yes</option><option value="No" selected>No</option></select>')
+    + formField('SIPR', '<select id="pickerSIPR" class="select"><option value="Yes">Yes</option><option value="No" selected>No</option></select>')
+    + formField('JWICS', '<select id="pickerJWICS" class="select"><option value="Yes">Yes</option><option value="No" selected>No</option></select>')
+    + formField('VTC Enabled', '<select id="pickerVTC" class="select"><option value="Yes">Yes</option><option value="No" selected>No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="pickerNotes" class="textarea" style="min-height:60px" placeholder="Seat notes, special configuration details"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Place Seat at (' + x + ', ' + y + ')', body, '<div><button class="btn" data-action="close-modal" onclick="clearPickerPending()">Cancel</button></div><div><button class="btn primary" data-action="save-picker-seat">Save Seat</button></div>', 'Creates a new seat record with mapped coordinates');
+}
+function clearPickerPending(){
+  var ui = ensureFacilityUi();
+  ui.pickerPending = null;
+}
+function savePickerSeat(){
+  var coords = APP.modalState.pickerCoords;
+  if (!coords) { toast('Missing coordinate data.', 'danger'); return; }
+  var roomId = document.getElementById('pickerRoom').value;
+  var seatLabel = document.getElementById('pickerSeatLabel').value;
+  var errors = runValidation([
+    function(){ return validateRequired(roomId, 'Room'); },
+    function(){ return validateRequired(seatLabel, 'Seat Label'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var personId = document.getElementById('pickerPerson').value;
+  var values = {
+    Title: seatLabel,
+    SeatLabel: seatLabel,
+    SeatID: seatLabel,
+    RoomID: parseInt(roomId, 10),
+    XCoord: String(coords.x),
+    YCoord: String(coords.y),
+    PortNumber: document.getElementById('pickerPort').value,
+    PhoneNumber: document.getElementById('pickerPhone').value,
+    HasNIPR: document.getElementById('pickerNIPR').value === 'Yes',
+    HasSIPR: document.getElementById('pickerSIPR').value === 'Yes',
+    HasJWICS: document.getElementById('pickerJWICS').value === 'Yes',
+    VTCEnabled: document.getElementById('pickerVTC').value === 'Yes',
+    CurrentPersonID: personId ? parseInt(personId, 10) : null,
+    SeatStatus: personId ? 'Occupied' : 'Available',
+    Notes: document.getElementById('pickerNotes').value
+  };
+  createListItem(APP.lists.Seats, values, { entityType: 'Seat', reason: 'Coordinate picker placement' }).then(function(){
+    toast('Seat placed at (' + coords.x + ', ' + coords.y + ').', 'ok');
+    clearPickerPending();
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Seat creation failed.', 'danger'); });
+}
+function setFloorPlanUrl(){
+  var ui = ensureFacilityUi();
+  var facility = null;
+  (APP.state.data.facilities || []).some(function(f){ if (f.Id === ui.selectedFacilityId) { facility = f; return true; } return false; });
+  if (!facility) { toast('Select a facility first.', 'danger'); return; }
+  var currentUrl = facility.FloorPlanUrl || '';
+  var body = '<div class="form-grid">'
+    + formField('Building', '<input class="input" value="' + escAttr(facility.BuildingNumber || facility.Title || '') + '" disabled />')
+    + '<div class="full">' + formField('Floor Plan Image URL', '<input id="floorPlanUrlInput" class="input" placeholder="e.g., /sites/CCSDAdminSPA/SiteAssets/Images/Building Plans/Bldg 2028 Floor 1.jpg" value="' + escAttr(currentUrl) + '" />') + '</div>'
+    + '<div class="full"><div class="small-note">Enter the SharePoint-relative or full URL to the floor plan image (JPG/PNG). This will be stored on the facility record.</div></div>'
+    + '</div>';
+  openModal('Set Floor Plan URL', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-floorplan-url">Save URL</button></div>', facility.BuildingNumber || '');
+}
+function saveFloorPlanUrl(){
+  var ui = ensureFacilityUi();
+  var url = (document.getElementById('floorPlanUrlInput').value || '').trim();
+  if (!url) { toast('URL is required.', 'danger'); return; }
+  var facility = null;
+  (APP.state.data.facilities || []).some(function(f){ if (f.Id === ui.selectedFacilityId) { facility = f; return true; } return false; });
+  if (!facility) { toast('No facility selected.', 'danger'); return; }
+  updateListItem(APP.lists.Facilities, facility.Id, { FloorPlanUrl: url }, { entityType: 'Facility', before: facility, reason: 'Set floor plan URL' }).then(function(){
+    toast('Floor plan URL saved.', 'ok');
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Failed to save floor plan URL.', 'danger'); });
+}
+
+/* ─── Expose global callbacks for image load/error ─── */
+window.onFloorPlanLoad = onFloorPlanLoad;
+window.onFloorPlanError = onFloorPlanError;
+window.clearPickerPending = clearPickerPending;
+
 function renderRoomDetail(facilityId, roomId){
   var rooms = APP.state.data.rooms || [];
   var seats = APP.state.data.seats || [];
@@ -3061,7 +3355,9 @@ function renderRoomDetail(facilityId, roomId){
   html += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length)) + '</div><div class="t">Total Seats</div></div><div class="org-kpi"><div class="n">' + escHtml(String(occupied)) + '</div><div class="t">Occupied</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length - occupied)) + '</div><div class="t">Available</div></div><div class="org-kpi"><div class="n">' + escHtml(String(room.MaxSeats || roomSeats.length)) + '</div><div class="t">Max Capacity</div></div></div>';
   html += '</div>';
   html += '<div class="section-head"><div class="section-title">Seat Map</div></div>';
-  html += renderSeatMap(roomSeats, room);
+  var facility = null;
+  (APP.state.data.facilities || []).some(function(f){ if (String(f.Id) === String(facilityId)) { facility = f; return true; } return false; });
+  html += renderSeatMap(roomSeats, room, facility);
   return html;
 }
 function renderFacilities(){
@@ -3108,11 +3404,24 @@ function renderFacilities(){
       html += '</div>';
     });
     html += '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Room Detail & Seat Map</div><div class="card-sub">Select a facility then a room to see the interactive seat layout.</div></div></div><div class="card-body">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Room Detail & Seat Map</div><div class="card-sub">Select a facility then a room to see the interactive seat layout, or view the full building floor plan.</div></div></div><div class="card-body">';
     if (ui.selectedRoomId) {
       html += renderRoomDetail(ui.selectedFacilityId, ui.selectedRoomId);
     } else if (ui.selectedFacilityId) {
-      html += '<div class="empty">Select a room from the facility panel to view its seat map.</div>';
+      var selFacility = null;
+      facilities.some(function(f){ if (f.Id === ui.selectedFacilityId) { selFacility = f; return true; } return false; });
+      var fpUrl = selFacility ? getFloorPlanUrl(selFacility, null) : '';
+      if (fpUrl) {
+        var allFacSeats = seats.filter(function(s){
+          if (!s.RoomID) { return false; }
+          return rooms.some(function(r){ return r.Id === s.RoomID.Id && r.FacilityID && r.FacilityID.Id === ui.selectedFacilityId; });
+        });
+        html += '<div class="org-detail-hero" style="margin-bottom:16px"><div class="org-detail-title">' + escHtml((selFacility.BuildingNumber || selFacility.Title || 'Building') + ' — Full Floor Plan') + '</div><div class="org-detail-sub">All seats across all rooms shown on the building floor plan. Select a room above to filter.</div></div>';
+        html += renderFloorPlanView(allFacSeats, null, selFacility, fpUrl);
+        html += '<div id="seatTooltip" class="seat-tooltip" style="display:none"></div>';
+      } else {
+        html += '<div class="empty">Select a room from the facility panel to view its seat map.' + (canSeeAdmin() ? ' Or <button class="btn subtle" data-action="enter-floorplan-url" style="display:inline">set a floor plan image URL</button> for this building.' : '') + '</div>';
+      }
     } else {
       html += '<div class="empty">Select a facility and room to explore the seat layout, occupancy, and network capability map.</div>';
     }
@@ -4105,6 +4414,14 @@ function handleClick(e){
   if (action === 'refresh-all') { refreshAll(); return; }
   if (action === 'select-facility') { ensureFacilityUi(); var fid = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = APP.state.facilityUi.selectedFacilityId === fid ? null : fid; APP.state.facilityUi.selectedRoomId = null; renderFacilities(); return; }
   if (action === 'select-room') { ensureFacilityUi(); APP.state.facilityUi.selectedRoomId = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = Number(el.getAttribute('data-facility')); renderFacilities(); return; }
+  if (action === 'enter-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
+  if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; renderFacilities(); return; }
+  if (action === 'save-picker-seat') { savePickerSeat(); return; }
+  if (action === 'enter-floorplan-url') { setFloorPlanUrl(); return; }
+  if (action === 'save-floorplan-url') { saveFloorPlanUrl(); return; }
+  if (action === 'floorplan-zoom-in') { floorPlanZoom('in'); return; }
+  if (action === 'floorplan-zoom-out') { floorPlanZoom('out'); return; }
+  if (action === 'floorplan-zoom-reset') { floorPlanZoom('reset'); return; }
   if (action === 'export-facilities') { exportTableToCSV('.table-wrap table', 'facilities_export'); return; }
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
   if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
