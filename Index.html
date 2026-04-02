@@ -5515,7 +5515,10 @@ function renderCalendarHeader(ui){
   /* Search */
   html += '<input class="cal-scope-select" id="calSearchInput" placeholder="Search names..." value="' + escAttr(ui.search) + '" style="width:140px" />';
   /* Add entry (admin) */
+  html += '<button class="btn subtle" data-action="cal-export-csv" style="padding:4px 8px;font-size:10px">CSV</button>';
+  html += '<button class="btn subtle" data-action="cal-export-ics" style="padding:4px 8px;font-size:10px">ICS</button>';
   if (canSeeAdmin()) {
+    html += '<button class="btn subtle" data-action="cal-bulk-import" style="padding:4px 8px;font-size:10px">Import</button>';
     html += '<button class="btn primary" data-action="cal-add-entry" style="padding:6px 12px;font-size:11px">+ Time Off</button>';
   }
   html += '</div></div>';
@@ -5535,7 +5538,8 @@ function renderCalendarLegend(){
 /* ─── Calendar Data Helpers ─── */
 function getCalendarEntries(ui){
   var entries = (APP.state.data.timeOff || []).filter(function(e){
-    return e.Status === 'Approved' || e.Status === 'approved';
+    var s = String(e.Status || '').toLowerCase();
+    return s === 'approved' || s === 'pending' || s === 'denied';
   });
   var people = APP.state.data.people || [];
   var peopleById = {};
@@ -5644,7 +5648,9 @@ function renderCalendarMonth(ui){
     dayEntries.slice(0, 4).forEach(function(e){
       var t = getCalType(e.TimeOffType);
       var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title.split(',')[0] : 'Unknown';
-      html += '<div class="cal-entry ' + t.key + '" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '" title="' + escAttr(name + ' – ' + (e.TimeOffType || 'Time Off')) + '">' + escHtml(name) + '</div>';
+      var entryStatus = String(e.Status || '').toLowerCase();
+      var entryStyle = entryStatus === 'pending' ? 'opacity:.5;border:1px dashed rgba(255,255,255,.3)' : entryStatus === 'denied' ? 'opacity:.35;text-decoration:line-through' : '';
+      html += '<div class="cal-entry ' + t.key + '" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '" title="' + escAttr(name + ' – ' + (e.TimeOffType || 'Time Off') + (entryStatus !== 'approved' ? ' (' + entryStatus + ')' : '')) + '" style="' + entryStyle + '">' + escHtml(name) + '</div>';
     });
     if (dayEntries.length > 4) {
       html += '<div class="cal-entry other" style="text-align:center;font-size:8px">+' + (dayEntries.length - 4) + ' more</div>';
@@ -5933,6 +5939,104 @@ function deleteTimeOffEntry(entryId){
     APP.state.data.timeOff = null;
     renderCalendar();
   }).catch(function(){ toast('Delete failed.', 'danger'); });
+}
+
+/* ─── Calendar: Export to CSV ─── */
+function exportCalendarCSV(){
+  var ui = ensureCalendarUi();
+  var entries = getCalendarEntries(ui);
+  var headers = ['Person','Type','Start','End','Status','Hours','Notes'];
+  var csv = headers.join(',') + '\n';
+  entries.forEach(function(e){
+    var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : '';
+    csv += [name, e.TimeOffType || '', (e.StartDate || '').slice(0,10), (e.EndDate || e.StartDate || '').slice(0,10), e.Status || '', e.Hours || '', (e.Notes || '').replace(/[\n\r]/g, ' ')].map(function(c){ return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
+  });
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'calendar_export_' + ui.year + '-' + String(ui.month + 1).padStart(2, '0') + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Calendar exported to CSV.', 'ok');
+}
+
+/* ─── Calendar: Export to ICS ─── */
+function exportCalendarICS(){
+  var ui = ensureCalendarUi();
+  var entries = getCalendarEntries(ui);
+  var ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//CCSD Admin SPA//EN\r\n';
+  entries.forEach(function(e){
+    var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : 'Unknown';
+    var start = (e.StartDate || '').slice(0,10).replace(/-/g, '');
+    var end = (e.EndDate || e.StartDate || '').slice(0,10).replace(/-/g, '');
+    /* ICS DTEND for all-day is exclusive, so add 1 day */
+    var endDt = new Date((e.EndDate || e.StartDate || '').slice(0,10));
+    endDt.setDate(endDt.getDate() + 1);
+    var endStr = endDt.toISOString().slice(0,10).replace(/-/g, '');
+    ics += 'BEGIN:VEVENT\r\n';
+    ics += 'DTSTART;VALUE=DATE:' + start + '\r\n';
+    ics += 'DTEND;VALUE=DATE:' + endStr + '\r\n';
+    ics += 'SUMMARY:' + (e.TimeOffType || 'Time Off') + ' - ' + name + '\r\n';
+    ics += 'DESCRIPTION:' + (e.Notes || '').replace(/[\r\n]/g, '\\n') + '\r\n';
+    ics += 'UID:' + (e.Id || Math.random()) + '@ccsd-spa\r\n';
+    ics += 'END:VEVENT\r\n';
+  });
+  ics += 'END:VCALENDAR\r\n';
+  var blob = new Blob([ics], { type: 'text/calendar' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'calendar_export_' + ui.year + '-' + String(ui.month + 1).padStart(2, '0') + '.ics';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Calendar exported to ICS.', 'ok');
+}
+
+/* ─── Calendar: Bulk Import Time-Off from CSV ─── */
+function openBulkTimeOffImportModal(){
+  var body = '<div style="margin-bottom:12px">Paste CSV data to bulk-create time-off entries. Format: <code>PersonID, StartDate, EndDate, Type, Hours, Notes</code></div>'
+    + '<div>' + formField('CSV Data', '<textarea id="bulkTimeOffCsv" class="textarea" rows="8" placeholder="101, 2026-04-10, 2026-04-11, Annual Leave, 16, Spring break\n102, 2026-04-14, 2026-04-14, TDY, 8, Conference"></textarea>') + '</div>';
+  openModal('Bulk Time-Off Import', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-timeoff">Import</button></div>');
+}
+function saveBulkTimeOff(){
+  var raw = (document.getElementById('bulkTimeOffCsv').value || '').trim();
+  if (!raw) { toast('No data provided.', 'danger'); return; }
+  var lines = raw.split('\n').filter(function(l){ return l.trim(); });
+  var promises = lines.map(function(line){
+    var parts = line.split(',').map(function(s){ return s.trim(); });
+    if (parts.length < 4) { return Promise.resolve(); }
+    return createListItem(APP.lists.TimeOff, {
+      Title: (parts[3] || 'Time Off') + ' - Person ' + parts[0],
+      PersonID: parseInt(parts[0], 10),
+      StartDate: parts[1],
+      EndDate: parts[2] || parts[1],
+      TimeOffType: parts[3] || 'Other',
+      Hours: parts[4] ? parseFloat(parts[4]) : null,
+      Notes: parts[5] || '',
+      Status: 'Approved'
+    }, { entityType: 'TimeOff', reason: 'Bulk import' });
+  });
+  toast('Importing ' + lines.length + ' entries...', 'ok');
+  Promise.all(promises).then(function(){
+    toast(lines.length + ' time-off entries imported.', 'ok');
+    closeModal();
+    APP.state.data.timeOff = null;
+    renderCalendar();
+  }).catch(function(){ toast('Some imports may have failed.', 'danger'); });
+}
+
+/* ─── Calendar: Upcoming Time Off for Home ─── */
+function getUpcomingTimeOff(daysAhead){
+  daysAhead = daysAhead || 7;
+  var now = new Date(); now.setHours(0,0,0,0);
+  var cutoff = new Date(now.getTime() + daysAhead * 86400000);
+  var me = APP.state.currentPersonnel;
+  if (!me) { return []; }
+  return (APP.state.data.timeOff || []).filter(function(e){
+    var pid = e.PersonID ? (e.PersonID.Id || e.PersonID) : null;
+    if (String(pid) !== String(me.Id)) { return false; }
+    var sd = new Date((e.StartDate || '').slice(0,10));
+    return sd >= now && sd <= cutoff;
+  });
 }
 
 function renderAssets(){
@@ -6684,6 +6788,10 @@ function handleClick(e){
   if (action === 'cal-add-entry') { openAddTimeOffModal(); return; }
   if (action === 'cal-save-entry') { saveTimeOffEntry(); return; }
   if (action === 'cal-delete-entry') { deleteTimeOffEntry(el.getAttribute('data-entry-id')); return; }
+  if (action === 'cal-export-csv') { exportCalendarCSV(); return; }
+  if (action === 'cal-export-ics') { exportCalendarICS(); return; }
+  if (action === 'cal-bulk-import') { openBulkTimeOffImportModal(); return; }
+  if (action === 'save-bulk-timeoff') { saveBulkTimeOff(); return; }
   if (action === 'export-facilities') { exportTableToCSV('.table-wrap table', 'facilities_export'); return; }
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
   if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
