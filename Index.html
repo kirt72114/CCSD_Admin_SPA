@@ -3788,7 +3788,7 @@ function renderRequests(){
     html += '<div class="exec-strip"><div class="title">Request Backbone</div><div class="item"><span class="swatch"></span>Visible Requests ' + escHtml(String(visible.length)) + '</div><div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(openCount)) + '</div><div class="item"><span class="swatch"></span>Office Queue ' + escHtml(String(summary.queue.length)) + '</div><div class="item"><span class="swatch"></span>Overdue ' + escHtml(String(overdueCount)) + '</div></div>';
     html += '<div class="grid cols-2">';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">My Requests</div><div class="card-sub">Requests connected to the current user or personnel record.</div></div><div class="filter-row"><input id="requestsSearchInput" class="input" style="width:260px" placeholder="Search requests" /></div></div><div class="card-body">' + renderRequestTable(visible, true) + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Office Queue</div><div class="card-sub">Assigned or office-routed items needing action.</div></div><button class="btn subtle" data-action="open-create-request">New Request</button></div><div class="card-body">' + renderRequestTable(summary.queue, false) + '</div></div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Office Queue</div><div class="card-sub">Assigned or office-routed items needing action.</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn subtle" data-action="open-create-request">New Request</button><button class="btn subtle" data-action="open-request-templates">From Template</button>' + (canManageInOut() ? '<button class="btn subtle" data-action="supervisor-request-dashboard">Team Requests</button>' : '') + '</div></div><div class="card-body">' + renderRequestTable(summary.queue, false) + '</div></div>';
     html += '</div>';
     setView(html);
   }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">Requests failed to load.</div></div></div>'); });
@@ -3807,7 +3807,18 @@ function openRequestDetail(id){
   var row = null;
   (APP.state.data.requests || []).some(function(r){ if (String(r.Id) === String(id)) { row = r; return true; } return false; });
   if (!row) { toast('Request not found.', 'danger'); return; }
-  var body = '<div class="kv">'
+  /* SLA indicator */
+  var slaHtml = '';
+  if (row.DueDate) {
+    var dl = daysUntil(row.DueDate);
+    var isClosed = String(row.Status || '').toLowerCase().indexOf('closed') >= 0 || String(row.Status || '').toLowerCase().indexOf('complete') >= 0;
+    if (!isClosed && dl != null) {
+      var slaColor = dl < 0 ? 'var(--danger)' : dl <= 3 ? 'var(--warn)' : 'var(--ok)';
+      var slaLabel = dl < 0 ? Math.abs(dl) + ' days overdue' : dl === 0 ? 'Due today' : dl + ' days remaining';
+      slaHtml = '<div style="margin-bottom:12px;padding:8px 12px;border-radius:10px;border:1px solid ' + slaColor + ';background:rgba(255,255,255,.03);display:flex;align-items:center;gap:10px"><div style="width:10px;height:10px;border-radius:50%;background:' + slaColor + '"></div><span style="font-weight:700;color:' + slaColor + '">' + escHtml(slaLabel) + '</span></div>';
+    }
+  }
+  var body = slaHtml + '<div class="kv">'
     + '<div class="k">Title</div><div class="v">' + escHtml(row.Title || '') + '</div>'
     + '<div class="k">Request Type</div><div class="v">' + escHtml(row.RequestType || '') + '</div>'
     + '<div class="k">Status</div><div class="v">' + statusBadge(row.Status || 'Open') + '</div>'
@@ -3821,6 +3832,15 @@ function openRequestDetail(id){
     + '<div class="k">Details</div><div class="v">' + escHtml(row.Details || '') + '</div>'
     + '<div class="k">Correlation ID</div><div class="v">' + escHtml(row.CorrelationID || '') + '</div>'
     + '</div>';
+  /* Comment thread */
+  var comments = parseRequestComments(row);
+  if (comments.length) {
+    body += '<div style="margin-top:14px"><div class="small-note" style="margin-bottom:6px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Comment History</div>';
+    comments.forEach(function(c){
+      body += '<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:12px"><div style="font-weight:600;color:var(--accent)">' + escHtml(c.by || '') + ' <span style="color:var(--muted);font-weight:400">' + escHtml(c.on || '') + '</span></div><div style="margin-top:4px">' + escHtml(c.text || '') + '</div></div>';
+    });
+    body += '</div>';
+  }
   openModal('Request Detail', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', row.RequestID || '');
 }
 function openCreateRequestModal(){
@@ -3870,6 +3890,70 @@ function saveRequest(){
     return ensureRequestsLoaded(true).then(function(){ renderRequests(); });
   }).catch(function(){ toast('Request creation failed.', 'danger'); });
 }
+
+/* ─── Supervisor Request Dashboard ─── */
+function openSupervisorRequestDashboard(){
+  Promise.all([ensureRequestsLoaded(), ensurePeopleLoaded()]).then(function(){
+    var me = APP.state.currentPersonnel;
+    if (!me) { toast('Current personnel not loaded.', 'danger'); return; }
+    var myOrgId = me.OrgID ? (me.OrgID.Id || me.OrgID) : null;
+    var orgIds = myOrgId ? getOrgAndDescendants(myOrgId) : {};
+    var people = APP.state.data.people || [];
+    var teamPeople = people.filter(function(p){
+      var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null;
+      return oid && orgIds[oid];
+    });
+    var teamPeopleIds = {};
+    teamPeople.forEach(function(p){ teamPeopleIds[p.Id] = true; });
+    var requests = APP.state.data.requests || [];
+    var teamRequests = requests.filter(function(r){
+      var pid = r.PersonID ? (r.PersonID.Id || r.PersonID) : null;
+      return pid && teamPeopleIds[pid];
+    });
+    var open = teamRequests.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('complete') < 0; });
+    var overdue = open.filter(function(r){ var d = daysUntil(r.DueDate); return d != null && d < 0; });
+    var body = '<div style="display:flex;gap:12px;margin-bottom:14px">';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + teamRequests.length + '</div><div class="kpi-label">Total Team Requests</div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + open.length + '</div><div class="kpi-label">Open</div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value" style="color:' + (overdue.length ? 'var(--danger)' : 'var(--ok)') + '">' + overdue.length + '</div><div class="kpi-label">Overdue</div></div>';
+    body += '</div>';
+    if (!open.length) { body += '<div class="empty">No open requests from your team.</div>'; }
+    else {
+      body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Title</th><th>Requester</th><th>Type</th><th>Status</th><th>Due</th><th>SLA</th></tr></thead><tbody>';
+      open.forEach(function(r){
+        var d = daysUntil(r.DueDate);
+        var slaColor = d == null ? '' : d < 0 ? 'var(--danger)' : d <= 3 ? 'var(--warn)' : 'var(--ok)';
+        var slaText = d == null ? '—' : d < 0 ? Math.abs(d) + 'd overdue' : d + 'd left';
+        body += '<tr><td><button class="btn subtle" data-action="view-request" data-id="' + escAttr(r.Id) + '" style="padding:2px 6px">' + escHtml(r.Title || r.RequestID || '') + '</button></td><td>' + escHtml((r.Requester && r.Requester.Title) || '') + '</td><td>' + escHtml(r.RequestType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(formatDate(r.DueDate)) + '</td><td style="color:' + slaColor + ';font-weight:700">' + escHtml(slaText) + '</td></tr>';
+      });
+      body += '</tbody></table>';
+    }
+    openModal('Supervisor Request Dashboard', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Your team\'s requests');
+  });
+}
+
+/* ─── Request Templates ─── */
+var REQUEST_TEMPLATES = {
+  'IT - New Account': { type: 'IT', priority: 'Routine', details: 'Request new user account for: [Name]\nSystem(s): [System names]\nJustification: [Reason]\nSponsor: [Supervisor name]' },
+  'IT - Hardware Issue': { type: 'IT', priority: 'High', details: 'Hardware issue:\nAsset Tag: [Tag #]\nDescription: [What is wrong]\nLocation: [Building/Room]\nImpact: [Who is affected]' },
+  'HR - Personnel Action': { type: 'HR', priority: 'Routine', details: 'Personnel action requested:\nAction type: [Award/Promotion/Reassignment/Other]\nEmployee: [Name]\nEffective date: [Date]\nJustification: [Reason]' },
+  'Facilities - Maintenance': { type: 'Facilities', priority: 'Routine', details: 'Maintenance request:\nBuilding: [Building name]\nRoom/Area: [Location]\nIssue: [Description]\nUrgency: [Routine/Urgent/Emergency]' },
+  'Security - Access Request': { type: 'Security', priority: 'Routine', details: 'Access request:\nPerson: [Name]\nArea/System: [What access is needed]\nJustification: [Reason]\nDuration: [Permanent/Temporary - end date]' },
+  'Training - Course Request': { type: 'Training', priority: 'Routine', details: 'Training request:\nCourse: [Course name]\nProvider: [Training provider]\nDates: [Start - End]\nCost: [$Amount]\nJustification: [Why this training is needed]' }
+};
+function openCreateRequestFromTemplate(templateName){
+  var tmpl = REQUEST_TEMPLATES[templateName];
+  if (!tmpl) { openCreateRequestModal(); return; }
+  var body = '<div class="form-grid">'
+    + formField('Title', '<input id="requestTitle" class="input" value="' + escAttr(templateName) + '" />')
+    + formField('Type', '<select id="requestType" class="select"><option value="Administrative"' + (tmpl.type === 'Administrative' ? ' selected' : '') + '>Administrative</option><option value="Training"' + (tmpl.type === 'Training' ? ' selected' : '') + '>Training</option><option value="SF182"' + (tmpl.type === 'SF182' ? ' selected' : '') + '>SF182</option><option value="Facilities"' + (tmpl.type === 'Facilities' ? ' selected' : '') + '>Facilities</option><option value="IT"' + (tmpl.type === 'IT' ? ' selected' : '') + '>IT</option><option value="Security"' + (tmpl.type === 'Security' ? ' selected' : '') + '>Security</option><option value="HR"' + (tmpl.type === 'HR' ? ' selected' : '') + '>HR</option><option value="Hardware"' + (tmpl.type === 'Hardware' ? ' selected' : '') + '>Hardware</option><option value="Software"' + (tmpl.type === 'Software' ? ' selected' : '') + '>Software</option></select>')
+    + formField('Priority', '<select id="requestPriority" class="select"><option value="Routine"' + (tmpl.priority === 'Routine' ? ' selected' : '') + '>Routine</option><option value="High"' + (tmpl.priority === 'High' ? ' selected' : '') + '>High</option><option value="Urgent"' + (tmpl.priority === 'Urgent' ? ' selected' : '') + '>Urgent</option></select>')
+    + formField('Due Date', '<input id="requestDueDate" type="date" class="input" />')
+    + '<div class="full">' + formField('Details', '<textarea id="requestDetails" class="textarea" style="min-height:120px">' + escHtml(tmpl.details || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('New Request — ' + escHtml(templateName), body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-request">Create Request</button></div>');
+}
+
 function renderInOut(){
   renderLoading('Loading in/out processing...');
   return Promise.all([ensureInOutLoaded(), ensureInOutStepsLoaded(), ensureCurrentPersonnelLoaded()]).then(function(){
@@ -6562,6 +6646,15 @@ function handleClick(e){
   if (action === 'review-submission-reject') { reviewSubmission(el.getAttribute('data-id'), false); return; }
   if (action === 'view-request') { openRequestDetail(el.getAttribute('data-id')); return; }
   if (action === 'open-create-request') { openCreateRequestModal(); return; }
+  if (action === 'open-request-templates') {
+    var tmplBody = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">';
+    Object.keys(REQUEST_TEMPLATES).forEach(function(name){ tmplBody += '<button class="btn" data-action="use-request-template" data-template="' + escAttr(name) + '" style="text-align:left;padding:12px">' + escHtml(name) + '</button>'; });
+    tmplBody += '</div>';
+    openModal('Request Templates', tmplBody, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+    return;
+  }
+  if (action === 'use-request-template') { closeModal(); openCreateRequestFromTemplate(el.getAttribute('data-template')); return; }
+  if (action === 'supervisor-request-dashboard') { openSupervisorRequestDashboard(); return; }
   if (action === 'save-request') { saveRequest(); return; }
   if (action === 'open-inout-create') { openCreateInOutModal(); return; }
   if (action === 'save-inout') { saveInOut(); return; }
