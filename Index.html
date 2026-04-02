@@ -225,8 +225,79 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .notif-badge:after{content:attr(data-count);position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 
 /* ─── Seat map styles ─── */
-.seat-map-wrap{position:relative;border:1px solid var(--line);border-radius:14px;padding:12px;overflow:auto}
+.seat-map-wrap{position:relative;border:1px solid var(--line);border-radius:14px;padding:0;overflow:hidden}
 .seat-map-wrap svg text{user-select:none}
+
+/* ─── Floor Plan Viewer ─── */
+.floorplan-wrapper{display:flex;gap:12px;align-items:stretch}
+.floorplan-main{flex:1;min-width:0}
+.floorplan-sidebar{width:240px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;max-height:70vh;overflow:hidden}
+.floorplan-sidebar .sb-head{padding:10px 12px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.floorplan-sidebar .sb-search{width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font-size:11px;margin-top:6px}
+.floorplan-sidebar .sb-list{flex:1;overflow-y:auto;padding:4px}
+.floorplan-sidebar .sb-item{padding:6px 10px;border-radius:8px;cursor:pointer;font-size:11px;transition:.15s background;display:flex;align-items:center;gap:8px;border:1px solid transparent}
+.floorplan-sidebar .sb-item:hover,.floorplan-sidebar .sb-item.highlight{background:rgba(101,213,255,.1);border-color:rgba(101,213,255,.2)}
+.floorplan-sidebar .sb-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.floorplan-sidebar .sb-dot.occupied{background:#17794f}
+.floorplan-sidebar .sb-dot.available{background:#1f7ae0}
+.floorplan-sidebar .sb-dot.maintenance{background:#a06b04}
+.floorplan-sidebar .sb-dot.unplaced{background:var(--muted);opacity:.4}
+.floorplan-sidebar .sb-info{flex:1;min-width:0}
+.floorplan-sidebar .sb-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.floorplan-sidebar .sb-sub{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.floorplan-sidebar .sb-actions{display:flex;gap:2px;opacity:0;transition:.15s opacity}
+.floorplan-sidebar .sb-item:hover .sb-actions{opacity:1}
+.floorplan-sidebar .sb-actions button{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.floorplan-sidebar .sb-actions button:hover{background:rgba(101,213,255,.2)}
+.floorplan-sidebar .sb-count{padding:6px 12px;border-top:1px solid var(--line);font-size:10px;color:var(--muted);text-align:center}
+.floorplan-container{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#0a1628;cursor:grab;user-select:none;min-height:400px;max-height:70vh}
+.floorplan-container.dragging{cursor:grabbing}
+.floorplan-inner{position:relative;transform-origin:0 0;will-change:transform}
+.floorplan-inner img{display:block;max-width:none;pointer-events:none}
+.floorplan-controls{position:absolute;top:10px;right:10px;z-index:10;display:flex;flex-direction:column;gap:4px}
+.floorplan-controls button{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(7,17,31,.85);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.floorplan-controls button:hover{background:rgba(31,122,224,.4);border-color:rgba(101,213,255,.3)}
+.floorplan-legend{position:absolute;bottom:10px;left:10px;z-index:10;display:flex;gap:6px;flex-wrap:wrap}
+.floorplan-coords{position:absolute;bottom:10px;right:10px;z-index:10;padding:4px 8px;border-radius:8px;background:rgba(7,17,31,.85);border:1px solid rgba(255,255,255,.12);font-size:10px;font-family:monospace;color:var(--accent);backdrop-filter:blur(8px);display:none}
+.picker-crosshair .floorplan-coords{display:block}
+.floorplan-crosshair-h,.floorplan-crosshair-v{position:absolute;z-index:18;pointer-events:none;display:none}
+.picker-crosshair .floorplan-crosshair-h,.picker-crosshair .floorplan-crosshair-v{display:block}
+.floorplan-crosshair-h{left:0;right:0;height:1px;background:rgba(101,213,255,.35);border-top:1px dashed rgba(101,213,255,.5)}
+.floorplan-crosshair-v{top:0;bottom:0;width:1px;background:rgba(101,213,255,.35);border-left:1px dashed rgba(101,213,255,.5)}
+
+/* ─── Seat Markers on Floor Plan ─── */
+.seat-marker{position:absolute;width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.7);cursor:pointer;transform:translate(-50%,-50%);transition:.15s transform,.15s box-shadow,.15s border-color;z-index:5;display:flex;align-items:center;justify-content:center;font-size:0}
+.seat-marker:hover{transform:translate(-50%,-50%) scale(1.4);z-index:15;box-shadow:0 0 16px rgba(101,213,255,.5)}
+.seat-marker.selected{border-color:var(--accent);box-shadow:0 0 0 4px rgba(101,213,255,.3);z-index:16;transform:translate(-50%,-50%) scale(1.3)}
+.seat-marker.occupied{background:#17794f}
+.seat-marker.available{background:#1f7ae0}
+.seat-marker.maintenance{background:#a06b04}
+.seat-marker.just-placed{animation:seatDrop .4s ease-out}
+@keyframes seatDrop{0%{transform:translate(-50%,-50%) scale(0);opacity:0}60%{transform:translate(-50%,-50%) scale(1.6);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+.seat-marker-label{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none}
+.picker-crosshair .seat-marker.draggable{cursor:grab;pointer-events:auto!important}
+.picker-crosshair .seat-marker.dragging-seat{cursor:grabbing;z-index:25;opacity:.7}
+
+/* ─── Seat Tooltip ─── */
+.seat-tooltip{position:fixed;z-index:100;background:linear-gradient(180deg,#0d1a31,#081120);border:1px solid rgba(101,213,255,.25);border-radius:14px;padding:12px 14px;box-shadow:0 16px 40px rgba(0,0,0,.5);pointer-events:none;min-width:220px;max-width:320px;font-size:12px}
+.seat-tooltip .st-name{font-weight:800;font-size:14px;margin-bottom:6px}
+.seat-tooltip .st-row{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+.seat-tooltip .st-label{color:var(--muted)}
+.seat-tooltip .st-nets{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.seat-tooltip .st-actions{display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)}
+.seat-tooltip .st-actions button{padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--text);font-size:11px;cursor:pointer;pointer-events:auto}
+.seat-tooltip .st-actions button:hover{background:rgba(101,213,255,.2)}
+.seat-tooltip .st-actions button.danger{border-color:rgba(255,111,142,.3);color:var(--danger)}
+
+/* ─── Coordinate Picker ─── */
+.picker-crosshair{cursor:crosshair!important}
+.picker-crosshair .seat-marker:not(.draggable){pointer-events:none}
+.picker-pending{position:absolute;width:24px;height:24px;border-radius:50%;border:3px dashed var(--accent);background:rgba(101,213,255,.25);transform:translate(-50%,-50%);z-index:20;animation:pulse 1s ease-in-out infinite}
+.picker-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0}
+.picker-hint{background:rgba(101,213,255,.08);border:1px solid rgba(101,213,255,.15);border-radius:10px;padding:8px 12px;font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px}
+.picker-hint strong{color:var(--accent);font-weight:700}
+.picker-stats{display:flex;gap:12px;align-items:center;font-size:11px;color:var(--muted)}
+.picker-stats .stat-val{font-weight:700;color:var(--text)}
 
 </style>
 
@@ -335,18 +406,26 @@ tr:hover td{background:#eef5ff}
 .org-tree-panel .card-body{max-height:980px;overflow:auto}
 .org-root-group{margin-bottom:12px}
 .org-node{position:relative;padding-left:0}
-.org-node.depth-1,.org-node.depth-2,.org-node.depth-3,.org-node.depth-4,.org-node.depth-5{margin-left:18px}
-.org-node.depth-1:before,.org-node.depth-2:before,.org-node.depth-3:before,.org-node.depth-4:before,.org-node.depth-5:before{content:'';position:absolute;left:-10px;top:0;bottom:8px;width:2px;background:linear-gradient(180deg,#d9e4ef,#eef3f8)}
-.org-card{border:1px solid #d6e1ec;border-radius:18px;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);box-shadow:0 10px 22px rgba(15,36,61,.05);padding:14px 14px 12px;margin-bottom:10px}
-.org-card.selected{border-color:#0f5ab8;box-shadow:0 14px 28px rgba(15,90,184,.16), inset 0 0 0 1px rgba(15,90,184,.08);background:linear-gradient(180deg,#ffffff 0%,#eef6ff 100%)}
+.org-node.depth-1,.org-node.depth-2,.org-node.depth-3,.org-node.depth-4,.org-node.depth-5{margin-left:28px}
+.org-node.depth-1:before,.org-node.depth-2:before,.org-node.depth-3:before,.org-node.depth-4:before,.org-node.depth-5:before{content:'';position:absolute;left:-14px;top:0;bottom:8px;width:2px;background:linear-gradient(180deg,#b0c5db 0%,#d9e4ef 100%)}
+.org-node.depth-1:after,.org-node.depth-2:after,.org-node.depth-3:after,.org-node.depth-4:after,.org-node.depth-5:after{content:'';position:absolute;left:-14px;top:22px;width:14px;height:2px;background:#b0c5db}
+.org-card{border:1px solid #d6e1ec;border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);box-shadow:0 6px 16px rgba(15,36,61,.04);padding:12px 14px 10px;margin-bottom:8px;transition:.18s border-color,.18s box-shadow}
+.org-card:hover{border-color:#8db5de;box-shadow:0 10px 24px rgba(15,36,61,.08)}
+.org-card.selected{border-color:#0f5ab8;box-shadow:0 10px 24px rgba(15,90,184,.14), inset 0 0 0 1px rgba(15,90,184,.06);background:linear-gradient(180deg,#ffffff 0%,#eef6ff 100%)}
+.org-card.my-org{border-color:#17794f;box-shadow:0 10px 24px rgba(23,121,79,.14);background:linear-gradient(180deg,#ffffff 0%,#eefaf4 100%)}
+.org-card.my-org:before{content:'YOUR ORG';position:absolute;top:-8px;right:12px;font-size:9px;font-weight:900;letter-spacing:.12em;color:#fff;background:linear-gradient(135deg,#17794f,#1fa862);padding:2px 8px;border-radius:8px;z-index:2}
 .org-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.org-card-title{font-size:17px;font-weight:800;color:#0a2948;line-height:1.15}
-.org-card-sub{font-size:12px;color:#5b7085;margin-top:5px}
-.org-card-code{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:#edf4fb;border:1px solid #d5e1ee;color:#20486b;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
-.org-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.org-stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.org-stat-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#f4f8fd;border:1px solid #d7e2ed;color:#173a5d;font-size:12px;font-weight:700}
-.org-children{margin-top:8px;padding-left:0}
+.org-card-title{font-size:15px;font-weight:800;color:#0a2948;line-height:1.15}
+.org-card-sub{font-size:11px;color:#5b7085;margin-top:3px}
+.org-card-code{display:inline-flex;align-items:center;gap:6px;padding:3px 7px;border-radius:999px;background:#edf4fb;border:1px solid #d5e1ee;color:#20486b;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.org-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.org-card-leader{margin-top:8px;padding:8px 10px;border-radius:10px;background:#f6faff;border:1px solid #e1eaf3;display:flex;flex-direction:column;gap:3px}
+.org-card-leader .ldr-name{font-weight:700;font-size:12px;color:#0d2f50}
+.org-card-leader .ldr-role{font-size:11px;color:#5d7488}
+.org-card-leader .ldr-contact{font-size:11px;color:#3a7bc8;margin-top:1px}
+.org-stats{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.org-stat-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:#f4f8fd;border:1px solid #d7e2ed;color:#173a5d;font-size:11px;font-weight:700}
+.org-children{margin-top:4px;padding-left:0}
 .org-tree-empty{padding:26px;border:1px dashed #c9d6e3;border-radius:16px;background:#fbfdff;color:#5b7085;text-align:center}
 
 .org-overview{margin-bottom:18px}
@@ -436,6 +515,101 @@ tr:hover td{background:#eef5ff}
   .org-root-title{font-size:30px}
   .org-chart-toolbar .input{min-width:220px;width:100%}
 }
+
+/* ─── Calendar Module ─── */
+.cal-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.cal-header-left{display:flex;align-items:center;gap:8px}
+.cal-header-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cal-title{font-size:20px;font-weight:800}
+.cal-nav-btn{width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-nav-btn:hover{background:rgba(101,213,255,.12);border-color:rgba(101,213,255,.2)}
+.cal-view-toggle{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cal-view-toggle button{padding:6px 12px;border:none;background:rgba(255,255,255,.04);color:var(--muted);font-size:11px;cursor:pointer;font-weight:600}
+.cal-view-toggle button.active{background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#06101f}
+.cal-scope-select{padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-size:11px}
+.cal-legend{display:flex;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:8px}
+.cal-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+.cal-legend-swatch{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+
+/* Month View */
+.cal-month{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cal-month-head{background:rgba(255,255,255,.06);padding:6px 4px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.08em}
+.cal-day{background:var(--panel);min-height:90px;padding:4px;display:flex;flex-direction:column;position:relative;transition:.12s background}
+.cal-day:hover{background:rgba(255,255,255,.04)}
+.cal-day.outside{opacity:.35}
+.cal-day.today{background:rgba(101,213,255,.06);box-shadow:inset 0 2px 0 var(--accent)}
+.cal-day.weekend{background:rgba(255,255,255,.015)}
+.cal-day-num{font-size:11px;font-weight:700;padding:2px 4px;line-height:1;color:var(--muted)}
+.cal-day.today .cal-day-num{color:var(--accent);font-weight:800}
+.cal-day-entries{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px;margin-top:2px}
+.cal-entry{padding:2px 5px;border-radius:4px;font-size:9px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-left:3px solid transparent}
+.cal-entry:hover{filter:brightness(1.2)}
+.cal-entry.leave{background:rgba(109,240,182,.12);color:#6df0b6;border-left-color:#6df0b6}
+.cal-entry.tdy{background:rgba(255,199,105,.12);color:#ffc769;border-left-color:#ffc769}
+.cal-entry.training{background:rgba(140,123,255,.12);color:#8c7bff;border-left-color:#8c7bff}
+.cal-entry.comp{background:rgba(101,213,255,.12);color:#65d5ff;border-left-color:#65d5ff}
+.cal-entry.telework{background:rgba(37,244,199,.12);color:#25f4c7;border-left-color:#25f4c7}
+.cal-entry.holiday{background:rgba(255,111,142,.08);color:#ff6f8e;border-left-color:#ff6f8e}
+.cal-entry.other{background:rgba(167,183,214,.1);color:var(--muted);border-left-color:var(--muted)}
+.cal-entry.sick{background:rgba(255,84,129,.12);color:#ff5481;border-left-color:#ff5481}
+.cal-holiday-label{font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(255,111,142,.1);color:#ff6f8e;font-weight:700;display:block;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Week View */
+.cal-week{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cal-week-header{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line)}
+.cal-week-head{background:rgba(255,255,255,.06);padding:8px 6px;text-align:center}
+.cal-week-head .day-name{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.06em}
+.cal-week-head .day-num{font-size:18px;font-weight:800;margin-top:2px}
+.cal-week-head.today{background:rgba(101,213,255,.08)}
+.cal-week-head.today .day-num{color:var(--accent)}
+.cal-week-body{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);min-height:300px}
+.cal-week-col{background:var(--panel);padding:6px 4px;display:flex;flex-direction:column;gap:4px}
+.cal-week-col.today{background:rgba(101,213,255,.04)}
+.cal-week-entry{padding:6px 8px;border-radius:6px;font-size:11px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.cal-week-entry .entry-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-week-entry .entry-type{font-size:9px;opacity:.7}
+
+/* List View */
+.cal-list{display:flex;flex-direction:column;gap:2px}
+.cal-list-day{padding:8px 0 4px;font-size:11px;font-weight:800;color:var(--muted);border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.06em}
+.cal-list-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:.12s background}
+.cal-list-item:hover{background:rgba(255,255,255,.04)}
+.cal-list-item .swatch{width:6px;height:28px;border-radius:3px;flex-shrink:0}
+.cal-list-item .info{flex:1;min-width:0}
+.cal-list-item .info .name{font-weight:700;font-size:13px}
+.cal-list-item .info .meta{font-size:11px;color:var(--muted)}
+.cal-list-item .type-badge{padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700}
+
+/* Senior Leaders */
+.cal-leaders{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:12px}
+.cal-leader-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.cal-leader-card .ldr-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cal-leader-card .ldr-name{font-weight:800;font-size:13px}
+.cal-leader-card .ldr-role{font-size:10px;color:var(--muted)}
+.cal-leader-card .ldr-status{padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700}
+.cal-leader-card .ldr-entries{display:flex;flex-direction:column;gap:3px}
+.cal-leader-card .ldr-entry{font-size:11px;padding:4px 8px;border-radius:6px;display:flex;justify-content:space-between;gap:6px}
+.cal-leader-card .ldr-entry .dates{font-size:10px;color:var(--muted)}
+
+/* ─── Embedded / Fullscreen Dual-Mode ─── */
+.embedded #app{padding:4px 6px 0}
+.embedded .hero{padding:6px 10px 4px;border-radius:10px}
+.embedded .brand-mark{width:24px;height:24px;border-radius:8px}
+.embedded .brand-title{font-size:14px}
+.embedded .brand-sub{display:none}
+.embedded .nav-link{padding:5px 8px;font-size:11px;border-radius:8px}
+.embedded .nav-tabs{padding:4px 0 1px;gap:4px}
+.embedded .context-bar{margin:3px 0 2px;font-size:10px;gap:4px}
+.embedded .user-pill{padding:4px 8px;font-size:10px}
+.embedded .header-actions .btn{padding:6px 10px;font-size:11px;border-radius:8px}
+.embedded .card{padding:14px 16px;border-radius:12px}
+.embedded .card-title{font-size:15px}
+.embedded .modal .modal{max-width:90vw;max-height:85vh}
+.btn-popout{background:linear-gradient(135deg,var(--accent-3),var(--accent));border:none;color:#06101f;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:11px;display:none;align-items:center;gap:4px;transition:.2s transform}
+.btn-popout:hover{transform:translateY(-1px)}
+.embedded .btn-popout{display:inline-flex}
+.fullscreen-badge{display:none;font-size:9px;color:var(--accent-3);padding:2px 6px;border:1px solid rgba(37,244,199,.2);border-radius:6px;background:rgba(37,244,199,.06);margin-left:6px}
+body:not(.embedded) .fullscreen-badge{display:inline-block}
 </style>
 
 
@@ -456,6 +630,8 @@ tr:hover td{background:#eef5ff}
         <button class="btn subtle" data-action="refresh-route">Refresh</button>
         <button id="btnDiagHeader" class="btn subtle" data-action="open-diagnostics" style="display:none">Diagnostics</button>
         <button class="btn primary" data-action="open-create-request">New Request</button>
+        <button class="btn-popout" data-action="popout-fullscreen" title="Open in full screen">&#x26F6; Full Screen</button>
+        <span class="fullscreen-badge">Full Screen</span>
       </div>
     </div>
     <nav id="moduleTabs" class="nav-tabs" role="tablist" aria-label="Application modules"></nav>
@@ -482,7 +658,7 @@ tr:hover td{background:#eef5ff}
 'use strict';
 
 var APP = {
-  version: '2026.03.31.2',
+  version: '2026.04.02.1',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -506,6 +682,7 @@ var APP = {
     { key: 'requests', label: 'Requests' },
     { key: 'inout', label: 'In/Out' },
     { key: 'facilities', label: 'Facilities' },
+    { key: 'calendar', label: 'Calendar' },
     { key: 'assets', label: 'Assets' },
     { key: 'admin', label: 'Admin' },
     { key: 'diagnostics', label: 'Diagnostics' }
@@ -539,7 +716,60 @@ var APP = {
     SoftwareAssets: 'CCSD_SoftwareAssets',
     SoftwareAssignments: 'CCSD_SoftwareAssignments',
     Systems: 'CCSD_Systems',
-    Config: 'CCSD_Config'
+    Config: 'CCSD_Config',
+    TimeOff: 'CCSD_TimeOff'
+    /* ───────────────────────────────────────────────────────────────────────
+     * TODO: Conference Room Scheduling
+     * ─────────────────────────────────────────────────────────────────────
+     * Add list:  ConferenceRooms: 'CCSD_ConferenceRooms'
+     *   Columns: Title, RoomName, FacilityID (lookup), Floor, Capacity,
+     *            HasProjector, HasVTC, HasPhone, HasWhiteboard, Notes
+     * Add list:  RoomReservations: 'CCSD_RoomReservations'
+     *   Columns: Title, ConferenceRoomID (lookup), ReservedBy (person),
+     *            StartTime (datetime), EndTime (datetime), Subject, Notes,
+     *            IsRecurring, RecurrencePattern, Status (choice: Confirmed/Cancelled)
+     * Features:
+     *   - Room availability grid (Scheduling Assistant style)
+     *   - Book / cancel reservations
+     *   - Recurring meeting support
+     *   - Conflict detection
+     *   - Room search by capacity / equipment
+     * ─────────────────────────────────────────────────────────────────────
+     * TODO: Microsoft Graph API - Outlook Calendar Integration
+     * ─────────────────────────────────────────────────────────────────────
+     * Purpose: Show real-time free/busy status from Outlook calendars
+     *          (like Scheduling Assistant) for personnel in the SPA.
+     *
+     * PREREQUISITES (Tenant Admin required):
+     *   1. Go to Azure Portal > Azure Active Directory > App Registrations
+     *   2. Click "New registration"
+     *      - Name: "CCSD Administrative SPA"
+     *      - Supported account types: "Accounts in this organizational directory only"
+     *      - Redirect URI: Single-page application (SPA)
+     *        - Add: https://usaf.dps.mil/teams/aetc-lak-cpsg/Database/SitePages/Index.aspx
+     *        - Add: https://patriavirtus.sharepoint.com/sites/CCSDAdminSPA/SitePages/Index.aspx
+     *   3. Under "API Permissions", add:
+     *      - Microsoft Graph > Delegated > Calendars.Read.Shared
+     *      - Microsoft Graph > Delegated > User.Read
+     *   4. Click "Grant admin consent for [tenant]"
+     *   5. Copy the Application (client) ID and Directory (tenant) ID
+     *
+     * IMPLEMENTATION STEPS:
+     *   1. Add MSAL.js 2.x via CDN: <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js">
+     *   2. Add config fields to APP object:
+     *        graphClientId: '',   // paste Client ID here
+     *        graphTenantId: '',   // paste Tenant ID here
+     *   3. Initialize MSAL PublicClientApplication in bootstrap
+     *   4. Add silent token acquisition with interactive fallback
+     *   5. Call POST /me/calendar/getSchedule with array of user emails
+     *      and time window to get free/busy blocks
+     *   6. Render availability bars alongside time-off calendar
+     *   7. Add admin config panel for Client ID / Tenant ID
+     *
+     * API endpoint: POST https://graph.microsoft.com/v1.0/me/calendar/getSchedule
+     * Request body: { schedules: [emails], startTime: {}, endTime: {}, availabilityViewInterval: 30 }
+     * Response: array of schedule items with availabilityView (free/busy/tentative/oof)
+     * ───────────────────────────────────────────────────────────────────── */
   },
   state: {
     route: 'home',
@@ -1623,7 +1853,7 @@ function ensurePeopleLoaded(force){
 }
 function ensureOrganizationsLoaded(force){
   if (APP.state.data.organizations && !force) { return Promise.resolve(APP.state.data.organizations); }
-  return queryList(APP.lists.Organizations, ['Title','OrgID','OrgName','ParentOrgID/Id','ParentOrgID/Title','OrgType','OrgDisplayOrder','IsActive','OrgCode','Notes','SharePointURL','OrganizationAddressNumber','OrganizationAddressBldgNumber','OrganizationAddressStreet','OrganizationAddressCity','OrganizationAddressState','OrganizationAddressZip'], { orderby: 'OrgDisplayOrder asc', top: 600 }, 'ensureOrganizationsLoaded').then(function(rows){ APP.state.data.organizations = rows || []; return rows || []; });
+  return queryList(APP.lists.Organizations, ['Title','OrgID','OrgName','ParentOrgID/Id','ParentOrgID/Title','OrgType','OrgDisplayOrder','IsActive','OrgCode','Notes','SharePointURL','OrgEmail','OrganizationAddressNumber','OrganizationAddressBldgNumber','OrganizationAddressStreet','OrganizationAddressCity','OrganizationAddressState','OrganizationAddressZip'], { orderby: 'OrgDisplayOrder asc', top: 600 }, 'ensureOrganizationsLoaded').then(function(rows){ APP.state.data.organizations = rows || []; return rows || []; });
 }
 function ensurePositionsLoaded(force){
   if (APP.state.data.positions && !force) { return Promise.resolve(APP.state.data.positions); }
@@ -1667,8 +1897,8 @@ function ensureInOutStepsLoaded(force){
 function ensureFacilitiesLoaded(force){
   if (APP.state.data.facilities && !force) { return Promise.resolve(APP.state.data.facilities); }
   return Promise.all([
-    queryList(APP.lists.Facilities, ['Title','FacilityID','BuildingNumber','Base','Address','HasNIPR','HasSIPR','HasJWICS','FacilityPOC','Notes'], { top: 400 }, 'ensureFacilitiesLoaded.Facilities'),
-    queryList(APP.lists.Rooms, ['Title','RoomID','FacilityID/Id','FacilityID/Title','RoomNumber','Floor','RoomType','MaxSeats','IsSCIF','Notes'], { top: 1500 }, 'ensureFacilitiesLoaded.Rooms'),
+    queryList(APP.lists.Facilities, ['Title','FacilityID','BuildingNumber','Base','Address','HasNIPR','HasSIPR','HasJWICS','FacilityPOC','Notes','FloorPlanUrl'], { top: 400 }, 'ensureFacilitiesLoaded.Facilities'),
+    queryList(APP.lists.Rooms, ['Title','RoomID','FacilityID/Id','FacilityID/Title','RoomNumber','Floor','RoomType','MaxSeats','IsSCIF','Notes','FloorPlanUrl'], { top: 1500 }, 'ensureFacilitiesLoaded.Rooms'),
     queryList(APP.lists.Seats, ['Title','SeatID','RoomID/Id','RoomID/Title','SeatLabel','PortNumber','HasNIPR','HasSIPR','HasJWICS','PhoneNumber','VTCEnabled','CurrentPersonID/Id','CurrentPersonID/Title','XCoord','YCoord','SeatStatus','Notes'], { top: 3000 }, 'ensureFacilitiesLoaded.Seats')
   ]).then(function(all){
     APP.state.data.facilities = all[0] || [];
@@ -1718,6 +1948,50 @@ function ensureAssetsLoaded(force){
     });
   });
 }
+function ensureTimeOffLoaded(force){
+  if (APP.state.data.timeOff && !force) { return Promise.resolve(APP.state.data.timeOff); }
+  return queryList(APP.lists.TimeOff, ['Title','PersonID/Id','PersonID/Title','OrgID/Id','OrgID/Title','StartDate','EndDate','TimeOffType','Status','Hours','Notes','ApprovedBy/Id','ApprovedBy/Title','CreatedBy/Id','CreatedBy/Title'], { top: 2000, orderby: 'StartDate desc' }, 'ensureTimeOffLoaded').then(function(rows){ APP.state.data.timeOff = rows || []; return rows || []; }).catch(function(){ APP.state.data.timeOff = []; return []; });
+}
+
+/* ─── Federal Holidays (US OPM schedule) ─── */
+function getFederalHolidays(year){
+  var y = year || new Date().getFullYear();
+  var holidays = [];
+  function add(m, d, name){ holidays.push({ date: new Date(y, m - 1, d), name: name }); }
+  function observed(dt, name){
+    var d = dt.getDay();
+    if (d === 0) { dt = new Date(dt.getTime() + 86400000); }
+    if (d === 6) { dt = new Date(dt.getTime() - 86400000); }
+    holidays.push({ date: dt, name: name });
+  }
+  /* Fixed-date holidays (with observed shift for weekends) */
+  observed(new Date(y, 0, 1), "New Year's Day");
+  observed(new Date(y, 5, 19), 'Juneteenth');
+  observed(new Date(y, 6, 4), 'Independence Day');
+  observed(new Date(y, 10, 11), 'Veterans Day');
+  observed(new Date(y, 11, 25), 'Christmas Day');
+  /* Floating holidays */
+  /* MLK: 3rd Monday of January */
+  var jan1 = new Date(y, 0, 1); var mlk = 1 + ((8 - jan1.getDay()) % 7) + 14; add(1, mlk, 'MLK Jr. Day');
+  /* Presidents' Day: 3rd Monday of February */
+  var feb1 = new Date(y, 1, 1); var pres = 1 + ((8 - feb1.getDay()) % 7) + 14; add(2, pres, "Presidents' Day");
+  /* Memorial Day: last Monday of May */
+  var may31 = new Date(y, 4, 31); var mem = 31 - ((may31.getDay() + 6) % 7); add(5, mem, 'Memorial Day');
+  /* Labor Day: 1st Monday of September */
+  var sep1 = new Date(y, 8, 1); var lab = 1 + ((8 - sep1.getDay()) % 7); add(9, lab, 'Labor Day');
+  /* Columbus Day: 2nd Monday of October */
+  var oct1 = new Date(y, 9, 1); var col = 1 + ((8 - oct1.getDay()) % 7) + 7; add(10, col, 'Columbus Day');
+  /* Thanksgiving: 4th Thursday of November */
+  var nov1 = new Date(y, 10, 1); var thx = 1 + ((11 - nov1.getDay()) % 7) + 21; add(11, thx, 'Thanksgiving');
+  return holidays;
+}
+function getHolidayMap(year){
+  var holidays = getFederalHolidays(year);
+  var map = {};
+  holidays.forEach(function(h){ map[h.date.toISOString().slice(0, 10)] = h.name; });
+  return map;
+}
+
 function ensureHowToLoaded(force){
   if (APP.state.data.howto && !force) { return Promise.resolve(APP.state.data.howto); }
   return queryList(APP.lists.HowTo, ['Title','Module','Audience','Summary','Steps','Links','Tags','IsActive','DisplayOrder'], { top: 200, orderby: 'DisplayOrder asc' }, 'ensureHowToLoaded').then(function(rows){ APP.state.data.howto = rows || []; return rows || []; }).catch(function(){ APP.state.data.howto = []; return []; });
@@ -2374,11 +2648,13 @@ function seedOrgChartUi(index, baseRootId){
   var ui = ensureOrgChartUi();
   var hasExpanded = false;
   Object.keys(ui.expanded || {}).forEach(function(key){ if (ui.expanded[key]) { hasExpanded = true; } });
-  if (!ui.selectedOrgId && baseRootId) { ui.selectedOrgId = baseRootId; }
+  var myOrgId = getCurrentOrgId();
+  if (!ui.selectedOrgId) { ui.selectedOrgId = myOrgId || baseRootId; }
   if (!hasExpanded && baseRootId) {
     ui.expanded[baseRootId] = true;
-    if (ui.selectedOrgId) {
-      var chain = getOrgBreadcrumb(index, ui.selectedOrgId);
+    var targetOrgId = myOrgId || ui.selectedOrgId;
+    if (targetOrgId) {
+      var chain = getOrgBreadcrumb(index, targetOrgId);
       chain.forEach(function(org){ ui.expanded[org.Id] = true; });
     }
   }
@@ -2417,6 +2693,10 @@ function renderOrgLeadershipRows(index, orgId, maxItems){
   html += '</div>';
   return html;
 }
+function isCurrentUserOrg(orgId){
+  var p = APP.state.currentPersonnel;
+  return p && p.OrgID && p.OrgID.Id && String(p.OrgID.Id) === String(orgId);
+}
 function renderOrgChartNode(index, orgId, depth, visibleIds, search, matchMemo){
   var ui = ensureOrgChartUi();
   var org = index.byId[orgId];
@@ -2429,18 +2709,36 @@ function renderOrgChartNode(index, orgId, depth, visibleIds, search, matchMemo){
   var expanded = search ? true : !!ui.expanded[orgId];
   if (depth === 0) { expanded = true; }
   var active = normalizeBoolean(org.IsActive) || org.IsActive == null;
-  var primaryName = leadership.primary ? (leadership.primary.person ? formatPerson(leadership.primary.person) : 'Vacant') : 'Not resolved';
-  var primaryRole = leadership.primary && leadership.primary.position ? (leadership.primary.position.PositionTitle || leadership.primary.position.Title || 'Leadership Position') : 'Leadership not mapped';
+  var isMine = isCurrentUserOrg(orgId);
+  var cardClass = 'org-card' + (ui.selectedOrgId === orgId ? ' selected' : '') + (isMine ? ' my-org' : '');
   var html = '<div class="org-node depth-' + escAttr(String(Math.min(depth, 5))) + '">';
-  html += '<div class="org-card' + (ui.selectedOrgId === orgId ? ' selected' : '') + '">';
-  html += '<div class="org-card-top"><div><div class="org-card-title">' + escHtml(getOrgDisplayName(org)) + '</div><div class="org-card-sub">' + escHtml(org.OrgType || 'Organization') + ((org.OrgCode || org.OrgID) ? ' • ' + escHtml(org.OrgCode || org.OrgID) : '') + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="org-card-code">' + escHtml(org.OrgCode || org.OrgID || 'ORG') + '</span>' + statusBadge(active ? 'Active' : 'Inactive') + '</div></div>';
-  html += '<div class="org-summary-quick" style="margin-top:12px"><div class="label">Primary leadership</div><div class="value">' + escHtml(primaryName) + '</div><div class="sub">' + escHtml(primaryRole) + '</div></div>';
-  html += '<div class="org-stats"><span class="org-stat-pill">Direct ' + escHtml(String(roll.directPeople)) + '</span><span class="org-stat-pill">Branch ' + escHtml(String(roll.totalPeople)) + '</span><span class="org-stat-pill">Child Units ' + escHtml(String(roll.childCount)) + '</span><span class="org-stat-pill">Leadership ' + escHtml(String(leadership.leaders.length)) + '</span></div>';
+  html += '<div class="' + cardClass + '" style="position:relative">';
+  html += '<div class="org-card-top"><div><div class="org-card-title">' + escHtml(getOrgDisplayName(org)) + '</div><div class="org-card-sub">' + escHtml(org.OrgType || 'Organization') + ((org.OrgCode || org.OrgID) ? ' • ' + escHtml(org.OrgCode || org.OrgID) : '') + '</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><span class="org-card-code">' + escHtml(org.OrgCode || org.OrgID || 'ORG') + '</span>' + statusBadge(active ? 'Active' : 'Inactive') + '</div></div>';
+  var topLeaders = leadership.leaders.slice(0, 3);
+  if (topLeaders.length) {
+    html += '<div class="org-card-leader">';
+    topLeaders.forEach(function(entry){
+      var pName = entry.person ? formatPerson(entry.person) : 'Vacant';
+      var pRole = entry.position ? (entry.position.PositionTitle || entry.position.Title || '') : 'Supervisor';
+      var email = entry.person ? (entry.person.Email || '') : '';
+      var phone = entry.person ? (entry.person.OfficePhone || entry.person.PrimaryPhone || '') : '';
+      html += '<div><span class="ldr-name">' + escHtml(pName) + '</span> <span class="ldr-role">' + escHtml(pRole) + '</span>';
+      var contacts = [];
+      if (email) { contacts.push(email); }
+      if (phone) { contacts.push(phone); }
+      if (contacts.length) { html += '<div class="ldr-contact">' + escHtml(contacts.join(' • ')) + '</div>'; }
+      html += '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="org-card-leader"><span class="ldr-role">No leadership mapped</span></div>';
+  }
+  if (org.OrgEmail) { html += '<div style="margin-top:4px;font-size:11px;color:#3a7bc8">' + escHtml(org.OrgEmail) + '</div>'; }
+  html += '<div class="org-stats"><span class="org-stat-pill">Personnel ' + escHtml(String(roll.directPeople)) + '</span><span class="org-stat-pill">Branch ' + escHtml(String(roll.totalPeople)) + '</span>' + (children.length ? '<span class="org-stat-pill">Units ' + escHtml(String(roll.childCount)) + '</span>' : '') + '</div>';
   html += '<div class="org-card-actions">';
   if (children.length) { html += '<button class="btn subtle org-toggle-btn" data-action="org-toggle" data-id="' + escAttr(orgId) + '">' + (expanded ? 'Collapse' : 'Expand') + ' (' + escHtml(String(children.length)) + ')</button>'; }
-  html += '<button class="btn subtle" data-action="org-select" data-id="' + escAttr(orgId) + '">Open Detail</button>';
-  html += '<button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(orgId) + '">View Leadership</button>';
-  html += '<button class="btn subtle" data-action="org-focus" data-id="' + escAttr(orgId) + '">' + (ui.focusOrgId === orgId ? 'Focused Branch' : 'Focus Branch') + '</button>';
+  html += '<button class="btn subtle" data-action="org-select" data-id="' + escAttr(orgId) + '">Detail</button>';
+  html += '<button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(orgId) + '">Leadership</button>';
   html += '</div></div>';
   if (children.length && expanded) {
     html += '<div class="org-children">';
@@ -2539,12 +2837,26 @@ function renderOrgSummaryCard(index, org, bucketLabel, toneClass){
   var ui = ensureOrgChartUi();
   var roll = index.getRollup(org.Id);
   var leadership = getPrimaryLeadershipSummary(index, org.Id);
-  var primaryName = leadership.primary ? (leadership.primary.person ? formatPerson(leadership.primary.person) : 'Vacant') : 'Leadership not resolved';
-  var primaryRole = leadership.primary && leadership.primary.position ? (leadership.primary.position.PositionTitle || leadership.primary.position.Title || 'Leadership Position') : 'Leadership mapping not available yet';
+  var isMine = isCurrentUserOrg(org.Id);
   var childNames = getChildOrgNames(index, org.Id, 4);
-  var html = '<div class="org-summary-card ' + escAttr(toneClass || '') + (ui.selectedOrgId === org.Id ? ' selected' : '') + '">';
+  var html = '<div class="org-summary-card ' + escAttr(toneClass || '') + (ui.selectedOrgId === org.Id ? ' selected' : '') + (isMine ? ' my-org' : '') + '">';
+  if (isMine) { html += '<div style="position:absolute;top:-8px;right:12px;font-size:9px;font-weight:900;letter-spacing:.12em;color:#fff;background:linear-gradient(135deg,#17794f,#1fa862);padding:2px 8px;border-radius:8px;z-index:2">YOUR ORG</div>'; }
   html += '<div class="org-summary-top"><div><div class="org-summary-name">' + escHtml(getOrgDisplayName(org)) + '</div><div class="org-summary-meta">' + escHtml(bucketLabel || org.OrgType || 'Organization') + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="org-summary-code">' + escHtml(org.OrgCode || org.OrgID || 'ORG') + '</span>' + statusBadge(normalizeBoolean(org.IsActive) || org.IsActive == null ? 'Active' : 'Inactive') + '</div></div>';
-  html += '<div class="org-summary-quick"><div class="label">Leadership summary</div><div class="value">' + escHtml(primaryName) + '</div><div class="sub">' + escHtml(primaryRole) + '</div></div>';
+  html += '<div class="org-summary-quick"><div class="label">Leadership</div>';
+  var topLeaders = leadership.leaders.slice(0, 3);
+  if (topLeaders.length) {
+    topLeaders.forEach(function(entry){
+      var pName = entry.person ? formatPerson(entry.person) : 'Vacant';
+      var pRole = entry.position ? (entry.position.PositionTitle || entry.position.Title || '') : 'Supervisor';
+      var email = entry.person ? (entry.person.Email || '') : '';
+      var phone = entry.person ? (entry.person.OfficePhone || entry.person.PrimaryPhone || '') : '';
+      html += '<div class="value">' + escHtml(pName) + '</div><div class="sub">' + escHtml(pRole) + (email || phone ? ' • ' + escHtml([email, phone].filter(Boolean).join(' • ')) : '') + '</div>';
+    });
+  } else {
+    html += '<div class="value">No leadership mapped</div>';
+  }
+  if (org.OrgEmail) { html += '<div class="sub" style="margin-top:4px;color:#3a7bc8">' + escHtml(org.OrgEmail) + '</div>'; }
+  html += '</div>';
   html += '<div class="org-summary-metrics"><div class="org-summary-metric"><div class="n">' + escHtml(String(roll.directPeople)) + '</div><div class="t">Direct</div></div><div class="org-summary-metric"><div class="n">' + escHtml(String(roll.childCount)) + '</div><div class="t">Units</div></div><div class="org-summary-metric"><div class="n">' + escHtml(String(roll.totalPeople)) + '</div><div class="t">Branch</div></div></div>';
   if (childNames.length) {
     html += '<div class="org-summary-children">';
@@ -2585,8 +2897,10 @@ function openOrgLeadershipModal(orgId){
   var index = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []);
   var org = index.byId[Number(orgId)];
   if (!org) { toast('Organization not found.', 'danger'); return; }
-  var body = '<div class="proj-note" style="margin-bottom:14px">Leadership is prioritized using key leadership flags, position level, and title patterns such as commander, director, deputy, chief, branch chief, and senior enlisted leader.</div>' + renderOrgLeadershipRows(index, org.Id);
-  openModal('Leadership', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', getOrgDisplayName(org));
+  var body = '';
+  if (org.OrgEmail) { body += '<div style="margin-bottom:10px;font-size:13px"><strong>Org Email:</strong> <span style="color:#3a7bc8">' + escHtml(org.OrgEmail) + '</span></div>'; }
+  body += '<div class="proj-note" style="margin-bottom:14px">Leadership is prioritized using key leadership flags, position level, and title patterns such as commander, director, deputy, chief, branch chief, and senior enlisted leader.</div>' + renderOrgLeadershipRows(index, org.Id);
+  openModal('Leadership — ' + escHtml(getOrgDisplayName(org)), body, '<div></div><button class="btn" data-action="close-modal">Close</button>', org.OrgCode || org.OrgID || '');
 }
 function renderOrganizationsView(){
   var orgs = APP.state.data.organizations || [];
@@ -2621,7 +2935,8 @@ function renderOrganizationsView(){
     var roll = index.getRollup(selected.Id);
     var crumbs = getOrgBreadcrumb(index, selected.Id);
     var address = [selected.OrganizationAddressNumber, selected.OrganizationAddressBldgNumber, selected.OrganizationAddressStreet, selected.OrganizationAddressCity, selected.OrganizationAddressState, selected.OrganizationAddressZip].filter(Boolean).join(', ');
-    detailHtml += '<div class="org-detail-hero"><div class="org-detail-title">' + escHtml(getOrgDisplayName(selected)) + '</div><div class="org-detail-sub">' + escHtml(selected.OrgType || 'Organization') + ((selected.OrgCode || selected.OrgID) ? ' • ' + escHtml(selected.OrgCode || selected.OrgID) : '') + (selected.ParentOrgID && selected.ParentOrgID.Title ? ' • Parent: ' + escHtml(selected.ParentOrgID.Title) : '') + '</div>';
+    var isMyOrg = isCurrentUserOrg(selected.Id);
+    detailHtml += '<div class="org-detail-hero"' + (isMyOrg ? ' style="border-color:#17794f;background:linear-gradient(135deg,#ffffff 0%,#eefaf4 62%,#f4f9ff 100%)"' : '') + '>' + (isMyOrg ? '<div style="display:inline-block;font-size:10px;font-weight:900;letter-spacing:.12em;color:#fff;background:linear-gradient(135deg,#17794f,#1fa862);padding:3px 10px;border-radius:10px;margin-bottom:8px">YOUR ORGANIZATION</div>' : '') + '<div class="org-detail-title">' + escHtml(getOrgDisplayName(selected)) + '</div><div class="org-detail-sub">' + escHtml(selected.OrgType || 'Organization') + ((selected.OrgCode || selected.OrgID) ? ' • ' + escHtml(selected.OrgCode || selected.OrgID) : '') + (selected.ParentOrgID && selected.ParentOrgID.Title ? ' • Parent: ' + escHtml(selected.ParentOrgID.Title) : '') + (selected.OrgEmail ? ' • ' + escHtml(selected.OrgEmail) : '') + '</div>';
     detailHtml += '<div class="org-breadcrumbs">';
     crumbs.forEach(function(org){ detailHtml += '<button class="org-crumb" data-action="org-select" data-id="' + escAttr(org.Id) + '">' + escHtml(getOrgDisplayName(org)) + '</button>'; });
     detailHtml += '</div>';
@@ -3014,18 +3329,28 @@ function saveInOut(){
   }).catch(function(){ toast('In/Out creation failed.', 'danger'); });
 }
 function ensureFacilityUi(){
-  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null }; }
+  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null, floorPlanMode: 'view', pickerPending: null, zoom: 1, panX: 0, panY: 0 }; }
   return APP.state.facilityUi;
 }
-function renderSeatMap(seats, room){
-  if (!seats || !seats.length) { return '<div class="empty">No seats mapped in this room.</div>'; }
-  var hasCoords = seats.some(function(s){ return s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== ''; });
+function getFloorPlanUrl(facility, room){
+  if (room && room.FloorPlanUrl) { return room.FloorPlanUrl; }
+  if (facility && facility.FloorPlanUrl) { return facility.FloorPlanUrl; }
+  return '';
+}
+function renderSeatMap(seats, room, facility){
+  var floorPlanUrl = getFloorPlanUrl(facility, room);
+  var ui = ensureFacilityUi();
+  var allSeats = seats || [];
+  if (floorPlanUrl) {
+    return renderFloorPlanView(allSeats, room, facility, floorPlanUrl);
+  }
+  if (!allSeats.length) { return '<div class="empty">No seats mapped in this room.</div>'; }
+  var hasCoords = allSeats.some(function(s){ return s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== ''; });
   if (!hasCoords) {
     var html = '<div class="tile-grid">';
-    seats.forEach(function(s){
+    allSeats.forEach(function(s){
       var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
       var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
-      var statusClass = occupant ? 'ok' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'warn' : 'info');
       html += '<div class="tile"><div class="tile-title">' + escHtml(s.SeatLabel || s.Title || s.SeatID || 'Seat') + '</div><div class="tile-sub">' + escHtml(occupant || 'Available') + '</div><div style="margin-top:8px">' + statusBadge(occupant ? 'Occupied' : (s.SeatStatus || 'Available')) + '</div><div class="small-note" style="margin-top:8px">' + escHtml(networks.trim() || 'No network info') + (s.PhoneNumber ? ' • ' + escHtml(s.PhoneNumber) : '') + (normalizeBoolean(s.VTCEnabled) ? ' • VTC' : '') + '</div>';
       if (s.PortNumber) { html += '<div class="small-note">Port: ' + escHtml(s.PortNumber) + '</div>'; }
       html += '</div>';
@@ -3034,10 +3359,10 @@ function renderSeatMap(seats, room){
     return html;
   }
   var maxX = 0, maxY = 0;
-  seats.forEach(function(s){ var x = Number(s.XCoord) || 0; var y = Number(s.YCoord) || 0; if (x > maxX) { maxX = x; } if (y > maxY) { maxY = y; } });
+  allSeats.forEach(function(s){ var x = Number(s.XCoord) || 0; var y = Number(s.YCoord) || 0; if (x > maxX) { maxX = x; } if (y > maxY) { maxY = y; } });
   maxX = Math.max(maxX + 60, 400); maxY = Math.max(maxY + 60, 300);
   var svgHtml = '<div style="overflow:auto;border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(255,255,255,.03)"><svg viewBox="0 0 ' + maxX + ' ' + maxY + '" style="width:100%;max-height:480px" role="img" aria-label="Seat map for ' + escAttr((room && room.RoomNumber) || 'room') + '">';
-  seats.forEach(function(s){
+  allSeats.forEach(function(s){
     var x = Number(s.XCoord) || 0; var y = Number(s.YCoord) || 0;
     var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
     var fill = occupant ? '#17794f' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? '#a06b04' : '#1f7ae0');
@@ -3047,6 +3372,513 @@ function renderSeatMap(seats, room){
   svgHtml += '<div class="list-inline" style="margin-top:10px"><span class="badge ok">Occupied</span><span class="badge info">Available</span><span class="badge warn">Maintenance</span></div>';
   return svgHtml;
 }
+
+/* ─── Floor Plan Image Viewer with Seat Overlays ─── */
+function renderFloorPlanView(seats, room, facility, imageUrl){
+  var ui = ensureFacilityUi();
+  var isPicker = ui.floorPlanMode === 'picker' && canSeeAdmin();
+  var containerId = 'floorplanContainer';
+  var placedSeats = seats.filter(function(s){ return s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== ''; });
+  var unplacedSeats = seats.filter(function(s){ return s.XCoord == null || s.YCoord == null || s.XCoord === '' || s.YCoord === ''; });
+  var html = '';
+  if (canSeeAdmin()) {
+    html += '<div class="picker-toolbar">';
+    if (isPicker) {
+      html += '<span class="badge warn">SEAT PLACEMENT MODE</span> ';
+      html += '<button class="btn subtle" data-action="exit-seat-picker">Done Editing</button>';
+      html += '<div class="picker-stats"><span>Placed: <span class="stat-val">' + placedSeats.length + '</span></span><span>Unplaced: <span class="stat-val">' + unplacedSeats.length + '</span></span><span>Total: <span class="stat-val">' + seats.length + '</span></span></div>';
+    } else {
+      html += '<button class="btn primary" data-action="enter-seat-picker">Edit Seat Map</button>';
+      html += '<button class="btn subtle" data-action="enter-floorplan-url">Set Floor Plan URL</button>';
+    }
+    html += '</div>';
+    if (isPicker) {
+      html += '<div class="picker-hint"><strong>Click</strong> empty space to place a new seat. <strong>Click</strong> an existing seat to edit or delete it. <strong>Drag</strong> an existing seat to reposition it. Scroll to zoom.</div>';
+    }
+  }
+  html += '<div class="floorplan-wrapper">';
+  html += '<div class="floorplan-main">';
+  html += '<div id="' + containerId + '" class="floorplan-container' + (isPicker ? ' picker-crosshair' : '') + '" data-image-url="' + escAttr(imageUrl) + '" data-facility-id="' + escAttr(facility ? facility.Id : '') + '" data-room-id="' + escAttr(room ? room.Id : '') + '">';
+  html += '<div id="floorplanInner" class="floorplan-inner">';
+  html += '<img id="floorplanImg" src="' + escAttr(imageUrl) + '" alt="Floor plan" onload="onFloorPlanLoad()" onerror="onFloorPlanError()" />';
+  placedSeats.forEach(function(s){
+    var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
+    var cls = occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available');
+    if (isPicker) { cls += ' draggable'; }
+    var justPlaced = ui._justPlacedId && String(ui._justPlacedId) === String(s.Id);
+    if (justPlaced) { cls += ' just-placed'; }
+    var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
+    var tooltip = JSON.stringify({ label: s.SeatLabel || s.SeatID || 'Seat', occupant: occupant, port: s.PortNumber || '', phone: s.PhoneNumber || '', networks: networks.trim(), vtc: normalizeBoolean(s.VTCEnabled), status: s.SeatStatus || (occupant ? 'Occupied' : 'Available'), notes: s.Notes || '', seatId: s.Id });
+    html += '<div class="seat-marker ' + cls + '" style="left:' + s.XCoord + 'px;top:' + s.YCoord + 'px" data-seat-tooltip="' + escAttr(tooltip) + '" data-seat-id="' + escAttr(s.Id) + '"><span class="seat-marker-label">' + escHtml(s.SeatLabel || s.SeatID || '') + '</span></div>';
+  });
+  if (isPicker && ui.pickerPending) {
+    html += '<div class="picker-pending" style="left:' + ui.pickerPending.x + 'px;top:' + ui.pickerPending.y + 'px"></div>';
+  }
+  html += '</div>';
+  html += '<div class="floorplan-controls"><button data-action="floorplan-zoom-in" title="Zoom in">+</button><button data-action="floorplan-zoom-out" title="Zoom out">−</button><button data-action="floorplan-zoom-reset" title="Fit to view">⊡</button></div>';
+  html += '<div class="floorplan-legend"><span class="badge ok">Occupied</span><span class="badge info">Available</span><span class="badge warn">Maintenance</span></div>';
+  html += '<div class="floorplan-crosshair-h" id="fpCrosshairH"></div>';
+  html += '<div class="floorplan-crosshair-v" id="fpCrosshairV"></div>';
+  html += '<div class="floorplan-coords" id="fpCoords">X: 0, Y: 0</div>';
+  html += '</div>';
+  html += '</div>';
+  /* Seat sidebar */
+  html += '<div class="floorplan-sidebar">';
+  html += '<div class="sb-head"><span>Seats (' + seats.length + ')</span><input class="sb-search" id="seatSidebarSearch" placeholder="Search seats..." /></div>';
+  html += '<div class="sb-list" id="seatSidebarList">';
+  placedSeats.concat(unplacedSeats).forEach(function(s){
+    var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
+    var isPlaced = s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== '';
+    var dotCls = !isPlaced ? 'unplaced' : (occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available'));
+    html += '<div class="sb-item" data-action="sidebar-seat-click" data-seat-id="' + escAttr(s.Id) + '" data-seat-x="' + escAttr(s.XCoord || '') + '" data-seat-y="' + escAttr(s.YCoord || '') + '">';
+    html += '<div class="sb-dot ' + dotCls + '"></div>';
+    html += '<div class="sb-info"><div class="sb-name">' + escHtml(s.SeatLabel || s.SeatID || s.Title || 'Seat') + '</div><div class="sb-sub">' + escHtml(occupant || (isPlaced ? 'Available' : 'Not placed')) + '</div></div>';
+    if (canSeeAdmin() && isPicker) {
+      html += '<div class="sb-actions"><button data-action="edit-seat-inline" data-seat-id="' + escAttr(s.Id) + '" title="Edit">&#9998;</button><button data-action="delete-seat" data-seat-id="' + escAttr(s.Id) + '" title="Delete">&#10005;</button></div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div class="sb-count">' + placedSeats.length + ' placed · ' + unplacedSeats.length + ' unplaced</div>';
+  html += '</div>';
+  html += '</div>';
+  html += '<div id="seatTooltip" class="seat-tooltip" style="display:none"></div>';
+  return html;
+}
+
+/* ─── Floor Plan Load / Error / Pan / Zoom ─── */
+function onFloorPlanLoad(){
+  var img = document.getElementById('floorplanImg');
+  var container = document.getElementById('floorplanContainer');
+  if (!img || !container) { return; }
+  var ui = ensureFacilityUi();
+  var cw = container.clientWidth;
+  var iw = img.naturalWidth;
+  if (iw > cw) { ui.zoom = cw / iw; } else { ui.zoom = 1; }
+  ui.panX = 0; ui.panY = 0;
+  applyFloorPlanTransform();
+  initFloorPlanInteraction();
+}
+function onFloorPlanError(){
+  var container = document.getElementById('floorplanContainer');
+  if (container) { container.innerHTML = '<div class="empty" style="padding:40px">Floor plan image failed to load. Check the URL or SharePoint permissions.</div>'; }
+}
+function applyFloorPlanTransform(){
+  var inner = document.getElementById('floorplanInner');
+  if (!inner) { return; }
+  var ui = ensureFacilityUi();
+  inner.style.transform = 'translate(' + ui.panX + 'px,' + ui.panY + 'px) scale(' + ui.zoom + ')';
+}
+function initFloorPlanInteraction(){
+  var container = document.getElementById('floorplanContainer');
+  if (!container || container._fpInit) { return; }
+  container._fpInit = true;
+  var ui = ensureFacilityUi();
+  var dragging = false; var startX = 0; var startY = 0; var startPanX = 0; var startPanY = 0; var moved = false;
+  var seatDragging = null; var seatDragStartX = 0; var seatDragStartY = 0; var seatOrigX = 0; var seatOrigY = 0; var seatMoved = false;
+  container.addEventListener('mousedown', function(e){
+    if (e.button !== 0) { return; }
+    /* Seat drag in picker mode */
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      var marker = e.target.closest ? e.target.closest('.seat-marker.draggable') : null;
+      if (marker) {
+        seatDragging = marker; seatMoved = false;
+        seatDragStartX = e.clientX; seatDragStartY = e.clientY;
+        seatOrigX = parseInt(marker.style.left, 10) || 0;
+        seatOrigY = parseInt(marker.style.top, 10) || 0;
+        marker.classList.add('dragging-seat');
+        e.preventDefault(); e.stopPropagation();
+        return;
+      }
+      return;
+    }
+    dragging = true; moved = false; startX = e.clientX; startY = e.clientY; startPanX = ui.panX; startPanY = ui.panY;
+    container.classList.add('dragging');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e){
+    /* Seat dragging */
+    if (seatDragging) {
+      var dx = (e.clientX - seatDragStartX) / ui.zoom;
+      var dy = (e.clientY - seatDragStartY) / ui.zoom;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { seatMoved = true; }
+      seatDragging.style.left = Math.round(seatOrigX + dx) + 'px';
+      seatDragging.style.top = Math.round(seatOrigY + dy) + 'px';
+      return;
+    }
+    /* Crosshair tracking in picker mode */
+    if (ui.floorPlanMode === 'picker') {
+      var chH = document.getElementById('fpCrosshairH');
+      var chV = document.getElementById('fpCrosshairV');
+      var coordsEl = document.getElementById('fpCoords');
+      if (chH && chV) {
+        var cr = container.getBoundingClientRect();
+        var mx = e.clientX - cr.left; var my = e.clientY - cr.top;
+        chH.style.top = my + 'px'; chV.style.left = mx + 'px';
+        if (coordsEl) {
+          var inner = document.getElementById('floorplanInner');
+          if (inner) {
+            var ir = inner.getBoundingClientRect();
+            var rx = Math.round((e.clientX - ir.left) / ui.zoom);
+            var ry = Math.round((e.clientY - ir.top) / ui.zoom);
+            coordsEl.textContent = 'X: ' + rx + ', Y: ' + ry;
+          }
+        }
+      }
+    }
+    if (!dragging) { return; }
+    var ddx = e.clientX - startX; var ddy = e.clientY - startY;
+    if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) { moved = true; }
+    ui.panX = startPanX + ddx; ui.panY = startPanY + ddy;
+    applyFloorPlanTransform();
+  });
+  document.addEventListener('mouseup', function(e){
+    if (seatDragging) {
+      seatDragging.classList.remove('dragging-seat');
+      if (seatMoved) {
+        var newX = parseInt(seatDragging.style.left, 10);
+        var newY = parseInt(seatDragging.style.top, 10);
+        var seatId = seatDragging.getAttribute('data-seat-id');
+        saveSeatPosition(seatId, newX, newY);
+      }
+      seatDragging = null; seatMoved = false;
+      return;
+    }
+    if (dragging) { dragging = false; container.classList.remove('dragging'); }
+  });
+  container.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var delta = e.deltaY > 0 ? -0.1 : 0.1;
+    ui.zoom = Math.max(0.15, Math.min(5, ui.zoom + delta));
+    applyFloorPlanTransform();
+  }, { passive: false });
+  container.addEventListener('click', function(e){
+    if (moved || seatMoved) { return; }
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
+      if (marker) { openSeatEditModal(marker.getAttribute('data-seat-id')); return; }
+      handlePickerClick(e);
+      return;
+    }
+    var viewMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
+    if (viewMarker) { showSeatTooltipPinned(viewMarker, e); }
+  });
+  container.addEventListener('mouseover', function(e){
+    if (ui.floorPlanMode === 'picker') { return; }
+    var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
+    if (!marker && e.target.classList && e.target.classList.contains('seat-marker')) { marker = e.target; }
+    if (marker) { showSeatTooltip(marker, e); }
+  });
+  container.addEventListener('mouseout', function(e){
+    if (ui.floorPlanMode === 'picker') { return; }
+    var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
+    if (!marker && e.target.classList && e.target.classList.contains('seat-marker')) { marker = e.target; }
+    if (marker) { hideSeatTooltip(); }
+  });
+}
+function floorPlanZoom(direction){
+  var ui = ensureFacilityUi();
+  if (direction === 'in') { ui.zoom = Math.min(5, ui.zoom * 1.25); }
+  else if (direction === 'out') { ui.zoom = Math.max(0.15, ui.zoom * 0.8); }
+  else { onFloorPlanLoad(); return; }
+  applyFloorPlanTransform();
+}
+
+/* ─── Seat Tooltip ─── */
+function showSeatTooltip(marker, e){
+  var raw = marker.getAttribute('data-seat-tooltip');
+  if (!raw) { return; }
+  var data; try { data = JSON.parse(raw); } catch(err) { return; }
+  var tip = document.getElementById('seatTooltip');
+  if (!tip) { return; }
+  tip.style.pointerEvents = 'none';
+  tip.innerHTML = buildSeatTooltipHtml(data, false);
+  tip.style.display = 'block';
+  positionTooltip(tip, marker);
+}
+function showSeatTooltipPinned(marker, e){
+  var raw = marker.getAttribute('data-seat-tooltip');
+  if (!raw) { return; }
+  var data; try { data = JSON.parse(raw); } catch(err) { return; }
+  var tip = document.getElementById('seatTooltip');
+  if (!tip) { return; }
+  var prev = document.querySelector('.seat-marker.selected');
+  if (prev) { prev.classList.remove('selected'); }
+  marker.classList.add('selected');
+  tip.style.pointerEvents = 'auto';
+  tip.innerHTML = buildSeatTooltipHtml(data, true);
+  tip.style.display = 'block';
+  positionTooltip(tip, marker);
+}
+function buildSeatTooltipHtml(data, showActions){
+  var html = '<div class="st-name">' + escHtml(data.label) + '</div>';
+  html += '<div class="st-row"><span class="st-label">Occupant</span><span>' + escHtml(data.occupant || 'Available') + '</span></div>';
+  html += '<div class="st-row"><span class="st-label">Status</span><span>' + statusBadge(data.status) + '</span></div>';
+  if (data.port) { html += '<div class="st-row"><span class="st-label">Port</span><span>' + escHtml(data.port) + '</span></div>'; }
+  if (data.phone) { html += '<div class="st-row"><span class="st-label">Phone</span><span>' + escHtml(data.phone) + '</span></div>'; }
+  if (data.vtc) { html += '<div class="st-row"><span class="st-label">VTC</span><span class="badge ok">Yes</span></div>'; }
+  if (data.networks) { html += '<div class="st-nets">' + data.networks.split(' ').map(function(n){ return '<span class="badge info">' + escHtml(n) + '</span>'; }).join('') + '</div>'; }
+  if (data.notes) { html += '<div class="st-row" style="margin-top:4px"><span class="mini muted">' + escHtml(data.notes) + '</span></div>'; }
+  if (showActions && canSeeAdmin()) {
+    html += '<div class="st-actions"><button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button><button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button></div>';
+  }
+  return html;
+}
+function positionTooltip(tip, marker){
+  var rect = marker.getBoundingClientRect();
+  tip.style.left = Math.min(rect.left + 20, window.innerWidth - 340) + 'px';
+  tip.style.top = Math.max(10, rect.top - 10) + 'px';
+}
+function hideSeatTooltip(){
+  var tip = document.getElementById('seatTooltip');
+  if (tip) { tip.style.display = 'none'; tip.style.pointerEvents = 'none'; }
+  var sel = document.querySelector('.seat-marker.selected');
+  if (sel) { sel.classList.remove('selected'); }
+}
+
+/* ─── Seat Edit / Delete / Reposition ─── */
+function openSeatEditModal(seatId){
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var ui = ensureFacilityUi();
+  var facilityId = ui.selectedFacilityId;
+  var rooms = (APP.state.data.rooms || []).filter(function(r){ return r.FacilityID && r.FacilityID.Id === facilityId; });
+  var roomOpts = rooms.map(function(r){
+    var sel = seat.RoomID && (seat.RoomID.Id || seat.RoomID) == r.Id ? ' selected' : '';
+    return '<option value="' + escAttr(r.Id) + '"' + sel + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + '</option>';
+  }).join('');
+  var personOpts = (APP.state.data.people || []).map(function(p){
+    var sel = seat.CurrentPersonID && (seat.CurrentPersonID.Id || seat.CurrentPersonID) == p.Id ? ' selected' : '';
+    return '<option value="' + escAttr(p.Id) + '"' + sel + '>' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  APP.modalState.editSeatId = seatId;
+  var body = '<div class="form-grid">'
+    + formField('Coordinates', '<input class="input" value="X: ' + (seat.XCoord || 0) + ', Y: ' + (seat.YCoord || 0) + '" disabled />')
+    + formField('Room', '<select id="editSeatRoom" class="select"><option value="">-- Select --</option>' + roomOpts + '</select>')
+    + formField('Seat Label', '<input id="editSeatLabel" class="input" value="' + escAttr(seat.SeatLabel || '') + '" />')
+    + formField('Assign Person', '<select id="editSeatPerson" class="select"><option value="">-- None (Available) --</option>' + personOpts + '</select>')
+    + formField('Port Number', '<input id="editSeatPort" class="input" value="' + escAttr(seat.PortNumber || '') + '" />')
+    + formField('Phone Number', '<input id="editSeatPhone" class="input" value="' + escAttr(seat.PhoneNumber || '') + '" />')
+    + formField('NIPR', '<select id="editSeatNIPR" class="select"><option value="Yes"' + (normalizeBoolean(seat.HasNIPR) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(seat.HasNIPR) ? ' selected' : '') + '>No</option></select>')
+    + formField('SIPR', '<select id="editSeatSIPR" class="select"><option value="Yes"' + (normalizeBoolean(seat.HasSIPR) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(seat.HasSIPR) ? ' selected' : '') + '>No</option></select>')
+    + formField('JWICS', '<select id="editSeatJWICS" class="select"><option value="Yes"' + (normalizeBoolean(seat.HasJWICS) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(seat.HasJWICS) ? ' selected' : '') + '>No</option></select>')
+    + formField('VTC Enabled', '<select id="editSeatVTC" class="select"><option value="Yes"' + (normalizeBoolean(seat.VTCEnabled) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(seat.VTCEnabled) ? ' selected' : '') + '>No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="editSeatNotes" class="textarea" style="min-height:60px">' + escHtml(seat.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Seat: ' + escHtml(seat.SeatLabel || 'Seat'), body,
+    '<div><button class="btn danger" data-action="delete-seat" data-seat-id="' + escAttr(seatId) + '">Delete Seat</button></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-seat-edit">Save Changes</button></div>',
+    'Edit seat properties and assignments');
+}
+function saveSeatEdit(){
+  var seatId = APP.modalState.editSeatId;
+  if (!seatId) { return; }
+  var seatLabel = document.getElementById('editSeatLabel').value;
+  var roomId = document.getElementById('editSeatRoom').value;
+  var errors = runValidation([function(){ return validateRequired(seatLabel, 'Seat Label'); }]);
+  if (showValidationErrors(errors)) { return; }
+  var personId = document.getElementById('editSeatPerson').value;
+  var values = {
+    Title: seatLabel,
+    SeatLabel: seatLabel,
+    SeatStatus: personId ? 'Occupied' : 'Available',
+    PortNumber: document.getElementById('editSeatPort').value,
+    PhoneNumber: document.getElementById('editSeatPhone').value,
+    HasNIPR: document.getElementById('editSeatNIPR').value === 'Yes',
+    HasSIPR: document.getElementById('editSeatSIPR').value === 'Yes',
+    HasJWICS: document.getElementById('editSeatJWICS').value === 'Yes',
+    VTCEnabled: document.getElementById('editSeatVTC').value === 'Yes',
+    Notes: document.getElementById('editSeatNotes').value
+  };
+  if (roomId) { values.RoomID = parseInt(roomId, 10); }
+  if (personId) { values.CurrentPersonID = parseInt(personId, 10); } else { values.CurrentPersonID = null; }
+  updateListItem(APP.lists.Seats, seatId, values, { entityType: 'Seat', reason: 'Seat edit' }).then(function(){
+    toast('Seat updated!', 'ok');
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Seat update failed.', 'danger'); });
+}
+function deleteSeat(seatId){
+  if (!confirm('Delete this seat permanently? This cannot be undone.')) { return; }
+  deleteListItem(APP.lists.Seats, seatId, { entityType: 'Seat', reason: 'Seat deletion' }).then(function(){
+    toast('Seat deleted.', 'ok');
+    hideSeatTooltip();
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Delete failed.', 'danger'); });
+}
+function saveSeatPosition(seatId, x, y){
+  updateListItem(APP.lists.Seats, seatId, { XCoord: String(x), YCoord: String(y) }, { entityType: 'Seat', reason: 'Drag reposition' }).then(function(){
+    toast('Seat repositioned to (' + x + ', ' + y + ').', 'ok');
+    var seats = APP.state.data.seats || [];
+    for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seats[i].XCoord = String(x); seats[i].YCoord = String(y); break; } }
+  }).catch(function(){ toast('Reposition failed — refresh to see actual position.', 'danger'); });
+}
+function highlightSeatOnMap(seatId, x, y){
+  if (x === '' || x == null) { toast('This seat is not placed on the map yet.', 'warn'); return; }
+  var marker = document.querySelector('.seat-marker[data-seat-id="' + seatId + '"]');
+  if (!marker) { return; }
+  var ui = ensureFacilityUi();
+  var container = document.getElementById('floorplanContainer');
+  if (!container) { return; }
+  var cw = container.clientWidth; var ch = container.clientHeight;
+  ui.panX = (cw / 2) - (Number(x) * ui.zoom);
+  ui.panY = (ch / 2) - (Number(y) * ui.zoom);
+  applyFloorPlanTransform();
+  var prev = document.querySelector('.seat-marker.selected');
+  if (prev) { prev.classList.remove('selected'); }
+  marker.classList.add('selected');
+  setTimeout(function(){ marker.classList.remove('selected'); }, 2000);
+}
+function filterSeatSidebar(query){
+  var list = document.getElementById('seatSidebarList');
+  if (!list) { return; }
+  var items = list.querySelectorAll('.sb-item');
+  var q = (query || '').toLowerCase();
+  for (var i = 0; i < items.length; i++) {
+    var text = items[i].textContent.toLowerCase();
+    items[i].style.display = text.indexOf(q) !== -1 ? '' : 'none';
+  }
+}
+function getNextSeatLabel(){
+  var seats = APP.state.data.seats || [];
+  var ui = ensureFacilityUi();
+  var facilitySeats = seats.filter(function(s){
+    if (ui.selectedRoomId) { return s.RoomID && (s.RoomID.Id || s.RoomID) == ui.selectedRoomId; }
+    return true;
+  });
+  var maxNum = 0;
+  facilitySeats.forEach(function(s){
+    var label = s.SeatLabel || '';
+    var m = label.match(/(\d+)\s*$/);
+    if (m) { var n = parseInt(m[1], 10); if (n > maxNum) { maxNum = n; } }
+  });
+  return String(maxNum + 1);
+}
+
+/* ─── Coordinate Picker Tool ─── */
+function handlePickerClick(e){
+  var container = document.getElementById('floorplanContainer');
+  var inner = document.getElementById('floorplanInner');
+  if (!container || !inner) { return; }
+  var ui = ensureFacilityUi();
+  var rect = inner.getBoundingClientRect();
+  var x = Math.round((e.clientX - rect.left) / ui.zoom);
+  var y = Math.round((e.clientY - rect.top) / ui.zoom);
+  ui.pickerPending = { x: x, y: y };
+  openSeatPlacementModal(x, y);
+}
+function openSeatPlacementModal(x, y){
+  var ui = ensureFacilityUi();
+  var facilityId = ui.selectedFacilityId;
+  var rooms = (APP.state.data.rooms || []).filter(function(r){ return r.FacilityID && r.FacilityID.Id === facilityId; });
+  var roomOpts = rooms.map(function(r){
+    var sel = ui.selectedRoomId && r.Id === ui.selectedRoomId ? ' selected' : '';
+    return '<option value="' + escAttr(r.Id) + '"' + sel + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + '</option>';
+  }).join('');
+  var personOpts = (APP.state.data.people || []).map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  APP.modalState.pickerCoords = { x: x, y: y };
+  var suggestedLabel = getNextSeatLabel();
+  var last = APP.state._lastPickerValues || {};
+  var body = '<div class="form-grid">'
+    + formField('Coordinates', '<div style="display:flex;gap:8px;align-items:center"><input class="input" value="X: ' + x + ', Y: ' + y + '" disabled style="flex:1" /><span class="badge info" style="font-size:10px">Click elsewhere to reposition</span></div>')
+    + formField('Room', '<select id="pickerRoom" class="select"><option value="">-- Select --</option>' + roomOpts + '</select>')
+    + formField('Seat Label', '<input id="pickerSeatLabel" class="input" placeholder="e.g., A-01, B-12" value="' + escAttr(suggestedLabel) + '" />')
+    + formField('Assign Person', '<select id="pickerPerson" class="select"><option value="">-- None (Available) --</option>' + personOpts + '</select>')
+    + formField('Port Number', '<input id="pickerPort" class="input" placeholder="e.g., P-1A-04" value="' + escAttr(last.port || '') + '" />')
+    + formField('Phone Number', '<input id="pickerPhone" class="input" placeholder="DSN or commercial" />')
+    + formField('NIPR', '<select id="pickerNIPR" class="select"><option value="Yes"' + (last.nipr ? ' selected' : '') + '>Yes</option><option value="No"' + (!last.nipr ? ' selected' : '') + '>No</option></select>')
+    + formField('SIPR', '<select id="pickerSIPR" class="select"><option value="Yes"' + (last.sipr ? ' selected' : '') + '>Yes</option><option value="No"' + (!last.sipr ? ' selected' : '') + '>No</option></select>')
+    + formField('JWICS', '<select id="pickerJWICS" class="select"><option value="Yes"' + (last.jwics ? ' selected' : '') + '>Yes</option><option value="No"' + (!last.jwics ? ' selected' : '') + '>No</option></select>')
+    + formField('VTC Enabled', '<select id="pickerVTC" class="select"><option value="Yes"' + (last.vtc ? ' selected' : '') + '>Yes</option><option value="No"' + (!last.vtc ? ' selected' : '') + '>No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="pickerNotes" class="textarea" style="min-height:60px" placeholder="Seat notes, special configuration details"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Place Seat at (' + x + ', ' + y + ')', body, '<div><button class="btn" data-action="close-modal" onclick="clearPickerPending()">Cancel</button></div><div><button class="btn primary" data-action="save-picker-seat">Save &amp; Continue Placing</button></div>', 'Creates a new seat record with mapped coordinates');
+}
+function clearPickerPending(){
+  var ui = ensureFacilityUi();
+  ui.pickerPending = null;
+}
+function savePickerSeat(){
+  var coords = APP.modalState.pickerCoords;
+  if (!coords) { toast('Missing coordinate data.', 'danger'); return; }
+  var roomId = document.getElementById('pickerRoom').value;
+  var seatLabel = document.getElementById('pickerSeatLabel').value;
+  var errors = runValidation([
+    function(){ return validateRequired(roomId, 'Room'); },
+    function(){ return validateRequired(seatLabel, 'Seat Label'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var personId = document.getElementById('pickerPerson').value;
+  /* Remember network selections for rapid repeat placement */
+  APP.state._lastPickerValues = {
+    port: document.getElementById('pickerPort').value,
+    nipr: document.getElementById('pickerNIPR').value === 'Yes',
+    sipr: document.getElementById('pickerSIPR').value === 'Yes',
+    jwics: document.getElementById('pickerJWICS').value === 'Yes',
+    vtc: document.getElementById('pickerVTC').value === 'Yes'
+  };
+  var values = {
+    Title: seatLabel,
+    SeatLabel: seatLabel,
+    SeatID: seatLabel,
+    RoomID: parseInt(roomId, 10),
+    XCoord: String(coords.x),
+    YCoord: String(coords.y),
+    PortNumber: document.getElementById('pickerPort').value,
+    PhoneNumber: document.getElementById('pickerPhone').value,
+    HasNIPR: document.getElementById('pickerNIPR').value === 'Yes',
+    HasSIPR: document.getElementById('pickerSIPR').value === 'Yes',
+    HasJWICS: document.getElementById('pickerJWICS').value === 'Yes',
+    VTCEnabled: document.getElementById('pickerVTC').value === 'Yes',
+    CurrentPersonID: personId ? parseInt(personId, 10) : null,
+    SeatStatus: personId ? 'Occupied' : 'Available',
+    Notes: document.getElementById('pickerNotes').value
+  };
+  createListItem(APP.lists.Seats, values, { entityType: 'Seat', reason: 'Coordinate picker placement' }).then(function(result){
+    toast('Seat "' + seatLabel + '" placed!', 'ok');
+    var ui = ensureFacilityUi();
+    ui._justPlacedId = result && result.d ? result.d.Id : null;
+    clearPickerPending();
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Seat creation failed.', 'danger'); });
+}
+function setFloorPlanUrl(){
+  var ui = ensureFacilityUi();
+  var facility = null;
+  (APP.state.data.facilities || []).some(function(f){ if (f.Id === ui.selectedFacilityId) { facility = f; return true; } return false; });
+  if (!facility) { toast('Select a facility first.', 'danger'); return; }
+  var currentUrl = facility.FloorPlanUrl || '';
+  var body = '<div class="form-grid">'
+    + formField('Building', '<input class="input" value="' + escAttr(facility.BuildingNumber || facility.Title || '') + '" disabled />')
+    + '<div class="full">' + formField('Floor Plan Image URL', '<input id="floorPlanUrlInput" class="input" placeholder="e.g., /sites/CCSDAdminSPA/SiteAssets/Images/Building Plans/Bldg 2028 Floor 1.jpg" value="' + escAttr(currentUrl) + '" />') + '</div>'
+    + '<div class="full"><div class="small-note">Enter the SharePoint-relative or full URL to the floor plan image (JPG/PNG). This will be stored on the facility record.</div></div>'
+    + '</div>';
+  openModal('Set Floor Plan URL', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-floorplan-url">Save URL</button></div>', facility.BuildingNumber || '');
+}
+function saveFloorPlanUrl(){
+  var ui = ensureFacilityUi();
+  var url = (document.getElementById('floorPlanUrlInput').value || '').trim();
+  if (!url) { toast('URL is required.', 'danger'); return; }
+  var facility = null;
+  (APP.state.data.facilities || []).some(function(f){ if (f.Id === ui.selectedFacilityId) { facility = f; return true; } return false; });
+  if (!facility) { toast('No facility selected.', 'danger'); return; }
+  updateListItem(APP.lists.Facilities, facility.Id, { FloorPlanUrl: url }, { entityType: 'Facility', before: facility, reason: 'Set floor plan URL' }).then(function(){
+    toast('Floor plan URL saved.', 'ok');
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Failed to save floor plan URL.', 'danger'); });
+}
+
+/* ─── Expose global callbacks for image load/error ─── */
+window.onFloorPlanLoad = onFloorPlanLoad;
+window.onFloorPlanError = onFloorPlanError;
+window.clearPickerPending = clearPickerPending;
+
 function renderRoomDetail(facilityId, roomId){
   var rooms = APP.state.data.rooms || [];
   var seats = APP.state.data.seats || [];
@@ -3061,7 +3893,9 @@ function renderRoomDetail(facilityId, roomId){
   html += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length)) + '</div><div class="t">Total Seats</div></div><div class="org-kpi"><div class="n">' + escHtml(String(occupied)) + '</div><div class="t">Occupied</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length - occupied)) + '</div><div class="t">Available</div></div><div class="org-kpi"><div class="n">' + escHtml(String(room.MaxSeats || roomSeats.length)) + '</div><div class="t">Max Capacity</div></div></div>';
   html += '</div>';
   html += '<div class="section-head"><div class="section-title">Seat Map</div></div>';
-  html += renderSeatMap(roomSeats, room);
+  var facility = null;
+  (APP.state.data.facilities || []).some(function(f){ if (String(f.Id) === String(facilityId)) { facility = f; return true; } return false; });
+  html += renderSeatMap(roomSeats, room, facility);
   return html;
 }
 function renderFacilities(){
@@ -3108,11 +3942,24 @@ function renderFacilities(){
       html += '</div>';
     });
     html += '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Room Detail & Seat Map</div><div class="card-sub">Select a facility then a room to see the interactive seat layout.</div></div></div><div class="card-body">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Room Detail & Seat Map</div><div class="card-sub">Select a facility then a room to see the interactive seat layout, or view the full building floor plan.</div></div></div><div class="card-body">';
     if (ui.selectedRoomId) {
       html += renderRoomDetail(ui.selectedFacilityId, ui.selectedRoomId);
     } else if (ui.selectedFacilityId) {
-      html += '<div class="empty">Select a room from the facility panel to view its seat map.</div>';
+      var selFacility = null;
+      facilities.some(function(f){ if (f.Id === ui.selectedFacilityId) { selFacility = f; return true; } return false; });
+      var fpUrl = selFacility ? getFloorPlanUrl(selFacility, null) : '';
+      if (fpUrl) {
+        var allFacSeats = seats.filter(function(s){
+          if (!s.RoomID) { return false; }
+          return rooms.some(function(r){ return r.Id === s.RoomID.Id && r.FacilityID && r.FacilityID.Id === ui.selectedFacilityId; });
+        });
+        html += '<div class="org-detail-hero" style="margin-bottom:16px"><div class="org-detail-title">' + escHtml((selFacility.BuildingNumber || selFacility.Title || 'Building') + ' — Full Floor Plan') + '</div><div class="org-detail-sub">All seats across all rooms shown on the building floor plan. Select a room above to filter.</div></div>';
+        html += renderFloorPlanView(allFacSeats, null, selFacility, fpUrl);
+        html += '<div id="seatTooltip" class="seat-tooltip" style="display:none"></div>';
+      } else {
+        html += '<div class="empty">Select a room from the facility panel to view its seat map.' + (canSeeAdmin() ? ' Or <button class="btn subtle" data-action="enter-floorplan-url" style="display:inline">set a floor plan image URL</button> for this building.' : '') + '</div>';
+      }
     } else {
       html += '<div class="empty">Select a facility and room to explore the seat layout, occupancy, and network capability map.</div>';
     }
@@ -3364,8 +4211,8 @@ function renderAssetWatchlist(idx){
   var unassigned = idx.hardwareAssets.filter(function(a){ return !activeAssetIds[a.Id]; });
   if (!unassigned.length) { html += '<div class="empty">No unassigned hardware was found.</div>'; }
   else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Hardware</th><th>Type</th><th>Environment</th><th>Status</th><th>Purchase</th></tr></thead><tbody>';
-    unassigned.slice(0, 20).forEach(function(a){ var rowSearch = [getHardwareDisplayName(a), a.AssetType || '', a.SerialNumber || '', a.PrimaryNetworkEnvironment || '', a.Status || ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getHardwareDisplayName(a)) + '</strong><div class="mini muted">' + escHtml(a.SerialNumber || '') + '</div></td><td>' + escHtml(a.AssetType || '') + '</td><td>' + escHtml(envDisplayLabel(a.PrimaryNetworkEnvironment)) + '</td><td>' + statusBadge(a.Status || 'Available') + '</td><td>' + escHtml(formatDate(a.PurchaseDate)) + '</td></tr>'; });
+    html += '<div class="table-wrap"><table><thead><tr><th>Hardware</th><th>Type</th><th>Environment</th><th>Status</th><th>Purchase</th><th></th></tr></thead><tbody>';
+    unassigned.slice(0, 20).forEach(function(a){ var rowSearch = [getHardwareDisplayName(a), a.AssetType || '', a.SerialNumber || '', a.PrimaryNetworkEnvironment || '', a.Status || ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getHardwareDisplayName(a)) + '</strong><div class="mini muted">' + escHtml(a.SerialNumber || '') + '</div></td><td>' + escHtml(a.AssetType || '') + '</td><td>' + escHtml(envDisplayLabel(a.PrimaryNetworkEnvironment)) + '</td><td>' + statusBadge(a.Status || 'Available') + '</td><td>' + escHtml(formatDate(a.PurchaseDate)) + '</td><td><button class="btn subtle" data-action="view-hw-detail" data-id="' + escAttr(a.Id) + '" style="padding:4px 8px;font-size:10px">Detail</button></td></tr>'; });
     html += '</tbody></table></div>';
   }
   html += '</div></div>';
@@ -3386,22 +4233,1016 @@ function renderAssetAssignmentTables(idx, search){
   html += '<div class="card"><div class="card-head"><div><div class="asset-table-title">Hardware Assignment Snapshot</div><div class="card-sub">Current hardware assignments by person, seat, and network environment.</div></div></div><div class="card-body">';
   if (!hardwareRows.length) { html += '<div class="empty">No hardware assignments matched.</div>'; }
   else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Hardware</th><th>Assigned To</th><th>Seat</th><th>Environment</th><th>Status</th></tr></thead><tbody>';
-    hardwareRows.slice(0, 120).forEach(function(r){ var rowSearch = [getHardwareDisplayName(r._asset), r._person ? formatPerson(r._person) : '', r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '', r._effectiveEnv || '', r.Status || ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getHardwareDisplayName(r._asset)) + '</strong><div class="mini muted">' + escHtml((r._asset && r._asset.AssetType) || '') + '</div></td><td>' + escHtml(r._person ? formatPerson(r._person) : '') + '</td><td>' + escHtml(r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '') + '</td><td>' + escHtml(r._effectiveEnv || '') + '</td><td>' + statusBadge(r.Status || 'Active') + '</td></tr>'; });
+    html += '<div class="table-wrap"><table><thead><tr><th>Hardware</th><th>Assigned To</th><th>Seat</th><th>Environment</th><th>Status</th><th></th></tr></thead><tbody>';
+    hardwareRows.slice(0, 120).forEach(function(r){ var rowSearch = [getHardwareDisplayName(r._asset), r._person ? formatPerson(r._person) : '', r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '', r._effectiveEnv || '', r.Status || ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getHardwareDisplayName(r._asset)) + '</strong><div class="mini muted">' + escHtml((r._asset && r._asset.AssetType) || '') + '</div></td><td>' + escHtml(r._person ? formatPerson(r._person) : '') + '</td><td>' + escHtml(r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '') + '</td><td>' + escHtml(r._effectiveEnv || '') + '</td><td>' + statusBadge(r.Status || 'Active') + '</td><td><button class="btn subtle" data-action="view-hw-assignment" data-id="' + escAttr(r.Id) + '" style="padding:4px 8px;font-size:10px">View</button></td></tr>'; });
     html += '</tbody></table></div>';
   }
   html += '</div></div>';
   html += '<div class="card"><div class="card-head"><div><div class="asset-table-title">Software Assignment Snapshot</div><div class="card-sub">Approved software visibility by person, seat, and authorizing system.</div></div></div><div class="card-body">';
   if (!softwareRows.length) { html += '<div class="empty">No software assignments matched.</div>'; }
   else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Software</th><th>Assigned To</th><th>Environment</th><th>Approval</th><th>System</th></tr></thead><tbody>';
-    softwareRows.slice(0, 120).forEach(function(r){ var rowSearch = [getSoftwareDisplayName(r._software), r._person ? formatPerson(r._person) : '', r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '', r._effectiveEnv || '', r.Status || '', r._system ? (r._system.SystemName || r._system.Title) : ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getSoftwareDisplayName(r._software)) + '</strong><div class="mini muted">' + escHtml((r._software && (r._software.ApprovedVersion || r._software.SoftwareVersion)) || '') + '</div></td><td>' + escHtml(r._person ? formatPerson(r._person) : (r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '')) + '</td><td>' + escHtml(r._effectiveEnv || '') + '</td><td>' + escHtml((r._software && r._software.ApprovalStatus) || r.Status || '') + '</td><td>' + escHtml((r._system && (r._system.SystemName || r._system.Title)) || '') + '</td></tr>'; });
+    html += '<div class="table-wrap"><table><thead><tr><th>Software</th><th>Assigned To</th><th>Environment</th><th>Approval</th><th>System</th><th></th></tr></thead><tbody>';
+    softwareRows.slice(0, 120).forEach(function(r){ var rowSearch = [getSoftwareDisplayName(r._software), r._person ? formatPerson(r._person) : '', r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '', r._effectiveEnv || '', r.Status || '', r._system ? (r._system.SystemName || r._system.Title) : ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getSoftwareDisplayName(r._software)) + '</strong><div class="mini muted">' + escHtml((r._software && (r._software.ApprovedVersion || r._software.SoftwareVersion)) || '') + '</div></td><td>' + escHtml(r._person ? formatPerson(r._person) : (r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '')) + '</td><td>' + escHtml(r._effectiveEnv || '') + '</td><td>' + escHtml((r._software && r._software.ApprovalStatus) || r.Status || '') + '</td><td>' + escHtml((r._system && (r._system.SystemName || r._system.Title)) || '') + '</td><td><button class="btn subtle" data-action="view-sw-assignment" data-id="' + escAttr(r.Id) + '" style="padding:4px 8px;font-size:10px">View</button></td></tr>'; });
     html += '</tbody></table></div>';
   }
   html += '</div></div>';
   html += '</div>';
   return html;
 }
+/* ═══════════════════════════════════════════════════════════════════════
+ *  ASSET MANAGEMENT – Detail, Edit, Unassign, Transfer
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Hardware Assignment Detail Modal ─── */
+function openHwAssignmentDetail(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.hardwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  var asset = row._asset || {};
+  var person = row._person;
+  var isActive = isActiveHardwareAssignment(row);
+  var body = '<div class="kv">';
+  body += '<div class="k">Hardware</div><div class="v"><strong>' + escHtml(getHardwareDisplayName(asset)) + '</strong></div>';
+  body += '<div class="k">Asset Type</div><div class="v">' + escHtml(asset.AssetType || '—') + '</div>';
+  body += '<div class="k">Serial Number</div><div class="v">' + escHtml(asset.SerialNumber || '—') + '</div>';
+  body += '<div class="k">Model</div><div class="v">' + escHtml((asset.Manufacturer || '') + ' ' + (asset.Model || '') || '—') + '</div>';
+  body += '<div class="k">Environment</div><div class="v">' + escHtml(row._effectiveEnv || '—') + '</div>';
+  body += '<div class="k">Status</div><div class="v">' + statusBadge(row.Status || 'Active') + '</div>';
+  body += '<div class="k">Assigned To</div><div class="v">' + escHtml(person ? formatPerson(person) : '—') + '</div>';
+  if (row._seat) { body += '<div class="k">Seat</div><div class="v">' + escHtml(getSeatDisplay(row._seat, row._seatRoom)) + '</div>'; }
+  body += '<div class="k">Assigned On</div><div class="v">' + escHtml(formatDate(row.AssignedOn) || '—') + '</div>';
+  if (row._assignedByDisplay) { body += '<div class="k">Assigned By</div><div class="v">' + escHtml(row._assignedByDisplay) + '</div>'; }
+  if (row.UnassignedOn) { body += '<div class="k">Returned On</div><div class="v">' + escHtml(formatDate(row.UnassignedOn)) + '</div>'; }
+  if (row._returnedByDisplay) { body += '<div class="k">Returned By</div><div class="v">' + escHtml(row._returnedByDisplay) + '</div>'; }
+  if (row.TicketReason) { body += '<div class="k">Ticket / Reason</div><div class="v">' + escHtml(row.TicketReason) + '</div>'; }
+  if (row.Notes) { body += '<div class="k">Notes</div><div class="v">' + escHtml(row.Notes) + '</div>'; }
+  if (normalizeBoolean(asset.Portable)) { body += '<div class="k">Portable</div><div class="v"><span class="badge warn">Yes</span></div>'; }
+  body += '</div>';
+  var footer = '<div>';
+  if (canSeeAdmin() && isActive) {
+    footer += '<button class="btn danger" data-action="unassign-hw" data-id="' + escAttr(assignmentId) + '">Return / Unassign</button> ';
+    footer += '<button class="btn warn" data-action="transfer-hw" data-id="' + escAttr(assignmentId) + '">Transfer</button>';
+  }
+  footer += '</div><div>';
+  if (canSeeAdmin() && isActive) { footer += '<button class="btn subtle" data-action="edit-hw-assignment" data-id="' + escAttr(assignmentId) + '">Edit</button> '; }
+  footer += '<button class="btn" data-action="close-modal">Close</button>';
+  if (canSeeAdmin()) { footer += ' <button class="btn subtle" data-action="view-hw-detail" data-id="' + escAttr(asset.Id) + '">Asset Detail</button>'; }
+  footer += '</div>';
+  openModal('Hardware Assignment', body, footer, getHardwareDisplayName(asset));
+}
+
+/* ─── Software Assignment Detail Modal ─── */
+function openSwAssignmentDetail(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  var sw = row._software || {};
+  var sys = row._system || {};
+  var person = row._person;
+  var isActive = isActiveSoftwareAssignment(row);
+  var body = '<div class="kv">';
+  body += '<div class="k">Software</div><div class="v"><strong>' + escHtml(getSoftwareDisplayName(sw)) + '</strong></div>';
+  body += '<div class="k">Vendor</div><div class="v">' + escHtml(sw.Vendor || '—') + '</div>';
+  body += '<div class="k">Version</div><div class="v">' + escHtml(sw.ApprovedVersion || sw.SoftwareVersion || '—') + '</div>';
+  body += '<div class="k">Approval</div><div class="v">' + escHtml(sw.ApprovalStatus || '—') + '</div>';
+  body += '<div class="k">Environment</div><div class="v">' + escHtml(row._effectiveEnv || '—') + '</div>';
+  body += '<div class="k">Status</div><div class="v">' + statusBadge(row.Status || 'Active') + '</div>';
+  body += '<div class="k">Assigned To</div><div class="v">' + escHtml(person ? formatPerson(person) : '—') + '</div>';
+  body += '<div class="k">Assigned On</div><div class="v">' + escHtml(formatDate(row.AssignedOn) || '—') + '</div>';
+  if (row._assignedByDisplay) { body += '<div class="k">Assigned By</div><div class="v">' + escHtml(row._assignedByDisplay) + '</div>'; }
+  if (sys.SystemName || sys.Title) { body += '<div class="k">System</div><div class="v">' + escHtml(sys.SystemName || sys.Title) + '</div>'; }
+  if (sw.AtoNumber) { body += '<div class="k">ATO</div><div class="v">' + escHtml(sw.AtoNumber) + (sw.AtoExpiration ? ' (expires ' + formatDate(sw.AtoExpiration) + ')' : '') + '</div>'; }
+  if (normalizeBoolean(row.ExceptionApproved)) { body += '<div class="k">Exception</div><div class="v"><span class="badge warn">Approved</span> ' + escHtml(row.ExceptionReason || '') + '</div>'; }
+  if (row.TicketReason) { body += '<div class="k">Ticket / Reason</div><div class="v">' + escHtml(row.TicketReason) + '</div>'; }
+  if (row.Notes) { body += '<div class="k">Notes</div><div class="v">' + escHtml(row.Notes) + '</div>'; }
+  body += '</div>';
+  var footer = '<div>';
+  if (canSeeAdmin() && isActive) {
+    footer += '<button class="btn danger" data-action="unassign-sw" data-id="' + escAttr(assignmentId) + '">Unassign</button> ';
+    footer += '<button class="btn warn" data-action="transfer-sw" data-id="' + escAttr(assignmentId) + '">Transfer</button>';
+  }
+  footer += '</div><div>';
+  if (canSeeAdmin() && isActive) { footer += '<button class="btn subtle" data-action="edit-sw-assignment" data-id="' + escAttr(assignmentId) + '">Edit</button> '; }
+  footer += '<button class="btn" data-action="close-modal">Close</button></div>';
+  openModal('Software Assignment', body, footer, getSoftwareDisplayName(sw));
+}
+
+/* ─── Hardware Asset Detail Modal ─── */
+function openHwAssetDetail(assetId){
+  var idx = buildAssetIndex();
+  var asset = idx.hardwareById[assetId];
+  if (!asset) { toast('Asset not found.', 'danger'); return; }
+  var allAssignments = idx.hardwareAssignments.filter(function(a){ return a._asset && String(a._asset.Id) === String(assetId); });
+  allAssignments.sort(function(a, b){ return (b.AssignedOn || '').localeCompare(a.AssignedOn || ''); });
+  var activeAssignments = allAssignments.filter(isActiveHardwareAssignment);
+  var body = '<div class="kv">';
+  body += '<div class="k">Name</div><div class="v"><strong>' + escHtml(getHardwareDisplayName(asset)) + '</strong></div>';
+  body += '<div class="k">Asset ID</div><div class="v">' + escHtml(asset.AssetID || '—') + '</div>';
+  body += '<div class="k">Type</div><div class="v">' + escHtml(asset.AssetType || '—') + '</div>';
+  body += '<div class="k">Manufacturer</div><div class="v">' + escHtml(asset.Manufacturer || '—') + '</div>';
+  body += '<div class="k">Model</div><div class="v">' + escHtml(asset.Model || '—') + '</div>';
+  body += '<div class="k">Serial Number</div><div class="v">' + escHtml(asset.SerialNumber || '—') + '</div>';
+  body += '<div class="k">Network Env</div><div class="v">' + escHtml(envDisplayLabel(asset.PrimaryNetworkEnvironment)) + '</div>';
+  body += '<div class="k">Portable</div><div class="v">' + escHtml(assetBoolText(asset.Portable)) + '</div>';
+  body += '<div class="k">Status</div><div class="v">' + statusBadge(asset.Status || 'Available') + '</div>';
+  body += '<div class="k">Purchase Date</div><div class="v">' + escHtml(formatDate(asset.PurchaseDate) || '—') + '</div>';
+  if (asset.PurchaseCost) { body += '<div class="k">Cost</div><div class="v">' + escHtml(formatCurrencySafe(asset.PurchaseCost)) + '</div>'; }
+  if (asset.Notes) { body += '<div class="k">Notes</div><div class="v">' + escHtml(asset.Notes) + '</div>'; }
+  body += '</div>';
+  /* Assignment history */
+  body += '<div style="margin-top:16px;font-weight:800;font-size:14px;padding-bottom:6px;border-bottom:1px solid var(--line)">Assignment History (' + allAssignments.length + ')</div>';
+  if (!allAssignments.length) { body += '<div class="empty" style="margin-top:8px">No assignments recorded.</div>'; }
+  else {
+    body += '<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>Person</th><th>Assigned</th><th>Returned</th><th>Status</th><th>Environment</th></tr></thead><tbody>';
+    allAssignments.forEach(function(a){
+      body += '<tr><td>' + escHtml(a._person ? formatPerson(a._person) : '—') + '</td><td>' + escHtml(formatDate(a.AssignedOn) || '—') + '</td><td>' + escHtml(formatDate(a.UnassignedOn) || '—') + '</td><td>' + statusBadge(a.Status || 'Active') + '</td><td>' + escHtml(a._effectiveEnv || '') + '</td></tr>';
+    });
+    body += '</tbody></table></div>';
+  }
+  var footer = '<div>';
+  if (canSeeAdmin()) { footer += '<button class="btn primary" data-action="edit-hw-asset" data-id="' + escAttr(assetId) + '">Edit Asset</button>'; }
+  footer += '</div><div><button class="btn" data-action="close-modal">Close</button></div>';
+  openModal('Hardware Asset Detail', body, footer, getHardwareDisplayName(asset));
+}
+
+/* ─── Edit Hardware Asset Modal ─── */
+function openEditHwAssetModal(assetId){
+  var idx = buildAssetIndex();
+  var asset = idx.hardwareById[assetId];
+  if (!asset) { toast('Asset not found.', 'danger'); return; }
+  APP.modalState.editHwAssetId = assetId;
+  var statusOpts = ['Available','Assigned','In Service','Surplus','Disposed','Maintenance','Lost'].map(function(s){
+    return '<option value="' + s + '"' + (asset.Status === s ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+  var envOpts = ['','Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){
+    return '<option value="' + escAttr(e) + '"' + ((asset.PrimaryNetworkEnvironment || '') === e ? ' selected' : '') + '>' + escHtml(e || '— Not Set —') + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Device Name / Host Name', '<input id="ehwName" class="input" value="' + escAttr(asset.DeviceName || '') + '" />')
+    + formField('Asset Type', '<input id="ehwType" class="input" value="' + escAttr(asset.AssetType || '') + '" />')
+    + formField('Manufacturer', '<input id="ehwMfg" class="input" value="' + escAttr(asset.Manufacturer || '') + '" />')
+    + formField('Model', '<input id="ehwModel" class="input" value="' + escAttr(asset.Model || '') + '" />')
+    + formField('Serial Number', '<input id="ehwSerial" class="input" value="' + escAttr(asset.SerialNumber || '') + '" />')
+    + formField('Network Environment', '<select id="ehwEnv" class="select">' + envOpts + '</select>')
+    + formField('Status', '<select id="ehwStatus" class="select">' + statusOpts + '</select>')
+    + formField('Portable', '<select id="ehwPortable" class="select"><option value="Yes"' + (normalizeBoolean(asset.Portable) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(asset.Portable) ? ' selected' : '') + '>No</option></select>')
+    + formField('Purchase Date', '<input id="ehwPurchDate" type="date" class="input" value="' + escAttr((asset.PurchaseDate || '').slice(0, 10)) + '" />')
+    + formField('Purchase Cost', '<input id="ehwCost" type="number" class="input" value="' + escAttr(asset.PurchaseCost || '') + '" />')
+    + '<div class="full">' + formField('Notes', '<textarea id="ehwNotes" class="textarea" style="min-height:60px">' + escHtml(asset.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Hardware Asset', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-hw-asset-edit">Save Changes</button></div>', getHardwareDisplayName(asset));
+}
+function saveHwAssetEdit(){
+  var id = APP.modalState.editHwAssetId;
+  if (!id) { return; }
+  var values = {
+    DeviceNameHostName: document.getElementById('ehwName').value,
+    'Asset Type': document.getElementById('ehwType').value,
+    Manufacturer: document.getElementById('ehwMfg').value,
+    Model: document.getElementById('ehwModel').value,
+    'Serial Number': document.getElementById('ehwSerial').value,
+    PrimaryNetworkEnvironment: document.getElementById('ehwEnv').value,
+    Status: document.getElementById('ehwStatus').value,
+    Portable: document.getElementById('ehwPortable').value === 'Yes',
+    'Purchase Date': document.getElementById('ehwPurchDate').value || null,
+    'Purchase Cost': document.getElementById('ehwCost').value ? parseFloat(document.getElementById('ehwCost').value) : null,
+    Notes: document.getElementById('ehwNotes').value
+  };
+  updateListItem(APP.lists.HardwareAssets, id, values, { entityType: 'HardwareAsset', reason: 'Asset edit' }).then(function(){
+    toast('Hardware asset updated.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Update failed.', 'danger'); });
+}
+
+/* ─── Edit Software Asset Modal ─── */
+function openEditSwAssetModal(assetId){
+  var idx = buildAssetIndex();
+  var sw = idx.softwareById[assetId];
+  if (!sw) { toast('Software not found.', 'danger'); return; }
+  APP.modalState.editSwAssetId = assetId;
+  var approvalOpts = ['','Approved','Pending','Denied','Revoked'].map(function(s){
+    return '<option value="' + s + '"' + ((sw.ApprovalStatus || '') === s ? ' selected' : '') + '>' + escHtml(s || '— Not Set —') + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Title', '<input id="eswTitle" class="input" value="' + escAttr(sw.Title || '') + '" />')
+    + formField('Vendor', '<input id="eswVendor" class="input" value="' + escAttr(sw.Vendor || '') + '" />')
+    + formField('Version', '<input id="eswVersion" class="input" value="' + escAttr(sw.SoftwareVersion || '') + '" />')
+    + formField('Approved Version', '<input id="eswApprVer" class="input" value="' + escAttr(sw.ApprovedVersion || '') + '" />')
+    + formField('License Type', '<input id="eswLicType" class="input" value="' + escAttr(sw.LicenseType || '') + '" />')
+    + formField('Total Licenses', '<input id="eswLicCount" type="number" class="input" value="' + escAttr(sw.TotalLicenses || '') + '" />')
+    + formField('Approval Status', '<select id="eswApproval" class="select">' + approvalOpts + '</select>')
+    + formField('Annual Cost', '<input id="eswCost" type="number" class="input" value="' + escAttr(sw.AnnualCost || '') + '" />')
+    + formField('ATO Number', '<input id="eswAto" class="input" value="' + escAttr(sw.AtoNumber || '') + '" />')
+    + formField('ATO Expiration', '<input id="eswAtoExp" type="date" class="input" value="' + escAttr((sw.AtoExpiration || '').slice(0, 10)) + '" />')
+    + formField('Requires ATO', '<select id="eswReqAto" class="select"><option value="Yes"' + (normalizeBoolean(sw.RequiresATO) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(sw.RequiresATO) ? ' selected' : '') + '>No</option></select>')
+    + formField('Requires Admin Install', '<select id="eswReqAdmin" class="select"><option value="Yes"' + (normalizeBoolean(sw.RequiresAdministratorInstall) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(sw.RequiresAdministratorInstall) ? ' selected' : '') + '>No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="eswNotes" class="textarea" style="min-height:60px">' + escHtml(sw.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Software Asset', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-sw-asset-edit">Save Changes</button></div>', getSoftwareDisplayName(sw));
+}
+function saveSwAssetEdit(){
+  var id = APP.modalState.editSwAssetId;
+  if (!id) { return; }
+  var values = {
+    Title: document.getElementById('eswTitle').value,
+    Vendor: document.getElementById('eswVendor').value,
+    'Software Version': document.getElementById('eswVersion').value,
+    'Approved Version': document.getElementById('eswApprVer').value,
+    'License Type': document.getElementById('eswLicType').value,
+    'Total Licenses': document.getElementById('eswLicCount').value ? parseInt(document.getElementById('eswLicCount').value, 10) : null,
+    ApprovalStatus: document.getElementById('eswApproval').value,
+    'Annual Cost': document.getElementById('eswCost').value ? parseFloat(document.getElementById('eswCost').value) : null,
+    ATONumber: document.getElementById('eswAto').value,
+    ATOExpiration: document.getElementById('eswAtoExp').value || null,
+    RequiresATO: document.getElementById('eswReqAto').value === 'Yes',
+    RequiresAdministratorInstall: document.getElementById('eswReqAdmin').value === 'Yes',
+    Notes: document.getElementById('eswNotes').value
+  };
+  updateListItem(APP.lists.SoftwareAssets, id, values, { entityType: 'SoftwareAsset', reason: 'Software edit' }).then(function(){
+    toast('Software asset updated.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Update failed.', 'danger'); });
+}
+
+/* ─── Edit Assignment Modals ─── */
+function openEditHwAssignmentModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.hardwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.editHwAssignId = assignmentId;
+  var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){
+    return '<option value="' + escAttr(e) + '"' + (row._effectiveEnv === e ? ' selected' : '') + '>' + escHtml(e) + '</option>';
+  }).join('');
+  var statusOpts = ['Active','Assigned','In Service','Returned','Surplus'].map(function(s){
+    return '<option value="' + s + '"' + ((row.Status || 'Active') === s ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Hardware', '<input class="input" value="' + escAttr(getHardwareDisplayName(row._asset)) + '" disabled />')
+    + formField('Assigned To', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Environment', '<select id="ehwaEnv" class="select">' + envOpts + '</select>')
+    + formField('Status', '<select id="ehwaStatus" class="select">' + statusOpts + '</select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="ehwaNotes" class="textarea" style="min-height:60px">' + escHtml(row.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Assignment', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-edit-hw-assign">Save</button></div>', 'Hardware Assignment');
+}
+function saveEditHwAssignment(){
+  var id = APP.modalState.editHwAssignId;
+  if (!id) { return; }
+  var values = {
+    NetworkEnvironment: document.getElementById('ehwaEnv').value,
+    Status: document.getElementById('ehwaStatus').value,
+    Notes: document.getElementById('ehwaNotes').value
+  };
+  updateListItem(APP.lists.HardwareAssignments, id, values, { entityType: 'HardwareAssignment', reason: 'Assignment edit' }).then(function(){
+    toast('Assignment updated.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Update failed.', 'danger'); });
+}
+
+function openEditSwAssignmentModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.editSwAssignId = assignmentId;
+  var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){
+    return '<option value="' + escAttr(e) + '"' + (row._effectiveEnv === e ? ' selected' : '') + '>' + escHtml(e) + '</option>';
+  }).join('');
+  var statusOpts = ['Active','Pending','Revoked','Returned'].map(function(s){
+    return '<option value="' + s + '"' + ((row.Status || 'Active') === s ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Software', '<input class="input" value="' + escAttr(getSoftwareDisplayName(row._software)) + '" disabled />')
+    + formField('Assigned To', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Environment', '<select id="eswaEnv" class="select">' + envOpts + '</select>')
+    + formField('Status', '<select id="eswaStatus" class="select">' + statusOpts + '</select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="eswaNotes" class="textarea" style="min-height:60px">' + escHtml(row.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Assignment', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-edit-sw-assign">Save</button></div>', 'Software Assignment');
+}
+function saveEditSwAssignment(){
+  var id = APP.modalState.editSwAssignId;
+  if (!id) { return; }
+  var values = {
+    NetworkEnvironment: document.getElementById('eswaEnv').value,
+    Status: document.getElementById('eswaStatus').value,
+    Notes: document.getElementById('eswaNotes').value
+  };
+  updateListItem(APP.lists.SoftwareAssignments, id, values, { entityType: 'SoftwareAssignment', reason: 'Assignment edit' }).then(function(){
+    toast('Assignment updated.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Update failed.', 'danger'); });
+}
+
+/* ─── Unassign / Return Flow ─── */
+function openUnassignHwModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.hardwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.unassignHwId = assignmentId;
+  var today = new Date().toISOString().slice(0, 10);
+  var condOpts = ['Good','Fair','Poor','Damaged','Missing'].map(function(c){ return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Hardware', '<input class="input" value="' + escAttr(getHardwareDisplayName(row._asset)) + '" disabled />')
+    + formField('Returning From', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Return Date', '<input id="uhwDate" type="date" class="input" value="' + today + '" />')
+    + formField('Condition on Return', '<select id="uhwCondition" class="select">' + condOpts + '</select>')
+    + formField('Ticket / Reference', '<input id="uhwTicket" class="input" placeholder="Optional ticket or reference number" />')
+    + '<div class="full">' + formField('Return Notes', '<textarea id="uhwNotes" class="textarea" style="min-height:60px" placeholder="Reason for return, condition details, etc."></textarea>') + '</div>'
+    + '</div>';
+  openModal('Return / Unassign Hardware', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn danger" data-action="confirm-unassign-hw">Confirm Return</button></div>', 'Mark this assignment as returned');
+}
+function confirmUnassignHw(){
+  var id = APP.modalState.unassignHwId;
+  if (!id) { return; }
+  var values = {
+    Status: 'Returned',
+    'Unassigned On': document.getElementById('uhwDate').value,
+    'Ticket / Reason': (document.getElementById('uhwTicket').value || '') + (document.getElementById('uhwCondition').value ? ' [Condition: ' + document.getElementById('uhwCondition').value + ']' : ''),
+    Notes: (document.getElementById('uhwNotes').value || '')
+  };
+  updateListItem(APP.lists.HardwareAssignments, id, values, { entityType: 'HardwareAssignment', reason: 'Hardware return/unassign' }).then(function(){
+    toast('Hardware returned successfully.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Return failed.', 'danger'); });
+}
+
+function openUnassignSwModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.unassignSwId = assignmentId;
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + formField('Software', '<input class="input" value="' + escAttr(getSoftwareDisplayName(row._software)) + '" disabled />')
+    + formField('Removing From', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Unassign Date', '<input id="uswDate" type="date" class="input" value="' + today + '" />')
+    + formField('Ticket / Reference', '<input id="uswTicket" class="input" placeholder="Optional ticket or reference number" />')
+    + '<div class="full">' + formField('Notes', '<textarea id="uswNotes" class="textarea" style="min-height:60px" placeholder="Reason for removal"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Unassign Software', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn danger" data-action="confirm-unassign-sw">Confirm Unassign</button></div>', 'Remove software assignment');
+}
+function confirmUnassignSw(){
+  var id = APP.modalState.unassignSwId;
+  if (!id) { return; }
+  var values = {
+    Status: 'Revoked',
+    'Unassigned On': document.getElementById('uswDate').value,
+    'Ticket / Reason': document.getElementById('uswTicket').value,
+    Notes: document.getElementById('uswNotes').value
+  };
+  updateListItem(APP.lists.SoftwareAssignments, id, values, { entityType: 'SoftwareAssignment', reason: 'Software unassign' }).then(function(){
+    toast('Software unassigned.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Unassign failed.', 'danger'); });
+}
+
+/* ─── Transfer Assignment Flow ─── */
+function openTransferHwModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.hardwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.transferHwId = assignmentId;
+  APP.modalState.transferHwAsset = row._asset;
+  var personOpts = (APP.state.data.people || []).filter(function(p){ return p.Status === 'Active'; }).map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + formField('Hardware', '<input class="input" value="' + escAttr(getHardwareDisplayName(row._asset)) + '" disabled />')
+    + formField('Currently Assigned To', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Transfer To', '<select id="thwPerson" class="select"><option value="">-- Select New Person --</option>' + personOpts + '</select>')
+    + formField('Transfer Date', '<input id="thwDate" type="date" class="input" value="' + today + '" />')
+    + formField('Condition', '<select id="thwCondition" class="select"><option value="Good">Good</option><option value="Fair">Fair</option><option value="Poor">Poor</option></select>')
+    + '<div class="full">' + formField('Transfer Notes', '<textarea id="thwNotes" class="textarea" style="min-height:60px" placeholder="Reason for transfer, authorization, ticket number"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Transfer Hardware', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn warn" data-action="confirm-transfer-hw">Confirm Transfer</button></div>', 'Transfer to a new person (closes current assignment, creates new one)');
+}
+function confirmTransferHw(){
+  var oldId = APP.modalState.transferHwId;
+  var asset = APP.modalState.transferHwAsset;
+  if (!oldId || !asset) { return; }
+  var newPersonId = document.getElementById('thwPerson').value;
+  var errors = runValidation([function(){ return validateRequired(newPersonId, 'Transfer To'); }]);
+  if (showValidationErrors(errors)) { return; }
+  var today = document.getElementById('thwDate').value;
+  var notes = document.getElementById('thwNotes').value;
+  var condition = document.getElementById('thwCondition').value;
+  /* Step 1: Close old assignment */
+  updateListItem(APP.lists.HardwareAssignments, oldId, {
+    Status: 'Transferred',
+    'Unassigned On': today,
+    'Ticket / Reason': 'Transferred [Condition: ' + condition + ']',
+    Notes: (notes ? notes + ' | ' : '') + 'Transferred out'
+  }, { entityType: 'HardwareAssignment', reason: 'Transfer out' }).then(function(){
+    /* Step 2: Create new assignment */
+    return createListItem(APP.lists.HardwareAssignments, {
+      Title: 'Transfer - ' + today,
+      HardwareAssetID: parseInt(asset.Id, 10),
+      PersonID: parseInt(newPersonId, 10),
+      'Assigned On': today,
+      Status: 'Active',
+      Notes: (notes ? notes + ' | ' : '') + 'Transferred in [Condition: ' + condition + ']'
+    }, { entityType: 'HardwareAssignment', reason: 'Transfer in' });
+  }).then(function(){
+    toast('Hardware transferred successfully.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Transfer failed.', 'danger'); });
+}
+
+function openTransferSwModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.transferSwId = assignmentId;
+  APP.modalState.transferSwSoftware = row._software;
+  var personOpts = (APP.state.data.people || []).filter(function(p){ return p.Status === 'Active'; }).map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + formField('Software', '<input class="input" value="' + escAttr(getSoftwareDisplayName(row._software)) + '" disabled />')
+    + formField('Currently Assigned To', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Transfer To', '<select id="tswPerson" class="select"><option value="">-- Select New Person --</option>' + personOpts + '</select>')
+    + formField('Transfer Date', '<input id="tswDate" type="date" class="input" value="' + today + '" />')
+    + '<div class="full">' + formField('Transfer Notes', '<textarea id="tswNotes" class="textarea" style="min-height:60px" placeholder="Reason for transfer"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Transfer Software', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn warn" data-action="confirm-transfer-sw">Confirm Transfer</button></div>', 'Transfer to a new person');
+}
+function confirmTransferSw(){
+  var oldId = APP.modalState.transferSwId;
+  var sw = APP.modalState.transferSwSoftware;
+  if (!oldId || !sw) { return; }
+  var newPersonId = document.getElementById('tswPerson').value;
+  var errors = runValidation([function(){ return validateRequired(newPersonId, 'Transfer To'); }]);
+  if (showValidationErrors(errors)) { return; }
+  var today = document.getElementById('tswDate').value;
+  var notes = document.getElementById('tswNotes').value;
+  updateListItem(APP.lists.SoftwareAssignments, oldId, {
+    Status: 'Transferred',
+    'Unassigned On': today,
+    Notes: (notes ? notes + ' | ' : '') + 'Transferred out'
+  }, { entityType: 'SoftwareAssignment', reason: 'Transfer out' }).then(function(){
+    return createListItem(APP.lists.SoftwareAssignments, {
+      Title: 'Transfer - ' + today,
+      SoftwareAssetID: parseInt(sw.Id, 10),
+      PersonID: parseInt(newPersonId, 10),
+      'Assigned On': today,
+      Status: 'Active',
+      Notes: (notes ? notes + ' | ' : '') + 'Transferred in'
+    }, { entityType: 'SoftwareAssignment', reason: 'Transfer in' });
+  }).then(function(){
+    toast('Software transferred successfully.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Transfer failed.', 'danger'); });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ *  CALENDAR MODULE – Time Off, Federal Holidays, Senior Leaders
+ * ═══════════════════════════════════════════════════════════════════════ */
+var CAL_TYPES = {
+  'Annual Leave':   { key: 'leave',    label: 'Annual Leave',   color: '#6df0b6' },
+  'Sick Leave':     { key: 'sick',     label: 'Sick Leave',     color: '#ff5481' },
+  'TDY':            { key: 'tdy',      label: 'TDY',            color: '#ffc769' },
+  'Training':       { key: 'training', label: 'Training',       color: '#8c7bff' },
+  'Comp Time':      { key: 'comp',     label: 'Comp Time',      color: '#65d5ff' },
+  'Telework':       { key: 'telework', label: 'Telework',       color: '#25f4c7' },
+  'LWOP':           { key: 'other',    label: 'LWOP',           color: '#a7b7d6' },
+  'Holiday':        { key: 'holiday',  label: 'Federal Holiday', color: '#ff6f8e' },
+  'Other':          { key: 'other',    label: 'Other',          color: '#a7b7d6' }
+};
+function getCalType(type){
+  return CAL_TYPES[type] || CAL_TYPES['Other'];
+}
+
+function ensureCalendarUi(){
+  if (!APP.state.calUi) {
+    var now = new Date();
+    var myOrgId = null;
+    var p = APP.state.currentPersonnel;
+    if (p && p.OrgID && p.OrgID.Id) { myOrgId = p.OrgID.Id; }
+    APP.state.calUi = {
+      view: 'month',          /* month | week | list | leaders */
+      year: now.getFullYear(),
+      month: now.getMonth(),   /* 0-indexed */
+      weekStart: null,         /* Date object for week view */
+      scopeOrgId: myOrgId,    /* null = all, else org filter */
+      scopeLabel: '',
+      search: '',
+      typeFilter: ''           /* empty = all, else filter by type key */
+    };
+  }
+  return APP.state.calUi;
+}
+
+function renderCalendar(){
+  renderLoading('Loading calendar...');
+  Promise.all([
+    ensureTimeOffLoaded(),
+    ensurePeopleLoaded(),
+    ensureOrganizationsLoaded(),
+    ensurePositionsLoaded()
+  ]).then(function(){
+    var host = document.getElementById('viewHost');
+    if (!host || APP.state.route !== 'calendar') { return; }
+    var ui = ensureCalendarUi();
+    var html = '<div class="section-panel">';
+    html += renderCalendarHeader(ui);
+    html += renderCalendarLegend();
+    if (ui.view === 'leaders') {
+      html += renderSeniorLeadersView(ui);
+    } else if (ui.view === 'week') {
+      html += renderCalendarWeek(ui);
+    } else if (ui.view === 'list') {
+      html += renderCalendarList(ui);
+    } else {
+      html += renderCalendarMonth(ui);
+    }
+    html += '</div>';
+    host.innerHTML = html;
+    initSortableHeaders();
+  });
+}
+
+function renderCalendarHeader(ui){
+  var orgs = APP.state.data.organizations || [];
+  var html = '<div class="cal-header">';
+  html += '<div class="cal-header-left">';
+  html += '<button class="cal-nav-btn" data-action="cal-prev" title="Previous">&lsaquo;</button>';
+  html += '<button class="cal-nav-btn" data-action="cal-next" title="Next">&rsaquo;</button>';
+  html += '<button class="cal-nav-btn" data-action="cal-today" title="Today" style="font-size:11px;width:auto;padding:0 10px">Today</button>';
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  if (ui.view === 'week' && ui.weekStart) {
+    var ws = ui.weekStart;
+    var we = new Date(ws.getTime() + 6 * 86400000);
+    html += '<div class="cal-title">' + monthNames[ws.getMonth()] + ' ' + ws.getDate() + ' – ' + (we.getMonth() !== ws.getMonth() ? monthNames[we.getMonth()] + ' ' : '') + we.getDate() + ', ' + ws.getFullYear() + '</div>';
+  } else {
+    html += '<div class="cal-title">' + monthNames[ui.month] + ' ' + ui.year + '</div>';
+  }
+  html += '</div>';
+  html += '<div class="cal-header-right">';
+  /* View toggle */
+  html += '<div class="cal-view-toggle">';
+  ['month','week','list','leaders'].forEach(function(v){
+    var label = v === 'leaders' ? 'Leaders' : v.charAt(0).toUpperCase() + v.slice(1);
+    html += '<button data-action="cal-set-view" data-view="' + v + '"' + (ui.view === v ? ' class="active"' : '') + '>' + label + '</button>';
+  });
+  html += '</div>';
+  /* Type filter */
+  html += '<select class="cal-scope-select" id="calTypeFilter" data-action-input="cal-type-filter">';
+  html += '<option value="">All Types</option>';
+  Object.keys(CAL_TYPES).forEach(function(k){
+    if (k === 'Holiday') { return; }
+    html += '<option value="' + escAttr(k) + '"' + (ui.typeFilter === k ? ' selected' : '') + '>' + escHtml(k) + '</option>';
+  });
+  html += '</select>';
+  /* Org scope */
+  html += '<select class="cal-scope-select" id="calOrgScope" data-action-input="cal-org-scope">';
+  html += '<option value="">Entire Organization</option>';
+  var sorted = orgs.slice().sort(function(a, b){ return (a.OrgName || a.Title || '').localeCompare(b.OrgName || b.Title || ''); });
+  sorted.forEach(function(o){
+    if (!normalizeBoolean(o.IsActive)) { return; }
+    html += '<option value="' + escAttr(o.Id) + '"' + (ui.scopeOrgId && ui.scopeOrgId == o.Id ? ' selected' : '') + '>' + escHtml(o.OrgCode || o.OrgName || o.Title) + '</option>';
+  });
+  html += '</select>';
+  /* Search */
+  html += '<input class="cal-scope-select" id="calSearchInput" placeholder="Search names..." value="' + escAttr(ui.search) + '" style="width:140px" />';
+  /* Add entry (admin) */
+  if (canSeeAdmin()) {
+    html += '<button class="btn primary" data-action="cal-add-entry" style="padding:6px 12px;font-size:11px">+ Time Off</button>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function renderCalendarLegend(){
+  var html = '<div class="cal-legend">';
+  Object.keys(CAL_TYPES).forEach(function(k){
+    var t = CAL_TYPES[k];
+    html += '<div class="cal-legend-item"><div class="cal-legend-swatch" style="background:' + t.color + '"></div>' + escHtml(t.label) + '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ─── Calendar Data Helpers ─── */
+function getCalendarEntries(ui){
+  var entries = (APP.state.data.timeOff || []).filter(function(e){
+    return e.Status === 'Approved' || e.Status === 'approved';
+  });
+  var people = APP.state.data.people || [];
+  var peopleById = {};
+  people.forEach(function(p){ peopleById[p.Id] = p; });
+  /* Org scope filter: include self + descendants */
+  if (ui.scopeOrgId) {
+    var orgIds = getOrgAndDescendants(ui.scopeOrgId);
+    entries = entries.filter(function(e){
+      if (!e.PersonID) { return false; }
+      var pid = e.PersonID.Id || e.PersonID;
+      var person = peopleById[pid];
+      if (!person) { return false; }
+      var pOrgId = person.OrgID ? (person.OrgID.Id || person.OrgID) : null;
+      return pOrgId && orgIds[pOrgId];
+    });
+  }
+  /* Type filter */
+  if (ui.typeFilter) {
+    entries = entries.filter(function(e){ return e.TimeOffType === ui.typeFilter; });
+  }
+  /* Search filter */
+  if (ui.search) {
+    var q = ui.search.toLowerCase();
+    entries = entries.filter(function(e){
+      var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : '';
+      return name.toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  return entries;
+}
+
+function getOrgAndDescendants(orgId){
+  var orgs = APP.state.data.organizations || [];
+  var childMap = {};
+  orgs.forEach(function(o){
+    var pid = o.ParentOrgID ? (o.ParentOrgID.Id || o.ParentOrgID) : null;
+    if (pid) {
+      if (!childMap[pid]) { childMap[pid] = []; }
+      childMap[pid].push(o.Id);
+    }
+  });
+  var result = {};
+  var stack = [orgId];
+  while (stack.length) {
+    var id = stack.pop();
+    result[id] = true;
+    (childMap[id] || []).forEach(function(cid){ if (!result[cid]) { stack.push(cid); } });
+  }
+  return result;
+}
+
+function entriesForDateRange(entries, startDate, endDate){
+  var result = [];
+  entries.forEach(function(e){
+    var s = new Date(e.StartDate); var ed = new Date(e.EndDate || e.StartDate);
+    s.setHours(0,0,0,0); ed.setHours(23,59,59,999);
+    if (s <= endDate && ed >= startDate) { result.push(e); }
+  });
+  return result;
+}
+
+function entriesForDate(entries, date){
+  var ds = date.toISOString().slice(0, 10);
+  return entries.filter(function(e){
+    var s = (e.StartDate || '').slice(0, 10);
+    var ed = (e.EndDate || e.StartDate || '').slice(0, 10);
+    return ds >= s && ds <= ed;
+  });
+}
+
+/* ─── Month View ─── */
+function renderCalendarMonth(ui){
+  var entries = getCalendarEntries(ui);
+  var holidays = getHolidayMap(ui.year);
+  /* Also get prev/next month holidays for edge days */
+  if (ui.month === 0) { Object.assign(holidays, getHolidayMap(ui.year - 1)); }
+  if (ui.month === 11) { Object.assign(holidays, getHolidayMap(ui.year + 1)); }
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().slice(0, 10);
+  var first = new Date(ui.year, ui.month, 1);
+  var startDay = first.getDay(); /* 0=Sun */
+  var daysInMonth = new Date(ui.year, ui.month + 1, 0).getDate();
+  /* Fill grid from Sunday before month start */
+  var gridStart = new Date(first); gridStart.setDate(gridStart.getDate() - startDay);
+  var totalCells = Math.ceil((startDay + daysInMonth) / 7) * 7;
+  var html = '<div class="cal-month">';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d){ html += '<div class="cal-month-head">' + d + '</div>'; });
+  for (var i = 0; i < totalCells; i++) {
+    var dt = new Date(gridStart); dt.setDate(dt.getDate() + i);
+    var ds = dt.toISOString().slice(0, 10);
+    var isOutside = dt.getMonth() !== ui.month;
+    var isToday = ds === todayStr;
+    var isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+    var cls = 'cal-day';
+    if (isOutside) { cls += ' outside'; }
+    if (isToday) { cls += ' today'; }
+    if (isWeekend) { cls += ' weekend'; }
+    html += '<div class="' + cls + '">';
+    html += '<div class="cal-day-num">' + dt.getDate() + '</div>';
+    /* Holiday */
+    var hol = holidays[ds];
+    if (hol) { html += '<div class="cal-holiday-label">' + escHtml(hol) + '</div>'; }
+    /* Entries for this day */
+    html += '<div class="cal-day-entries">';
+    var dayEntries = entriesForDate(entries, dt);
+    dayEntries.slice(0, 4).forEach(function(e){
+      var t = getCalType(e.TimeOffType);
+      var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title.split(',')[0] : 'Unknown';
+      html += '<div class="cal-entry ' + t.key + '" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '" title="' + escAttr(name + ' – ' + (e.TimeOffType || 'Time Off')) + '">' + escHtml(name) + '</div>';
+    });
+    if (dayEntries.length > 4) {
+      html += '<div class="cal-entry other" style="text-align:center;font-size:8px">+' + (dayEntries.length - 4) + ' more</div>';
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ─── Week View ─── */
+function renderCalendarWeek(ui){
+  if (!ui.weekStart) {
+    var now = new Date(); now.setHours(0,0,0,0);
+    ui.weekStart = new Date(now); ui.weekStart.setDate(now.getDate() - now.getDay());
+  }
+  var entries = getCalendarEntries(ui);
+  var holidays = getHolidayMap(ui.weekStart.getFullYear());
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().slice(0, 10);
+  var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var html = '<div class="cal-week">';
+  html += '<div class="cal-week-header">';
+  for (var d = 0; d < 7; d++) {
+    var dt = new Date(ui.weekStart); dt.setDate(dt.getDate() + d);
+    var ds = dt.toISOString().slice(0, 10);
+    html += '<div class="cal-week-head' + (ds === todayStr ? ' today' : '') + '"><div class="day-name">' + dayNames[d].slice(0, 3) + '</div><div class="day-num">' + dt.getDate() + '</div></div>';
+  }
+  html += '</div>';
+  html += '<div class="cal-week-body">';
+  for (var d = 0; d < 7; d++) {
+    var dt = new Date(ui.weekStart); dt.setDate(dt.getDate() + d);
+    var ds = dt.toISOString().slice(0, 10);
+    var isToday = ds === todayStr;
+    html += '<div class="cal-week-col' + (isToday ? ' today' : '') + '">';
+    var hol = holidays[ds];
+    if (hol) { html += '<div class="cal-week-entry holiday" style="background:rgba(255,111,142,.1)"><div class="entry-name" style="color:#ff6f8e">' + escHtml(hol) + '</div><div class="entry-type">Federal Holiday</div></div>'; }
+    var dayEntries = entriesForDate(entries, dt);
+    dayEntries.forEach(function(e){
+      var t = getCalType(e.TimeOffType);
+      var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : 'Unknown';
+      html += '<div class="cal-week-entry ' + t.key + '" style="background:' + t.color + '15" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '"><div class="entry-name">' + escHtml(name) + '</div><div class="entry-type">' + escHtml(e.TimeOffType || 'Time Off') + (e.Hours ? ' (' + e.Hours + 'h)' : '') + '</div></div>';
+    });
+    if (!dayEntries.length && !hol) { html += '<div style="padding:8px;font-size:10px;color:var(--muted);text-align:center">No entries</div>'; }
+    html += '</div>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+/* ─── List View ─── */
+function renderCalendarList(ui){
+  var entries = getCalendarEntries(ui);
+  var first = new Date(ui.year, ui.month, 1);
+  var last = new Date(ui.year, ui.month + 1, 0);
+  last.setHours(23,59,59,999);
+  var monthEntries = entriesForDateRange(entries, first, last);
+  var holidays = getFederalHolidays(ui.year).filter(function(h){ return h.date >= first && h.date <= last; });
+  /* Merge into a combined list sorted by date */
+  var combined = [];
+  monthEntries.forEach(function(e){
+    var sd = new Date(e.StartDate); sd.setHours(0,0,0,0);
+    var startInMonth = sd < first ? first : sd;
+    combined.push({ date: startInMonth, type: 'entry', data: e });
+  });
+  holidays.forEach(function(h){
+    combined.push({ date: h.date, type: 'holiday', data: h });
+  });
+  combined.sort(function(a, b){ return a.date - b.date; });
+  if (!combined.length) { return '<div class="empty">No time-off entries or holidays this month.</div>'; }
+  var html = '<div class="cal-list">';
+  var lastDateStr = '';
+  var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  combined.forEach(function(item){
+    var ds = item.date.toISOString().slice(0, 10);
+    if (ds !== lastDateStr) {
+      lastDateStr = ds;
+      html += '<div class="cal-list-day">' + dayNames[item.date.getDay()] + ', ' + monthNames[item.date.getMonth()] + ' ' + item.date.getDate() + '</div>';
+    }
+    if (item.type === 'holiday') {
+      html += '<div class="cal-list-item"><div class="swatch" style="background:#ff6f8e"></div><div class="info"><div class="name">' + escHtml(item.data.name) + '</div><div class="meta">Federal Holiday</div></div><div class="type-badge" style="background:rgba(255,111,142,.12);color:#ff6f8e">Holiday</div></div>';
+    } else {
+      var e = item.data;
+      var t = getCalType(e.TimeOffType);
+      var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : 'Unknown';
+      var sd = (e.StartDate || '').slice(0, 10);
+      var ed = (e.EndDate || e.StartDate || '').slice(0, 10);
+      var dateRange = sd === ed ? sd : sd + ' to ' + ed;
+      html += '<div class="cal-list-item" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '"><div class="swatch" style="background:' + t.color + '"></div><div class="info"><div class="name">' + escHtml(name) + '</div><div class="meta">' + escHtml(dateRange) + (e.Hours ? ' &middot; ' + e.Hours + 'h' : '') + (e.Notes ? ' &middot; ' + escHtml(e.Notes.substring(0, 60)) : '') + '</div></div><div class="type-badge" style="background:' + t.color + '18;color:' + t.color + '">' + escHtml(e.TimeOffType || 'Other') + '</div></div>';
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ─── Senior Leaders Calendar ─── */
+function renderSeniorLeadersView(ui){
+  var positions = APP.state.data.positions || [];
+  var people = APP.state.data.people || [];
+  var entries = getCalendarEntries({ scopeOrgId: null, typeFilter: ui.typeFilter, search: '' });
+  var holidays = getHolidayMap(ui.year);
+  /* Find key leadership: IsKeyLeadership positions */
+  var leaderPositionIds = {};
+  positions.forEach(function(pos){
+    if (normalizeBoolean(pos.IsKeyLeadership)) { leaderPositionIds[pos.Id] = pos; }
+  });
+  var leaders = people.filter(function(p){
+    if (p.Status && p.Status !== 'Active') { return false; }
+    var posId = p.PositionID ? (p.PositionID.Id || p.PositionID) : null;
+    return posId && leaderPositionIds[posId];
+  });
+  if (!leaders.length) {
+    /* Fallback: supervisors */
+    leaders = people.filter(function(p){
+      return p.Status === 'Active' && normalizeBoolean(p.IsSupervisor);
+    });
+  }
+  leaders.sort(function(a, b){ return (a.LastName || '').localeCompare(b.LastName || ''); });
+  /* Time window: current week + next 2 weeks */
+  var now = new Date(); now.setHours(0,0,0,0);
+  var weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+  var windowEnd = new Date(weekStart); windowEnd.setDate(windowEnd.getDate() + 20);
+  var html = '<div style="margin-bottom:8px;font-size:12px;color:var(--muted)">Showing key leadership schedules for the next 3 weeks</div>';
+  html += '<div class="cal-leaders">';
+  leaders.forEach(function(person){
+    var posId = person.PositionID ? (person.PositionID.Id || person.PositionID) : null;
+    var pos = leaderPositionIds[posId] || {};
+    var personEntries = entries.filter(function(e){
+      var pid = e.PersonID ? (e.PersonID.Id || e.PersonID) : null;
+      return pid && pid == person.Id;
+    });
+    var windowEntries = entriesForDateRange(personEntries, weekStart, windowEnd);
+    /* Determine current status */
+    var todayEntries = entriesForDate(personEntries, now);
+    var todayHol = holidays[now.toISOString().slice(0, 10)];
+    var currentStatus = 'In Office';
+    var statusStyle = 'background:rgba(109,240,182,.12);color:#6df0b6';
+    if (todayHol) { currentStatus = 'Holiday'; statusStyle = 'background:rgba(255,111,142,.12);color:#ff6f8e'; }
+    else if (todayEntries.length) {
+      var te = todayEntries[0];
+      var tt = getCalType(te.TimeOffType);
+      currentStatus = te.TimeOffType || 'Out';
+      statusStyle = 'background:' + tt.color + '18;color:' + tt.color;
+    }
+    html += '<div class="cal-leader-card">';
+    html += '<div class="ldr-head"><div style="flex:1"><div class="ldr-name">' + escHtml(person.LastName + ', ' + person.FirstName) + '</div><div class="ldr-role">' + escHtml(pos.PositionTitle || person.Grade || '') + '</div></div><div class="ldr-status" style="' + statusStyle + '">' + escHtml(currentStatus) + '</div></div>';
+    html += '<div class="ldr-entries">';
+    if (!windowEntries.length) {
+      html += '<div style="font-size:11px;color:var(--muted);padding:4px 0">No upcoming time off</div>';
+    }
+    windowEntries.slice(0, 5).forEach(function(e){
+      var t = getCalType(e.TimeOffType);
+      var sd = (e.StartDate || '').slice(0, 10);
+      var ed = (e.EndDate || e.StartDate || '').slice(0, 10);
+      html += '<div class="ldr-entry" style="background:' + t.color + '10"><span style="color:' + t.color + ';font-weight:700">' + escHtml(e.TimeOffType || 'Off') + '</span><span class="dates">' + sd + (sd !== ed ? ' – ' + ed : '') + '</span></div>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ─── Calendar Navigation Helpers ─── */
+function calNavigate(direction){
+  var ui = ensureCalendarUi();
+  if (ui.view === 'week') {
+    if (!ui.weekStart) { var n = new Date(); n.setHours(0,0,0,0); ui.weekStart = new Date(n); ui.weekStart.setDate(n.getDate() - n.getDay()); }
+    var delta = direction === 'next' ? 7 : -7;
+    ui.weekStart.setDate(ui.weekStart.getDate() + delta);
+    ui.year = ui.weekStart.getFullYear();
+    ui.month = ui.weekStart.getMonth();
+  } else {
+    if (direction === 'next') {
+      ui.month += 1;
+      if (ui.month > 11) { ui.month = 0; ui.year += 1; }
+    } else {
+      ui.month -= 1;
+      if (ui.month < 0) { ui.month = 11; ui.year -= 1; }
+    }
+  }
+  renderCalendar();
+}
+function calToday(){
+  var ui = ensureCalendarUi();
+  var now = new Date();
+  ui.year = now.getFullYear();
+  ui.month = now.getMonth();
+  if (ui.view === 'week') {
+    ui.weekStart = new Date(now); ui.weekStart.setHours(0,0,0,0);
+    ui.weekStart.setDate(now.getDate() - now.getDay());
+  }
+  renderCalendar();
+}
+
+/* ─── Time Off Entry Detail Modal ─── */
+function openCalEntryDetail(entryId){
+  var entries = APP.state.data.timeOff || [];
+  var entry = null;
+  for (var i = 0; i < entries.length; i++) { if (String(entries[i].Id) === String(entryId)) { entry = entries[i]; break; } }
+  if (!entry) { toast('Entry not found.', 'danger'); return; }
+  var t = getCalType(entry.TimeOffType);
+  var name = entry.PersonID && entry.PersonID.Title ? entry.PersonID.Title : 'Unknown';
+  var sd = (entry.StartDate || '').slice(0, 10);
+  var ed = (entry.EndDate || entry.StartDate || '').slice(0, 10);
+  var body = '<div class="kv">';
+  body += '<div class="k">Person</div><div class="v">' + escHtml(name) + '</div>';
+  body += '<div class="k">Type</div><div class="v"><span style="color:' + t.color + ';font-weight:700">' + escHtml(entry.TimeOffType || 'Other') + '</span></div>';
+  body += '<div class="k">Start</div><div class="v">' + escHtml(sd) + '</div>';
+  body += '<div class="k">End</div><div class="v">' + escHtml(ed) + '</div>';
+  if (entry.Hours) { body += '<div class="k">Hours</div><div class="v">' + escHtml(entry.Hours) + '</div>'; }
+  body += '<div class="k">Status</div><div class="v">' + statusBadge(entry.Status || 'Approved') + '</div>';
+  if (entry.ApprovedBy && entry.ApprovedBy.Title) { body += '<div class="k">Approved By</div><div class="v">' + escHtml(entry.ApprovedBy.Title) + '</div>'; }
+  if (entry.Notes) { body += '<div class="k">Notes</div><div class="v">' + escHtml(entry.Notes) + '</div>'; }
+  body += '</div>';
+  var footer = '<div>';
+  if (canSeeAdmin()) {
+    footer += '<button class="btn danger" data-action="cal-delete-entry" data-entry-id="' + escAttr(entryId) + '">Delete</button>';
+  }
+  footer += '</div><div><button class="btn" data-action="close-modal">Close</button></div>';
+  openModal('Time Off: ' + escHtml(name), body, footer, entry.TimeOffType || 'Detail');
+}
+
+/* ─── Add / Delete Time Off Entries ─── */
+function openAddTimeOffModal(){
+  var people = APP.state.data.people || [];
+  var personOpts = people.filter(function(p){ return p.Status === 'Active'; }).map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var typeOpts = Object.keys(CAL_TYPES).filter(function(k){ return k !== 'Holiday'; }).map(function(k){
+    return '<option value="' + escAttr(k) + '">' + escHtml(k) + '</option>';
+  }).join('');
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + formField('Person', '<select id="toPersonId" class="select"><option value="">-- Select --</option>' + personOpts + '</select>')
+    + formField('Type', '<select id="toType" class="select">' + typeOpts + '</select>')
+    + formField('Start Date', '<input id="toStart" class="input" type="date" value="' + today + '" />')
+    + formField('End Date', '<input id="toEnd" class="input" type="date" value="' + today + '" />')
+    + formField('Hours', '<input id="toHours" class="input" type="number" placeholder="8" />')
+    + formField('Status', '<select id="toStatus" class="select"><option value="Approved" selected>Approved</option><option value="Pending">Pending</option><option value="Denied">Denied</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="toNotes" class="textarea" style="min-height:60px" placeholder="Optional notes"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Add Time Off Entry', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="cal-save-entry">Save Entry</button></div>', 'Create a new time off record');
+}
+
+function saveTimeOffEntry(){
+  var personId = document.getElementById('toPersonId').value;
+  var type = document.getElementById('toType').value;
+  var start = document.getElementById('toStart').value;
+  var end = document.getElementById('toEnd').value;
+  var errors = runValidation([
+    function(){ return validateRequired(personId, 'Person'); },
+    function(){ return validateRequired(start, 'Start Date'); },
+    function(){ return validateRequired(end, 'End Date'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  /* Look up person's org */
+  var people = APP.state.data.people || [];
+  var person = null;
+  for (var i = 0; i < people.length; i++) { if (String(people[i].Id) === String(personId)) { person = people[i]; break; } }
+  var orgId = person && person.OrgID ? (person.OrgID.Id || person.OrgID) : null;
+  var values = {
+    Title: type + ' - ' + start,
+    PersonID: parseInt(personId, 10),
+    TimeOffType: type,
+    StartDate: start,
+    EndDate: end,
+    Hours: document.getElementById('toHours').value ? parseFloat(document.getElementById('toHours').value) : null,
+    Status: document.getElementById('toStatus').value,
+    Notes: document.getElementById('toNotes').value
+  };
+  if (orgId) { values.OrgID = parseInt(orgId, 10); }
+  createListItem(APP.lists.TimeOff, values, { entityType: 'TimeOff', reason: 'Add time off entry' }).then(function(){
+    toast('Time off entry created.', 'ok');
+    closeModal();
+    APP.state.data.timeOff = null;
+    renderCalendar();
+  }).catch(function(){ toast('Failed to create entry.', 'danger'); });
+}
+
+function deleteTimeOffEntry(entryId){
+  if (!confirm('Delete this time-off entry?')) { return; }
+  deleteListItem(APP.lists.TimeOff, entryId, { entityType: 'TimeOff', reason: 'Delete time off entry' }).then(function(){
+    toast('Entry deleted.', 'ok');
+    closeModal();
+    APP.state.data.timeOff = null;
+    renderCalendar();
+  }).catch(function(){ toast('Delete failed.', 'danger'); });
+}
+
 function renderAssets(){
   renderLoading('Loading assets...');
   return Promise.all([ensureAssetsLoaded(), ensurePeopleLoaded(), ensureFacilitiesLoaded(), ensureOrganizationsLoaded()]).then(function(){
@@ -4016,6 +5857,7 @@ function renderRoute(){
   if (route === 'requests') { return renderRequests(); }
   if (route === 'inout') { return renderInOut(); }
   if (route === 'facilities') { return renderFacilities(); }
+  if (route === 'calendar') { return renderCalendar(); }
   if (route === 'assets') { return renderAssets(); }
   if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
   if (route === 'diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderDiagnostics(); }
@@ -4056,6 +5898,10 @@ function handleInput(e){
   if (id === 'requestsSearchInput') { debouncedFilterCards('#requestTableBody', e.target.value); }
   if (id === 'facilitiesSearchInput') { debouncedFilterCards('#facilitiesTableBody', e.target.value); }
   if (id === 'assetSearchInput') { debouncedAssetFilter(e.target.value); return; }
+  if (id === 'seatSidebarSearch') { filterSeatSidebar(e.target.value); return; }
+  if (id === 'calOrgScope') { var ui = ensureCalendarUi(); ui.scopeOrgId = e.target.value ? Number(e.target.value) : null; renderCalendar(); return; }
+  if (id === 'calTypeFilter') { ensureCalendarUi().typeFilter = e.target.value; renderCalendar(); return; }
+  if (id === 'calSearchInput') { ensureCalendarUi().search = e.target.value; renderCalendar(); return; }
 }
 function findActionEl(start){
   var el = start;
@@ -4105,6 +5951,27 @@ function handleClick(e){
   if (action === 'refresh-all') { refreshAll(); return; }
   if (action === 'select-facility') { ensureFacilityUi(); var fid = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = APP.state.facilityUi.selectedFacilityId === fid ? null : fid; APP.state.facilityUi.selectedRoomId = null; renderFacilities(); return; }
   if (action === 'select-room') { ensureFacilityUi(); APP.state.facilityUi.selectedRoomId = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = Number(el.getAttribute('data-facility')); renderFacilities(); return; }
+  if (action === 'enter-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
+  if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; renderFacilities(); return; }
+  if (action === 'save-picker-seat') { savePickerSeat(); return; }
+  if (action === 'edit-seat-inline') { openSeatEditModal(el.getAttribute('data-seat-id')); return; }
+  if (action === 'save-seat-edit') { saveSeatEdit(); return; }
+  if (action === 'delete-seat') { deleteSeat(el.getAttribute('data-seat-id')); return; }
+  if (action === 'sidebar-seat-click') { highlightSeatOnMap(el.getAttribute('data-seat-id'), el.getAttribute('data-seat-x'), el.getAttribute('data-seat-y')); return; }
+  if (action === 'enter-floorplan-url') { setFloorPlanUrl(); return; }
+  if (action === 'save-floorplan-url') { saveFloorPlanUrl(); return; }
+  if (action === 'floorplan-zoom-in') { floorPlanZoom('in'); return; }
+  if (action === 'floorplan-zoom-out') { floorPlanZoom('out'); return; }
+  if (action === 'floorplan-zoom-reset') { floorPlanZoom('reset'); return; }
+  /* Calendar actions */
+  if (action === 'cal-prev') { calNavigate('prev'); return; }
+  if (action === 'cal-next') { calNavigate('next'); return; }
+  if (action === 'cal-today') { calToday(); return; }
+  if (action === 'cal-set-view') { var v = el.getAttribute('data-view'); ensureCalendarUi().view = v; if (v === 'week') { var n = new Date(); n.setHours(0,0,0,0); ensureCalendarUi().weekStart = new Date(n); ensureCalendarUi().weekStart.setDate(n.getDate() - n.getDay()); } renderCalendar(); return; }
+  if (action === 'cal-entry-detail') { openCalEntryDetail(el.getAttribute('data-entry-id')); return; }
+  if (action === 'cal-add-entry') { openAddTimeOffModal(); return; }
+  if (action === 'cal-save-entry') { saveTimeOffEntry(); return; }
+  if (action === 'cal-delete-entry') { deleteTimeOffEntry(el.getAttribute('data-entry-id')); return; }
   if (action === 'export-facilities') { exportTableToCSV('.table-wrap table', 'facilities_export'); return; }
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
   if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
@@ -4122,16 +5989,55 @@ function handleClick(e){
   if (action === 'save-hw-assignment') { saveHardwareAssignment(); return; }
   if (action === 'create-sw-assignment') { openCreateSoftwareAssignmentModal(); return; }
   if (action === 'save-sw-assignment') { saveSoftwareAssignment(); return; }
-  if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
+  /* Asset detail / edit / unassign / transfer actions */
+  if (action === 'view-hw-assignment') { openHwAssignmentDetail(el.getAttribute('data-id')); return; }
+  if (action === 'view-sw-assignment') { openSwAssignmentDetail(el.getAttribute('data-id')); return; }
+  if (action === 'view-hw-detail') { openHwAssetDetail(el.getAttribute('data-id')); return; }
+  if (action === 'edit-hw-asset') { openEditHwAssetModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-hw-asset-edit') { saveHwAssetEdit(); return; }
+  if (action === 'edit-sw-asset') { openEditSwAssetModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-sw-asset-edit') { saveSwAssetEdit(); return; }
+  if (action === 'edit-hw-assignment') { openEditHwAssignmentModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-edit-hw-assign') { saveEditHwAssignment(); return; }
+  if (action === 'edit-sw-assignment') { openEditSwAssignmentModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-edit-sw-assign') { saveEditSwAssignment(); return; }
+  if (action === 'unassign-hw') { openUnassignHwModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-unassign-hw') { confirmUnassignHw(); return; }
+  if (action === 'unassign-sw') { openUnassignSwModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-unassign-sw') { confirmUnassignSw(); return; }
+  if (action === 'transfer-hw') { openTransferHwModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-transfer-hw') { confirmTransferHw(); return; }
+  if (action === 'transfer-sw') { openTransferSwModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-transfer-sw') { confirmTransferSw(); return; }
+  if (action === 'popout-fullscreen') { popoutFullscreen(); return; }
+  if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
+function detectEmbeddedMode(){
+  var isEmbedded = false;
+  try { isEmbedded = window.self !== window.top; } catch(e){ isEmbedded = true; }
+  if (window.location.search.indexOf('fullscreen=1') !== -1) { isEmbedded = false; }
+  if (isEmbedded) {
+    document.body.classList.add('embedded');
+  } else {
+    document.body.classList.remove('embedded');
+  }
+  APP.state.embedded = isEmbedded;
+}
+function popoutFullscreen(){
+  var url = window.location.href.split('?')[0].split('#')[0];
+  var hash = window.location.hash || '';
+  window.open(url + '?fullscreen=1' + hash, '_blank');
+}
+
 function bootstrap(){
+  detectEmbeddedMode();
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
   initSortableHeaders();
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') { closeModal(); return; }
     if (!e.altKey) { return; }
-    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', a: 'assets' };
+    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', c: 'calendar', a: 'assets' };
     if (canSeeAdmin()) { shortcuts.d = 'diagnostics'; }
     var route = shortcuts[e.key.toLowerCase()];
     if (route) { e.preventDefault(); routeTo(route); return; }

@@ -1,1 +1,171 @@
-TODO
+# Changelog
+
+All notable changes to the **CCSD All-Things Administrative SPA** are documented here.
+
+---
+
+## [2026.04.02.1] - 2026-04-02
+
+### Hardware & Software Asset Management Overhaul
+- **Hardware asset detail modal**: Full asset view with all properties (name, type, manufacturer, model, serial, environment, portable, purchase date/cost, notes) plus complete assignment history table showing every person who has had the asset, when, and current status.
+- **Software asset detail modal**: (accessible from hardware detail's software references)
+- **Edit hardware assets** (admin): Modify device name, type, manufacturer, model, serial number, network environment, status, portable flag, purchase date/cost, and notes.
+- **Edit software assets** (admin): Modify title, vendor, version, approved version, license type, total licenses, approval status, annual cost, ATO number/expiration, requires ATO, requires admin install, and notes.
+- **Edit existing assignments** (admin): Modify environment, status, and notes on both hardware and software assignments without recreating them.
+- **Unassign / return hardware**: Full return flow with return date, condition assessment (Good/Fair/Poor/Damaged/Missing), ticket reference, and return notes. Sets status to "Returned" with condition recorded.
+- **Unassign software**: Revoke software assignment with date, ticket reference, and notes.
+- **Transfer hardware**: One-step transfer from current person to new person. Automatically closes the old assignment (status: "Transferred") and creates a new active assignment for the recipient, preserving chain of custody with condition tracking and transfer notes.
+- **Transfer software**: Same one-step transfer flow for software assignments.
+- **Assignment detail modals**: Click "View" on any hardware or software assignment row to see full details with all fields, plus action buttons for Edit, Return/Unassign, and Transfer.
+- **View buttons on all tables**: Hardware assignment table, software assignment table, and unassigned hardware table all now have View/Detail action buttons per row.
+- **Asset status lifecycle**: Assignments now support statuses: Active, Assigned, In Service, Returned, Surplus, Transferred, Revoked.
+
+---
+
+## [2026.04.01.3] - 2026-04-01
+
+### Calendar Module — Time Off, Federal Holidays, Senior Leaders
+- **New "Calendar" tab**: Full calendar module added to navigation between Facilities and Assets (Alt+C shortcut).
+- **Month view**: Traditional grid calendar showing all approved time-off entries with color-coded badges per person. Federal holidays displayed with red labels. Overflow indicator ("+N more") when days are busy.
+- **Week view**: 7-column layout with day headers showing date numbers, full entries per day with name and type, federal holidays highlighted.
+- **List view**: Chronological list of all time-off entries and holidays for the current month with color-coded type badges, date ranges, and notes preview.
+- **Senior Leaders Calendar**: Dedicated view showing key leadership personnel (based on `IsKeyLeadership` positions or supervisor flag). Each leader card shows current status (In Office, on Leave, TDY, etc.) and upcoming 3 weeks of scheduled time off.
+- **Organization scope filtering**: Dropdown to filter by any org/section — defaults to user's current section. Includes all descendant orgs in the filter. "Entire Organization" option shows everyone.
+- **Type filtering**: Filter by time-off type (Annual Leave, Sick Leave, TDY, Training, Comp Time, Telework, LWOP, Other).
+- **Name search**: Live search input to filter entries by person name.
+- **Color-coded legend**: Static legend with consistent colors — Annual Leave (green), Sick Leave (pink), TDY (orange), Training (purple), Comp Time (blue), Telework (teal), Holiday (red), Other (gray).
+- **Federal holidays**: Auto-calculated US OPM federal holiday schedule with observed date shifting (weekends → nearest weekday). Includes New Year's, MLK, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Columbus Day, Veterans Day, Thanksgiving, Christmas.
+- **Entry detail modal**: Click any entry to see full details (person, type, dates, hours, status, approver, notes).
+- **Admin: Add time off entries**: "+" button opens form to create entries with person, type, date range, hours, status, and notes.
+- **Admin: Delete entries**: Delete button available in entry detail modal.
+- **SharePoint list**: New `CCSD_TimeOff` list with fields: Title, PersonID (lookup), OrgID (lookup), StartDate, EndDate, TimeOffType, Status, Hours, Notes, ApprovedBy, CreatedBy.
+
+### TODO: Conference Room Scheduling
+- Commented implementation plan added for `CCSD_ConferenceRooms` and `CCSD_RoomReservations` lists with room availability grid, booking, recurring meetings, and conflict detection.
+
+### TODO: Microsoft Graph API — Outlook Calendar Integration
+- Detailed commented implementation guide with Azure AD app registration steps, MSAL.js integration plan, Graph API getSchedule endpoint usage, and admin config panel design.
+
+---
+
+## [2026.04.01.2] - 2026-04-01
+
+### Seating Chart Overhaul
+- **Drag-to-reposition**: Grab any placed seat marker in edit mode and drag it to a new location; saves automatically on drop.
+- **Click-to-edit seats**: Click any existing seat in picker mode to open a full edit modal with all fields pre-populated, including a delete option.
+- **Live crosshair guides**: Dashed horizontal and vertical crosshair lines follow the cursor during placement mode with a real-time X,Y coordinate readout in the corner.
+- **Seat sidebar panel**: Searchable list of all seats displayed alongside the floor plan with color-coded status dots (green = occupied, blue = available, orange = maintenance, gray = unplaced). Click any seat to pan the map and highlight it.
+- **Quick-place continuation**: After saving a seat, the app stays in placement mode. Auto-suggests the next seat label number and remembers last-used network config (NIPR/SIPR/JWICS/VTC) for rapid repeat placement.
+- **Pinned tooltips**: In view mode, click a seat to pin its tooltip with full details; admins see inline Edit/Delete action buttons.
+- **Visual feedback**: New seats get a drop-in animation; selected seats get a glowing ring highlight.
+- **Inline sidebar actions**: Edit and delete buttons appear on hover in the sidebar list during edit mode.
+
+---
+
+## [2026.04.01.1] - 2026-04-01
+
+### Fullscreen / Embedded Dual-Mode Support
+- **Auto-detection**: `window.self !== window.top` check detects whether the SPA is running inside an iframe (e.g., SharePoint web part embed) or standalone.
+- **Embedded mode**: When detected, applies a `.embedded` CSS class to `<body>` that compacts the header, hides the subtitle, shrinks nav tabs, context bar, and buttons.
+- **Pop-out button**: A "Full Screen" button appears in embedded mode that opens the SPA in a new browser tab at full viewport size via `?fullscreen=1`.
+- **Fullscreen badge**: Standalone mode displays a subtle "Full Screen" indicator badge in the header.
+
+---
+
+## [2026.03.31.3] - 2026-04-01
+
+### Org Chart Visual Improvements
+- **L-shaped connector lines**: Hierarchical tree now uses vertical + horizontal CSS pseudo-element connectors for a traditional org chart appearance.
+- **Current org highlighting**: The user's own organization is visually identified with a green border and "YOUR ORG" badge via the `isCurrentUserOrg()` function.
+- **Inline leadership display**: Each org card shows up to 3 leadership positions with name, role, email, and phone directly on the card.
+- **Org email display**: Shows `OrgEmail` field on org cards when available.
+- **Auto-select user's org**: Org chart automatically selects and scrolls to the current user's organization on load.
+- **Deeper indentation and tighter card styling**: Improved visual hierarchy with increased indent and refined card border-radius/padding.
+
+### Interactive Floor Plan Viewer
+- **Image-based floor plans**: Renders seat markers overlaid on building floor plan images at stored X,Y coordinates.
+- **Pan and zoom**: Click-drag to pan, scroll-wheel to zoom, with zoom-in/out/reset controls.
+- **Seat markers**: Color-coded dots (green = occupied, blue = available, orange = maintenance) with hover labels.
+- **Rich tooltips**: Hover a seat to see occupant, port number, phone, network capabilities (NIPR/SIPR/JWICS), VTC status, and notes.
+- **Coordinate picker tool** (admin): Enter placement mode, click the floor plan to capture X,Y coordinates, then fill in seat details via a modal form.
+- **Pending marker**: Shows a pulsing dashed circle at the clicked position before saving.
+- **Floor plan URL management**: Admin modal to set/update the floor plan image URL on facility records.
+- **Legend**: Color-coded legend with placed/total seat counts.
+- **Facility-level and room-level**: Supports floor plans at both the building level and individual room level.
+
+---
+
+## [2026.03.31.2] - 2026-03-31
+
+### Admin Role Restriction
+- **App Admin gating**: Changed `canSeeAdmin()` from `hasAnyRole(['Admin','App Admin'])` to `hasAnyRole(['App Admin'])` — only users with the "App Admin" role can access admin, diagnostics, and telemetry features.
+- **Nav filtering**: Admin and Diagnostics tabs hidden from the nav bar for non-App Admin users.
+- **Route protection**: Direct navigation to admin/diagnostics routes is blocked with a toast and redirect to home.
+- **Header button**: Diagnostics button in the header is hidden by default and only shown for App Admin.
+- **Home page gating**: Diagnostics Center button, Health + Queue Signals card, Quick Nav admin tiles, and data quality actions all wrapped in `canSeeAdmin()` checks.
+- **Keyboard shortcut**: `Alt+D` for diagnostics only registered when `canSeeAdmin()` is true.
+
+---
+
+## [2026.03.31.1] - 2026-03-31
+
+### Major Functional Features
+- **Sortable tables**: Click any `th[data-sort]` column header to sort ascending/descending. Supports text, numeric, and date types with visual sort indicators.
+- **Request lifecycle management**: Full edit modal for requests with status transitions (New, In Progress, On Hold, Completed, Closed), priority changes, due dates, and threaded comments parsed from `WorkflowJson`.
+- **Close request**: One-click close action that sets status to Closed with `ClosedOn` timestamp.
+- **In/Out process completion**: Mark individual checklist steps as Completed with `CompletedOn`/`CompletedBy` tracking. Auto-advances the parent case's `CurrentStep` and `Status`.
+- **In/Out detail modal**: Full step checklist view with progress bar for each in-processing or out-processing case.
+- **Team training compliance**: Builds a compliance model for the current supervisor's team. Renders a grid with per-person compliance bars showing training status.
+- **SF182 edit modal**: Edit SF182 records including status changes, dates, accommodation requests, and rejection comments.
+- **Hardware asset assignments**: Create modal to assign hardware assets to personnel with serial number, condition, and location fields.
+- **Software asset assignments**: Create modal to assign software titles to personnel with license key and environment fields.
+- **Supervisor chain**: Walks the `SupervisorID` chain up to 10 levels and renders a clickable badge chain.
+- **Org people stats**: Calculates total and active member counts for any organization.
+
+---
+
+## [2026.03.31.0] - 2026-03-31
+
+### Multi-Site Support
+- **Hostname-based site detection**: Automatically resolves `APP.rootUrl` based on `window.location.hostname` matching against configured sites (`usaf.dps.mil` and `patriavirtus.sharepoint.com`).
+- **Site configuration object**: `APP.sites` maps hostnames to root URLs, labels, and environment tags.
+- **Seamless replication**: Same `Index.html` file works across both USAF production and Patria Virtus replica sites without code changes.
+
+---
+
+## [2026.03.30.1] - 2026-03-30
+
+### Major Upgrade
+- **Bug fixes**: Resolved issues across data loading, rendering, and state management.
+- **Form validation framework**: Centralized validation with `runValidation()` and `showValidationErrors()` helpers.
+- **Accessibility improvements**: ARIA labels, roles, keyboard navigation support across all modules.
+- **Facilities module**: Full CRUD for facilities and rooms with detail views, seat management, and room type categorization.
+- **Admin enhancements**: Diagnostics panel, telemetry logging, data quality checks, cache management, and queue monitoring.
+- **Toast notifications**: Styled notification system with auto-dismiss and severity levels.
+- **Modal system**: Reusable modal framework with title, body, footer, and close actions.
+- **Context bar**: User context display with role chips, environment indicator, and quick actions.
+- **Export functionality**: CSV export for table data across modules.
+- **No-scroll SPA layout**: Viewport-height flex layout with internal scrolling in `viewHost` only.
+
+---
+
+## [2026.03.30.0] - 2026-03-30
+
+### SharePoint List Schema
+- **List creation script**: PowerShell/manual creation guide for all 25+ SharePoint lists.
+- **Column definitions**: Field types, lookup relationships, and choice values for Personnel, Organizations, Training, SF182, Requests, InOutCases, InOutSteps, Facilities, Rooms, Seats, Hardware, Software, HardwareAssignments, SoftwareAssignments, AppRoles, Telemetry, and supporting lists.
+
+---
+
+## [2026.03.29.0] - 2026-03-29
+
+### Initial Release
+- **Single-file SPA**: Vanilla ES5 JavaScript application in a single `Index.html` file for SharePoint Online deployment.
+- **Hash-based routing**: Client-side routing across Home, People, Organizations, Training, SF182, Requests, In/Out, Facilities, Assets, Admin, and Diagnostics modules.
+- **SharePoint REST API integration**: OData query building, form digest handling, CRUD operations against SharePoint lists.
+- **RBAC**: Role-based access control via `CCSD_AppRoles` list with `hasAnyRole()` and `canSeeAdmin()` gating.
+- **Global state management**: Centralized `APP` object for state, cache, configuration, and navigation.
+- **Event delegation**: Click handling via `data-action` attributes and central `handleClick` dispatcher.
+- **Dark theme UI**: Glass-morphism design with gradient backgrounds, blur effects, and animated accent blobs.
+- **Responsive grid layouts**: CSS Grid-based card layouts with breakpoint-aware column counts.
+- **README**: Detailed project overview with architecture, deployment, and usage documentation.
