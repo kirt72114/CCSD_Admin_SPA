@@ -68,12 +68,12 @@ Updated: 2026-04-02
 ## 2. Hardware / Software Asset Improvements
 
 ### Asset Lifecycle Management (P1)
-- [ ] **Edit hardware asset modal** — modify asset details (model, serial, status, network, notes)
-- [ ] **Edit software asset modal** — modify software details (version, license type, ATO, approval status)
-- [ ] **Unassign / return flow** — modal to unassign hardware/software from a person with return reason, condition check, date, and ticket reference
-- [ ] **Transfer assignment** — reassign from one person to another without unassign + reassign (preserves chain of custody)
-- [ ] **Asset status workflow**: Available > Assigned > Returned > Surplus > Disposed (with date tracking at each stage)
-- [ ] **Condition tracking**: capture condition on assign (New/Good/Fair/Poor) and on return
+- [x] **Edit hardware asset modal** — modify asset details (model, serial, status, network, notes) ✅ *v2026.04.02.1*
+- [x] **Edit software asset modal** — modify software details (version, license type, ATO, approval status) ✅ *v2026.04.02.1*
+- [x] **Unassign / return flow** — modal to unassign hardware/software with condition check (Good/Fair/Poor/Damaged/Missing) ✅ *v2026.04.02.1*
+- [x] **Transfer assignment** — one-step reassign from person to person preserving chain of custody ✅ *v2026.04.02.1*
+- [x] **Asset status workflow**: Available → Assigned → Returned/Transferred → Surplus → Disposed ✅ *v2026.04.02.1*
+- [x] **Condition tracking**: capture condition on return (Good/Fair/Poor/Damaged/Missing) and transfer ✅ *v2026.04.02.1*
 - [ ] **Depreciation / age tracking**: calculate asset age from PurchaseDate, flag items past useful life threshold
 
 ### Inventory & Audit (P1)
@@ -95,11 +95,11 @@ Updated: 2026-04-02
 - [ ] **Warranty tracking**: WarrantyExpiration field, flag expired warranties
 - [ ] **Location tracking**: physical location beyond seat (building, floor, room, or "mobile")
 - [ ] **Check-out / check-in** for portable devices (temporary assignment with expected return date)
-- [ ] **Asset detail page**: full view of a single asset with all assignments (current + historical), audit history, and linked documents
+- [x] **Asset detail page**: full view of asset with all assignments (current + historical) and properties ✅ *v2026.04.02.1*
 - [ ] **Bulk asset import from CSV** (admin)
 
 ### Assignment Improvements (P2)
-- [ ] **Edit existing assignments** — change environment, notes, seat linkage
+- [x] **Edit existing assignments** — change environment, status, notes ✅ *v2026.04.02.1*
 - [ ] **Assignment history timeline**: visual timeline of who had an asset and when
 - [ ] **Seat-to-asset auto-suggestion**: when assigning to a person at a seat, suggest seat-linked equipment
 - [ ] **Duplicate assignment detection**: warn if same asset already assigned to someone else
@@ -160,10 +160,15 @@ Updated: 2026-04-02
 
 ## 8. Home Dashboard Improvements
 
-- [ ] **My upcoming time off** widget
-- [ ] **My team's availability** widget (who's out today/this week in my section)
-- [ ] **My pending requests** widget
-- [ ] **My training due soon** widget
+- [ ] **My upcoming time off** widget (personal upcoming time-off entries)
+- [x] **My team's availability** widget (who's out today/this week in my section) ✅ *v2026.04.02.2*
+- [x] **My pending requests** widget ✅ *v2026.04.02.2*
+- [x] **My training due soon** widget ✅ *v2026.04.02.2*
+- [x] **Priority Actions panel** — overdue requests, expiring training ✅ *v2026.04.02.2*
+- [x] **KPI strip** — People, Requests, Training %, Assets, In/Out cases ✅ *v2026.04.02.2*
+- [x] **Quick Navigation tile grid** ✅ *v2026.04.02.2*
+- [x] **Notifications panel** ✅ *v2026.04.02.2*
+- [x] **Admin Health Summary** (App Admin only) ✅ *v2026.04.02.2*
 - [ ] **Announcements / news** banner (from a CCSD_Announcements list)
 - [ ] **Quick links** section (customizable per user or org)
 
@@ -241,3 +246,5 @@ Updated: 2026-04-02
 - [x] Fullscreen/embedded dual-mode support
 - [x] Seating chart overhaul (drag-reposition, edit, delete, sidebar, crosshairs)
 - [x] Calendar module (month/week/list/leaders views, federal holidays, org scope filter)
+- [x] Asset lifecycle overhaul: edit assets, edit assignments, unassign/return with condition, transfer, asset detail pages
+- [x] Home dashboard professional redesign: welcome banner, KPI strip, priority actions, team availability, training/requests/in-out cards, notifications, quick nav, admin health
