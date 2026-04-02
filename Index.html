@@ -371,27 +371,65 @@ tr:hover td{background:#eef5ff}
 .toast{background:linear-gradient(180deg,#ffffff,#f6faff);border-color:#d4dfeb;color:#0f243d;box-shadow:0 14px 30px rgba(15,36,61,.12)}
 .loading{color:#0f243d}
 .loading .orb{background:radial-gradient(circle at 30% 30%,#9bd1ff,#1f7ae0 55%,#0d4f9b 100%);box-shadow:0 0 0 10px rgba(31,122,224,.10),0 12px 30px rgba(31,122,224,.18)}
-.exec-strip{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 16px;padding:12px 14px;border-radius:16px;border:1px solid #cfdae6;background:linear-gradient(90deg,#ffffff 0%,#f4f8fd 54%,#fff9eb 100%);box-shadow:0 10px 24px rgba(15,36,61,.06)}
-.exec-strip .title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1f4061}
-.exec-strip .item{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #d6e2ef;color:#173a5d;font-size:12px;font-weight:700}
-.exec-strip .swatch{width:10px;height:10px;border-radius:999px;background:linear-gradient(135deg,#0d4f9b,#1f7ae0)}
+.exec-strip{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 12px;padding:10px 14px;border-radius:14px;border:1px solid #cfdae6;background:linear-gradient(90deg,#ffffff 0%,#f4f8fd 54%,#fff9eb 100%);box-shadow:0 8px 20px rgba(15,36,61,.05)}
+.exec-strip .title{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1f4061}
+.exec-strip .item{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #d6e2ef;color:#173a5d;font-size:11px;font-weight:700}
+.exec-strip .swatch{width:8px;height:8px;border-radius:999px;background:linear-gradient(135deg,#0d4f9b,#1f7ae0)}
 .kpi-band{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:16px;margin-top:16px}
-.hero-callout{padding:18px;border-radius:18px;border:1px solid #d8e2ec;background:linear-gradient(135deg,#ffffff 0%,#f4f9ff 60%,#fff7e3 100%);box-shadow:0 14px 30px rgba(15,36,61,.06)}
-.hero-callout .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#49627a;font-weight:800}
-.hero-callout .headline{font-size:28px;line-height:1.1;margin-top:8px;font-weight:800;color:#08243f}
-.hero-callout .support{margin-top:10px;color:#51697f;max-width:780px}
-.hero-callout .quick-actions{margin-top:16px}
-.stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-.stat-chip{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#fff;border:1px solid #d8e3ee;box-shadow:0 8px 16px rgba(15,36,61,.04)}
-.stat-chip .n{font-size:20px;font-weight:800;color:#08243f}
-.stat-chip .t{font-size:12px;color:#536a80;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+/* ─── Home Dashboard ─── */
+.dash-welcome{padding:20px 24px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(135deg,rgba(140,123,255,.06) 0%,rgba(101,213,255,.06) 50%,rgba(37,244,199,.06) 100%);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.dash-welcome .dw-left{flex:1;min-width:200px}
+.dash-welcome .dw-name{font-size:22px;font-weight:800;line-height:1.15}
+.dash-welcome .dw-meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap}
+.dash-welcome .dw-meta span{display:inline-flex;align-items:center;gap:4px}
+.dash-welcome .dw-actions{display:flex;gap:8px;flex-wrap:wrap}
+.dash-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.dash-kpi{padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:var(--panel);position:relative;overflow:hidden}
+.dash-kpi .kpi-value{font-size:26px;font-weight:800;line-height:1}
+.dash-kpi .kpi-label{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.dash-kpi .kpi-bar{position:absolute;bottom:0;left:0;height:3px;border-radius:0 3px 0 0;transition:.3s width}
+.dash-kpi .kpi-bar.green{background:var(--accent-3)}
+.dash-kpi .kpi-bar.blue{background:var(--accent)}
+.dash-kpi .kpi-bar.purple{background:var(--accent-2)}
+.dash-kpi .kpi-bar.orange{background:var(--warn)}
+.dash-kpi .kpi-bar.red{background:var(--danger)}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.dash-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.dash-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.dash-card .dc-head{padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
+.dash-card .dc-title{font-size:14px;font-weight:800}
+.dash-card .dc-sub{font-size:10px;color:var(--muted)}
+.dash-card .dc-body{padding:12px 16px;flex:1;overflow-y:auto}
+.dash-card .dc-empty{padding:16px;text-align:center;font-size:12px;color:var(--muted)}
+.dash-action-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.dash-action-item:last-child{border-bottom:none}
+.dash-action-item .dai-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.dash-action-item .dai-icon.urgent{background:rgba(255,111,142,.12);color:var(--danger)}
+.dash-action-item .dai-icon.warn{background:rgba(255,199,105,.12);color:var(--warn)}
+.dash-action-item .dai-icon.info{background:rgba(101,213,255,.12);color:var(--accent)}
+.dash-action-item .dai-icon.ok{background:rgba(109,240,182,.12);color:var(--ok)}
+.dash-action-item .dai-content{flex:1;min-width:0}
+.dash-action-item .dai-title{font-size:12px;font-weight:700}
+.dash-action-item .dai-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.dash-req-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.dash-req-row:last-child{border-bottom:none}
+.dash-req-row .drr-title{flex:1;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-req-row .drr-meta{font-size:10px;color:var(--muted);white-space:nowrap}
+.dash-nav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px}
+.dash-nav-tile{padding:12px 8px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);text-align:center;cursor:pointer;transition:.15s all;font-size:12px;font-weight:700}
+.dash-nav-tile:hover{background:rgba(101,213,255,.08);border-color:rgba(101,213,255,.2);transform:translateY(-1px)}
+.dash-team-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.dash-team-row:last-child{border-bottom:none}
+.dash-team-row .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dash-team-row .name{flex:1;font-weight:600}
+.dash-team-row .status{font-size:10px;color:var(--muted)}
 .spotlight-list{display:flex;flex-direction:column;gap:10px}
 .spotlight-item{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid #d9e3ee;background:#fff}
 .spotlight-item .l1{font-weight:700;color:#0c2946}
 .spotlight-item .l2{font-size:12px;color:#5d7287;margin-top:4px}
-.health-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:#eef5ff;border:1px solid #c7daf6;color:#13498c;font-size:12px;font-weight:800}
+.health-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(101,213,255,.08);border:1px solid rgba(101,213,255,.15);color:var(--accent);font-size:10px;font-weight:800}
 .proj-note{font-size:12px;color:#5a7085;padding:10px 12px;border-radius:12px;background:#f8fbff;border:1px dashed #cfdceb}
-@media (max-width:1100px){.kpi-band{grid-template-columns:1fr}.hero-callout .headline{font-size:24px}}
+@media (max-width:1100px){.kpi-band{grid-template-columns:1fr}.dash-kpis{grid-template-columns:repeat(3,1fr)}.dash-grid,.dash-grid-3{grid-template-columns:1fr}}
 @media (max-width:900px){.grid.cols-4,.grid.cols-3,.grid.cols-2{grid-template-columns:1fr}.hero{position:relative;top:auto}}
 </style>
 
@@ -610,6 +648,107 @@ tr:hover td{background:#eef5ff}
 .embedded .btn-popout{display:inline-flex}
 .fullscreen-badge{display:none;font-size:9px;color:var(--accent-3);padding:2px 6px;border:1px solid rgba(37,244,199,.2);border-radius:6px;background:rgba(37,244,199,.06);margin-left:6px}
 body:not(.embedded) .fullscreen-badge{display:inline-block}
+
+/* ─── Person Detail Page ─── */
+.person-detail{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.person-detail .pd-section{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.person-detail .pd-section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}
+.person-detail .pd-full{grid-column:1/-1}
+
+/* ─── Reporting Module ─── */
+.report-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.report-chart{display:flex;gap:2px;align-items:flex-end;height:120px;padding:8px 0}
+.report-bar{flex:1;min-width:18px;background:linear-gradient(180deg,var(--accent),var(--accent-2));border-radius:4px 4px 0 0;position:relative;transition:.3s height}
+.report-bar:hover{opacity:.8}
+.report-bar-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--muted);white-space:nowrap}
+.report-bar-value{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:var(--text);white-space:nowrap}
+
+/* ─── Theme Toggle ─── */
+body.light-theme{--bg:#f0f2f5;--bg2:#e4e8ee;--panel:rgba(255,255,255,.92);--panel-2:rgba(255,255,255,.96);--line:rgba(0,0,0,.10);--text:#1a1a2e;--muted:#5a6478;--shadow:0 24px 60px rgba(0,0,0,.10)}
+body.light-theme:before,body.light-theme:after{opacity:.10}
+body.light-theme .hero{background:linear-gradient(180deg,rgba(240,242,245,.98),rgba(240,242,245,.92))}
+body.light-theme .btn{background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.08));color:var(--text)}
+body.light-theme .nav-link{color:var(--muted)}
+body.light-theme .nav-link.active{color:var(--text);border-bottom-color:var(--accent-2)}
+body.light-theme .card,.light-theme .dash-card{background:var(--panel);border-color:var(--line)}
+body.light-theme .tile{background:rgba(0,0,0,.03);border-color:var(--line)}
+body.light-theme .input,body.light-theme .select,body.light-theme .textarea{background:rgba(0,0,0,.04);border-color:var(--line);color:var(--text)}
+body.light-theme .modal{background:var(--panel-2);border-color:var(--line)}
+body.light-theme .modal-mask{background:rgba(0,0,0,.3)}
+body.light-theme .toast{background:var(--panel-2);color:var(--text);border-color:var(--line)}
+body.light-theme .seat-marker{border-color:rgba(0,0,0,.4)}
+body.light-theme .seat-tooltip{background:var(--panel-2);color:var(--text);border-color:var(--line)}
+body.light-theme .kv .k{color:var(--muted)}
+body.light-theme .dash-welcome{background:linear-gradient(135deg,rgba(101,213,255,.08),rgba(140,123,255,.08))}
+body.light-theme .dash-kpi{background:var(--panel)}
+body.light-theme .dash-nav-tile{background:rgba(0,0,0,.04)}
+body.light-theme .dash-nav-tile:hover{background:rgba(0,0,0,.08)}
+
+/* ─── Loading Skeletons ─── */
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
+body.light-theme .skeleton{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,rgba(0,0,0,.08) 50%,rgba(0,0,0,.04) 75%);background-size:200% 100%}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton-text{height:12px;margin:6px 0;width:80%}
+.skeleton-title{height:18px;margin:8px 0;width:60%}
+.skeleton-card{height:100px;margin:10px 0}
+.skeleton-row{height:36px;margin:4px 0;border-radius:6px}
+
+/* ─── Breadcrumbs ─── */
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);padding:4px 0}
+.breadcrumb a{color:var(--accent);cursor:pointer}
+.breadcrumb .sep{opacity:.4}
+
+/* ─── Undo Toast ─── */
+.toast .undo-btn{margin-left:10px;padding:2px 8px;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:transparent;color:var(--accent);cursor:pointer;font-size:11px}
+.toast .undo-btn:hover{background:rgba(255,255,255,.1)}
+
+/* ─── Print Styles ─── */
+@media print{
+  body,html{background:#fff!important;color:#000!important;overflow:visible!important;height:auto!important}
+  body:before,body:after,.hero,.modal-mask,.toast-host,.btn-popout,.fullscreen-badge{display:none!important}
+  #app{overflow:visible!important;height:auto!important;padding:0!important}
+  #viewHost{overflow:visible!important;height:auto!important}
+  .card,.dash-card{background:#fff!important;border:1px solid #ddd!important;box-shadow:none!important;break-inside:avoid}
+  .tile{background:#f9f9f9!important;border:1px solid #ddd!important}
+  .nav-bar,.header-actions,.quick-actions,.btn{display:none!important}
+  .badge,.status-pill{border:1px solid #999!important;color:#333!important;background:#eee!important}
+  .report-bar{background:#666!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cal-day-pill{border:1px solid #999!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .report-controls .btn,.report-controls .select{display:none!important}
+  .dash-nav-grid,.dash-welcome .dw-actions{display:none!important}
+  @page{margin:0.5in;size:landscape}
+}
+
+/* ─── Responsive (Tablet/Mobile) ─── */
+@media(max-width:900px){
+  .dash-grid,.dash-grid-3{grid-template-columns:1fr!important}
+  .person-detail{grid-template-columns:1fr!important}
+  .report-controls{flex-direction:column;align-items:stretch}
+  .hero-top{flex-direction:column;gap:8px}
+  .nav-bar{flex-wrap:wrap;gap:4px}
+  .nav-link{font-size:10px;padding:4px 8px}
+  .kv{grid-template-columns:1fr!important}
+  .form-grid{grid-template-columns:1fr!important}
+  .dash-kpis{grid-template-columns:repeat(2,1fr)!important}
+  .floorplan-sidebar{display:none}
+  .modal{max-width:98vw!important;max-height:90vh!important}
+  .card-head{flex-direction:column;gap:8px}
+  .filter-row{flex-direction:column}
+}
+@media(max-width:600px){
+  #app{padding:4px 6px 0}
+  .hero{padding:8px 10px 6px}
+  .brand-title{font-size:14px}
+  .brand-sub{display:none}
+  .dash-kpis{grid-template-columns:1fr!important}
+  .tile-grid{grid-template-columns:1fr!important}
+}
+
+/* ─── Session Timeout Overlay ─── */
+.session-timeout-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center}
+.session-timeout-box{background:var(--panel-2);border:1px solid var(--line);border-radius:18px;padding:32px;text-align:center;max-width:380px;box-shadow:var(--shadow)}
+.session-timeout-box .sto-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.session-timeout-box .sto-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
 </style>
 
 
@@ -630,6 +769,7 @@ body:not(.embedded) .fullscreen-badge{display:inline-block}
         <button class="btn subtle" data-action="refresh-route">Refresh</button>
         <button id="btnDiagHeader" class="btn subtle" data-action="open-diagnostics" style="display:none">Diagnostics</button>
         <button class="btn primary" data-action="open-create-request">New Request</button>
+        <button class="btn subtle" data-action="toggle-theme" style="padding:6px 8px;font-size:11px" title="Toggle light/dark theme">Theme</button>
         <button class="btn-popout" data-action="popout-fullscreen" title="Open in full screen">&#x26F6; Full Screen</button>
         <span class="fullscreen-badge">Full Screen</span>
       </div>
@@ -658,7 +798,7 @@ body:not(.embedded) .fullscreen-badge{display:inline-block}
 'use strict';
 
 var APP = {
-  version: '2026.04.02.1',
+  version: '2026.04.03.2',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -684,6 +824,7 @@ var APP = {
     { key: 'facilities', label: 'Facilities' },
     { key: 'calendar', label: 'Calendar' },
     { key: 'assets', label: 'Assets' },
+    { key: 'reporting', label: 'Reports' },
     { key: 'admin', label: 'Admin' },
     { key: 'diagnostics', label: 'Diagnostics' }
   ],
@@ -2222,7 +2363,10 @@ function renderHome(){
     ensureRequestsLoaded(),
     ensureInOutLoaded(),
     ensureInOutStepsLoaded(),
-    ensureHowToLoaded()
+    ensureHowToLoaded(),
+    ensureTimeOffLoaded().catch(function(){ return []; }),
+    ensurePeopleLoaded().catch(function(){ return []; }),
+    ensureOrganizationsLoaded().catch(function(){ return []; })
   ]).then(function(){
     renderContextBar();
     var training = getMyTrainingModel();
@@ -2232,72 +2376,189 @@ function renderHome(){
     var dueSoon = training.filter(function(t){ return t.status === 'Due Soon'; }).length;
     var expired = training.filter(function(t){ return t.status === 'Expired'; }).length;
     var missing = training.filter(function(t){ return t.status === 'Missing'; }).length;
-    var pendingReview = training.filter(function(t){ return t.status === 'Pending Review'; }).length;
     var applicableCount = training.filter(function(t){ return t.applicable; }).length;
     var currentPct = applicableCount ? Math.round((current / applicableCount) * 100) : 0;
-    var myOpenRequests = req.mine.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('complete') < 0 && String(r.Status || '').toLowerCase().indexOf('closed') < 0; }).length;
-    var myOpenInOut = inout.mine.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('closed') < 0 && String(r.Status || '').toLowerCase().indexOf('complete') < 0; }).length;
-    var howto = (APP.state.data.howto || []).filter(function(h){ return normalizeBoolean(h.IsActive) || h.IsActive == null; }).slice(0, 4);
+    var myOpenRequests = req.mine.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('complete') < 0 && s.indexOf('closed') < 0; });
+    var myOpenInOut = inout.mine.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('complete') < 0; });
     var riskRows = getTopTrainingRisks(training, 5);
     var actionItems = getNextActionItems(training, req, inout);
+    var notifications = getNotifications();
     var health = getDashboardHealthSummary();
-    var currentPersonName = APP.state.currentPersonnel ? formatPerson(APP.state.currentPersonnel) : (APP.state.currentUser ? APP.state.currentUser.title : 'Current user');
-    var openReviewCount = (APP.state.data.trainingSubmissions || []).filter(function(s){ return String(s.Status || '').toLowerCase().indexOf('pending') >= 0; }).length;
+    var person = APP.state.currentPersonnel;
+    var personName = person ? (person.FirstName || '') : (APP.state.currentUser ? APP.state.currentUser.title : '');
+    var fullName = person ? formatPerson(person) : personName;
+    var orgName = person && person.OrgID ? person.OrgID.Title : '';
+    var posName = person && person.PositionID ? person.PositionID.Title : '';
+    var roles = (APP.state.roleNames || []);
+
+    /* Team availability: who's out today in my section */
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayStr = today.toISOString().slice(0, 10);
+    var holidays = getHolidayMap(today.getFullYear());
+    var todayHoliday = holidays[todayStr] || null;
+    var myOrgId = person && person.OrgID ? person.OrgID.Id : null;
+    var teamOut = [];
+    if (myOrgId) {
+      var orgIds = getOrgAndDescendants(myOrgId);
+      var people = APP.state.data.people || [];
+      var timeOff = (APP.state.data.timeOff || []).filter(function(e){
+        if (e.Status !== 'Approved' && e.Status !== 'approved') { return false; }
+        var sd = (e.StartDate || '').slice(0, 10);
+        var ed = (e.EndDate || e.StartDate || '').slice(0, 10);
+        return todayStr >= sd && todayStr <= ed;
+      });
+      timeOff.forEach(function(e){
+        var pid = e.PersonID ? (e.PersonID.Id || e.PersonID) : null;
+        if (!pid) { return; }
+        var p = null;
+        people.some(function(pp){ if (pp.Id == pid) { p = pp; return true; } return false; });
+        if (!p) { return; }
+        var pOrgId = p.OrgID ? (p.OrgID.Id || p.OrgID) : null;
+        if (pOrgId && orgIds[pOrgId]) { teamOut.push({ person: p, entry: e }); }
+      });
+    }
+
     var html = '';
-    html += '<div class="exec-strip"><div class="title">Operational Snapshot</div>';
-    html += '<div class="item"><span class="swatch"></span>' + escHtml((APP.state.roleNames || []).join(', ') || 'No Roles Resolved') + '</div>';
-    html += '<div class="item"><span class="swatch"></span>Training Compliance ' + escHtml(String(currentPct)) + '%</div>';
-    html += '<div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(myOpenRequests)) + '</div>';
-    html += '<div class="item"><span class="swatch"></span>Pending Reviews ' + escHtml(String(openReviewCount)) + '</div>';
-    html += '<div class="item"><span class="swatch"></span>Diagnostics Errors ' + escHtml(String(health.recentErrors)) + '</div></div>';
-    html += '<div class="hero-callout">';
-    html += '<div class="eyebrow">CCSD Administrative Operating System</div>';
-    html += '<div class="headline">One place for personnel, training, requests, in/out processing, facilities, assets, and operational oversight.</div>';
-    html += '<div class="support">This projector-friendly dashboard emphasizes the highest-value actions first, keeps contrast strong on washed-out screens, and surfaces the areas that usually need immediate attention.</div>';
-    html += '<div class="stat-row">';
-    html += '<div class="stat-chip"><div class="n">' + escHtml(String(applicableCount)) + '</div><div class="t">Required Training</div></div>';
-    html += '<div class="stat-chip"><div class="n">' + escHtml(String(req.queue.length)) + '</div><div class="t">Office Queue</div></div>';
-    html += '<div class="stat-chip"><div class="n">' + escHtml(String(inout.queue.length)) + '</div><div class="t">In/Out Tasks</div></div>';
-    html += '<div class="stat-chip"><div class="n">' + escHtml(String((APP.state.roleNames || []).length)) + '</div><div class="t">Resolved Roles</div></div>';
+
+    /* ─ Welcome banner ─ */
+    html += '<div class="dash-welcome">';
+    html += '<div class="dw-left">';
+    html += '<div class="dw-name">Welcome back, ' + escHtml(personName || 'User') + '</div>';
+    html += '<div class="dw-meta">';
+    if (orgName) { html += '<span>' + escHtml(orgName) + '</span>'; }
+    if (posName) { html += '<span>' + escHtml(posName) + '</span>'; }
+    if (roles.length) { html += '<span>' + escHtml(roles.join(', ')) + '</span>'; }
     html += '</div>';
-    html += '<div class="quick-actions"><button class="btn primary" data-action="open-create-request">New Request</button><button class="btn" data-action="nav" data-route="training">My Training</button><button class="btn" data-action="nav" data-route="requests">Workflow Inbox</button><button class="btn" data-action="open-inout-create">New In/Out Case</button>' + (canSeeAdmin() ? '<button class="btn" data-action="nav" data-route="diagnostics">Diagnostics Center</button>' : '') + '</div>';
     html += '</div>';
-    html += '<div class="grid cols-4" style="margin-top:16px">';
-    html += metricCard('Training Compliance', currentPct + '%', 'Current out of required training', currentPct);
-    html += metricCard('My Open Requests', myOpenRequests, 'Requests still in flight', Math.min(100, myOpenRequests * 18));
-    html += metricCard('My In/Out Cases', myOpenInOut, 'Cases still in progress', Math.min(100, myOpenInOut * 22));
-    html += metricCard('Role Coverage', (APP.state.roleNames || []).length, 'Resolved active app roles', Math.min(100, (APP.state.roleNames || []).length * 12));
-    html += '</div>';
-    html += '<div class="kpi-band">';
-    html += '<div class="card glow"><div class="card-head"><div><div class="card-title">Operational Focus</div><div class="card-sub">Highest-priority items surfaced from across the app.</div></div><div class="health-pill">Now Supporting ' + escHtml(currentPersonName) + '</div></div><div class="card-body">' + renderActionSpotlight(actionItems) + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Training Risk Radar</div><div class="card-sub">Most urgent training items for the current user.</div></div></div><div class="card-body">' + renderMiniTrainingRiskList(riskRows) + '</div></div>';
-    if (canSeeAdmin()) { html += '<div class="card"><div class="card-head"><div><div class="card-title">Health + Queue Signals</div><div class="card-sub">Support indicators pulled from diagnostics and current queues.</div></div></div><div class="card-body"><div class="kv"><div class="k">List Checks Run</div><div class="v">' + escHtml(String(health.tested)) + '</div><div class="k">List Check Failures</div><div class="v">' + escHtml(String(health.failed)) + '</div><div class="k">Queued Telemetry</div><div class="v">' + escHtml(String(health.telemetryQueued)) + '</div><div class="k">Queued Audit</div><div class="v">' + escHtml(String(health.auditQueued)) + '</div><div class="k">Pending Training Review</div><div class="v">' + escHtml(String(openReviewCount)) + '</div><div class="k">Recent Diagnostics Errors</div><div class="v">' + escHtml(String(health.recentErrors)) + '</div></div><div class="proj-note" style="margin-top:12px">Color and contrast have been tuned for readability on washed-out projectors: bright background, dark text, strong borders, and restrained accent use.</div></div></div>'; }
-    html += '</div>';
-    html += '<div class="grid cols-3" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Training Snapshot</div><div class="card-sub">Required training state for the current member.</div></div></div><div class="card-body">';
-    html += '<div class="list-inline">' + statusBadge('Current: ' + current) + statusBadge('Due Soon: ' + dueSoon) + statusBadge('Expired: ' + expired) + statusBadge('Missing: ' + missing) + statusBadge('Pending Review: ' + pendingReview) + '</div>';
-    html += '<div style="margin-top:14px" class="progress"><span style="width:' + currentPct + '%"></span></div>';
-    html += '<div class="small-note" style="margin-top:8px">Required items: ' + applicableCount + '</div>';
+    html += '<div class="dw-actions">';
+    html += '<button class="btn primary" data-action="open-create-request">New Request</button>';
+    html += '<button class="btn" data-action="nav" data-route="calendar">Calendar</button>';
+    html += '<button class="btn subtle" data-action="keyboard-shortcuts">Shortcuts</button>';
     html += '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">My Requests</div><div class="card-sub">Recent requests tied to the current user or personnel record.</div></div><button class="btn subtle" data-action="nav" data-route="requests">Open Requests</button></div><div class="card-body">' + renderMiniRequestList(req.mine.slice(0, 6)) + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">My In/Out Cases</div><div class="card-sub">Current in-processing, out-processing, and transfer cases.</div></div><button class="btn subtle" data-action="nav" data-route="inout">Open In/Out</button></div><div class="card-body">' + renderMiniInOutList(inout.mine.slice(0, 6)) + '</div></div>';
+
+    /* ─ KPI strip ─ */
+    html += '<div class="dash-kpis">';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + currentPct + '%</div><div class="kpi-label">Training Compliance</div><div class="kpi-bar green" style="width:' + currentPct + '%"></div></div>';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + myOpenRequests.length + '</div><div class="kpi-label">Open Requests</div><div class="kpi-bar blue" style="width:' + Math.min(100, myOpenRequests.length * 20) + '%"></div></div>';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + myOpenInOut.length + '</div><div class="kpi-label">In/Out Cases</div><div class="kpi-bar purple" style="width:' + Math.min(100, myOpenInOut.length * 25) + '%"></div></div>';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + (expired + missing) + '</div><div class="kpi-label">Training Gaps</div><div class="kpi-bar ' + ((expired + missing) > 0 ? 'red' : 'green') + '" style="width:' + Math.min(100, (expired + missing) * 15) + '%"></div></div>';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + notifications.length + '</div><div class="kpi-label">Notifications</div><div class="kpi-bar ' + (notifications.length > 3 ? 'orange' : 'blue') + '" style="width:' + Math.min(100, notifications.length * 12) + '%"></div></div>';
     html += '</div>';
-    html += '<div class="grid cols-2" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Notification Center</div><div class="card-sub">Alerts surfaced from training deadlines, overdue requests, and upcoming due dates.</div></div><div class="health-pill">' + escHtml(String(getNotifications().length)) + ' Active</div></div><div class="card-body">' + renderNotificationCenter() + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Quick Navigation</div><div class="card-sub">Jump to any module with one click.</div></div></div><div class="card-body"><div class="tile-grid">';
+
+    /* ─ Row 1: Priority Actions + Team Availability ─ */
+    html += '<div class="dash-grid">';
+    /* Priority actions */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Priority Actions</div><div class="dc-sub">Items needing your attention</div></div><div class="health-pill">' + actionItems.length + ' items</div></div><div class="dc-body">';
+    if (!actionItems.length) { html += '<div class="dc-empty">No outstanding items. You\'re all caught up.</div>'; }
+    else {
+      actionItems.slice(0, 6).forEach(function(item){
+        var icon = '!'; var cls = 'info';
+        if (item.priority === 'urgent' || item.priority === 'danger') { icon = '!!'; cls = 'urgent'; }
+        else if (item.priority === 'warn') { icon = '!'; cls = 'warn'; }
+        else if (item.priority === 'ok') { icon = '&#10003;'; cls = 'ok'; }
+        html += '<div class="dash-action-item"><div class="dai-icon ' + cls + '">' + icon + '</div><div class="dai-content"><div class="dai-title">' + escHtml(item.label) + '</div><div class="dai-meta">' + escHtml(item.detail || '') + '</div></div></div>';
+      });
+    }
+    html += '</div></div>';
+    /* Team availability */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Team Availability — Today</div><div class="dc-sub">' + escHtml(orgName || 'Your Section') + '</div></div>';
+    if (todayHoliday) { html += '<div class="health-pill" style="background:rgba(255,111,142,.1);color:var(--danger);border-color:rgba(255,111,142,.2)">' + escHtml(todayHoliday) + '</div>'; }
+    html += '</div><div class="dc-body">';
+    if (todayHoliday) { html += '<div style="padding:6px 0;font-size:12px;color:var(--danger);font-weight:700">Federal Holiday — ' + escHtml(todayHoliday) + '</div>'; }
+    if (!teamOut.length) { html += '<div class="dc-empty">' + (todayHoliday ? 'Office closed for holiday.' : 'Everyone in your section is in today.') + '</div>'; }
+    else {
+      teamOut.slice(0, 8).forEach(function(item){
+        var t = getCalType(item.entry.TimeOffType);
+        html += '<div class="dash-team-row"><div class="dot" style="background:' + t.color + '"></div><div class="name">' + escHtml(formatPerson(item.person)) + '</div><div class="status" style="color:' + t.color + '">' + escHtml(item.entry.TimeOffType || 'Out') + '</div></div>';
+      });
+      if (teamOut.length > 8) { html += '<div style="font-size:10px;color:var(--muted);padding-top:4px">+' + (teamOut.length - 8) + ' more</div>'; }
+    }
+    html += '</div></div></div>';
+
+    /* ─ Row 2: Training + Requests + In/Out ─ */
+    html += '<div class="dash-grid-3">';
+    /* Training */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Training</div></div><button class="btn subtle" data-action="nav" data-route="training" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + statusBadge('Current: ' + current) + statusBadge('Due Soon: ' + dueSoon) + statusBadge('Expired: ' + expired) + statusBadge('Missing: ' + missing) + '</div>';
+    html += '<div class="progress" style="height:6px"><span style="width:' + currentPct + '%;background:linear-gradient(90deg,var(--accent-3),var(--accent))"></span></div>';
+    if (riskRows.length) {
+      html += '<div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Highest Risk</div>';
+      riskRows.slice(0, 3).forEach(function(r){
+        var color = r.status === 'Expired' ? 'var(--danger)' : (r.status === 'Missing' ? 'var(--warn)' : 'var(--muted)');
+        html += '<div style="display:flex;justify-content:space-between;gap:6px;padding:4px 0;font-size:11px;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(r.name || '') + '</span><span style="color:' + color + ';font-weight:700;font-size:10px;white-space:nowrap">' + escHtml(r.status) + '</span></div>';
+      });
+    }
+    html += '</div></div>';
+    /* Requests */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Requests</div></div><button class="btn subtle" data-action="nav" data-route="requests" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
+    if (!myOpenRequests.length) { html += '<div class="dc-empty">No open requests.</div>'; }
+    else {
+      myOpenRequests.slice(0, 5).forEach(function(r){
+        html += '<div class="dash-req-row" data-action="view-request" data-id="' + escAttr(r.Id) + '" style="cursor:pointer"><div class="drr-title">' + escHtml(r.Title || r.RequestID || 'Request') + '</div>' + statusBadge(r.Status || 'Open') + '</div>';
+      });
+    }
+    html += '</div></div>';
+    /* In/Out */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">In/Out Cases</div></div><button class="btn subtle" data-action="nav" data-route="inout" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
+    if (!myOpenInOut.length) { html += '<div class="dc-empty">No active cases.</div>'; }
+    else {
+      myOpenInOut.slice(0, 5).forEach(function(r){
+        html += '<div class="dash-req-row"><div class="drr-title">' + escHtml((r.ProcessType || 'Case') + ' — ' + ((r.PersonID && r.PersonID.Title) || '')) + '</div>' + statusBadge(r.Status || 'Open') + '</div>';
+      });
+    }
+    html += '</div></div></div>';
+
+    /* ─ Row 2.5: Upcoming Time Off + Quick Links ─ */
+    var myUpcoming = getUpcomingTimeOff(14);
+    var certAlerts = getCertExpirationAlerts(60);
+    html += '<div class="dash-grid">';
+    /* Upcoming time off */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Upcoming Time Off</div><div class="dc-sub">Next 14 days</div></div><button class="btn subtle" data-action="nav" data-route="calendar" style="padding:4px 8px;font-size:10px">Calendar</button></div><div class="dc-body">';
+    if (!myUpcoming.length) { html += '<div class="dc-empty">No upcoming time off scheduled.</div>'; }
+    else {
+      myUpcoming.slice(0, 5).forEach(function(e){
+        var t = getCalType(e.TimeOffType);
+        html += '<div class="dash-team-row"><div class="dot" style="background:' + t.color + '"></div><div class="name">' + escHtml((e.StartDate || '').slice(0,10)) + (e.EndDate && e.EndDate !== e.StartDate ? ' to ' + escHtml((e.EndDate || '').slice(0,10)) : '') + '</div><div class="status" style="color:' + t.color + '">' + escHtml(e.TimeOffType || '') + '</div></div>';
+      });
+    }
+    html += '</div></div>';
+    /* Cert expiration alerts */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Expiring Certifications</div><div class="dc-sub">Within 60 days</div></div></div><div class="dc-body">';
+    if (!certAlerts.length) { html += '<div class="dc-empty">No certifications expiring soon.</div>'; }
+    else {
+      certAlerts.slice(0, 5).forEach(function(a){
+        var color = a.daysLeft <= 14 ? 'var(--danger)' : a.daysLeft <= 30 ? 'var(--warn)' : 'var(--muted)';
+        html += '<div class="dash-action-item"><div class="dai-icon warn">!</div><div class="dai-content"><div class="dai-title">' + escHtml(a.training ? (a.training.TrainingName || a.training.Title || '') : 'Certification') + '</div><div class="dai-meta" style="color:' + color + '">' + a.daysLeft + ' days left — expires ' + escHtml(formatDate(a.expirationDate)) + '</div></div></div>';
+      });
+    }
+    html += '</div></div></div>';
+
+    /* ─ Row 3: Notifications + Quick Nav ─ */
+    html += '<div class="dash-grid">';
+    /* Notifications */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Notifications</div></div><div class="health-pill">' + notifications.length + ' active</div></div><div class="dc-body">' + renderNotificationCenter() + '</div></div>';
+    /* Quick nav */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Quick Navigation</div></div></div><div class="dc-body"><div class="dash-nav-grid">';
+    var navIcons = { home: 'H', people: 'P', organizations: 'O', training: 'T', sf182: 'S', requests: 'R', inout: 'I', facilities: 'F', calendar: 'C', assets: 'A', admin: 'X', diagnostics: 'D' };
     var adminOnlyNav = { admin: true, diagnostics: true };
     APP.nav.forEach(function(item){
       if (adminOnlyNav[item.key] && !canSeeAdmin()) { return; }
-      html += '<div class="tile" data-action="nav" data-route="' + escAttr(item.key) + '" style="cursor:pointer;text-align:center"><div class="tile-title">' + escHtml(item.label) + '</div></div>';
+      html += '<div class="dash-nav-tile" data-action="nav" data-route="' + escAttr(item.key) + '">' + escHtml(item.label) + '</div>';
     });
-    html += '</div></div></div></div>';
-    if (howto.length) {
-      html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">How-To Highlights</div><div class="card-sub">Pulled from CCSD_HowTo for in-app guidance.</div></div><div class="health-pill">Self-Service Enablement</div></div><div class="card-body"><div class="tile-grid">';
-      howto.forEach(function(h){
-        html += '<div class="tile"><div class="tile-title">' + escHtml(h.Title || h.Module || 'How-To') + '</div><div class="tile-sub">' + escHtml(h.Summary || h.Audience || '') + '</div><div style="margin-top:10px" class="small-note">' + escHtml(h.Module || '') + '</div></div>';
-      });
-      html += '</div></div></div>';
+    html += '</div>';
+    /* Admin health summary (compact) */
+    if (canSeeAdmin()) {
+      html += '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line);font-size:11px">';
+      html += '<div style="font-weight:800;margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">System Health</div>';
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
+      html += '<span>Errors: <strong style="color:' + (health.recentErrors > 0 ? 'var(--danger)' : 'var(--ok)') + '">' + health.recentErrors + '</strong></span>';
+      html += '<span>Telemetry Queue: <strong>' + health.telemetryQueued + '</strong></span>';
+      html += '<span>Audit Queue: <strong>' + health.auditQueued + '</strong></span>';
+      html += '<span>Version: <strong>' + escHtml(APP.version) + '</strong></span>';
+      html += '</div></div>';
     }
+    html += '</div></div></div>';
+
     setView(html);
   }).catch(function(err){
     setView('<div class="card"><div class="card-body"><div class="empty">Dashboard failed to load. Open Diagnostics for details.</div></div></div>');
@@ -2329,7 +2590,7 @@ function renderPeople(){
   return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensurePositionsLoaded()]).then(function(){
     var rows = APP.state.data.people || [];
     var canEdit = canEditPeople();
-    var html = '<div class="card"><div class="card-head"><div><div class="card-title">People</div><div class="card-sub">Fast search, details, and role-gated editing for CCSD personnel.</div></div><div class="filter-row"><input id="peopleSearchInput" class="input" style="width:260px" placeholder="Search name, email, org, status" /></div></div><div class="card-body">';
+    var html = '<div class="card"><div class="card-head"><div><div class="card-title">People</div><div class="card-sub">Fast search, details, and role-gated editing for CCSD personnel.</div></div><div class="filter-row"><input id="peopleSearchInput" class="input" style="width:260px" placeholder="Search name, email, org, status" /><button class="btn subtle" data-action="export-people-csv" style="padding:6px 10px;font-size:11px">Export CSV</button></div></div><div class="card-body">';
     html += '<div class="tile-grid" id="peopleGrid">';
     rows.forEach(function(p){
       var search = [formatPerson(p), p.Email, p.Status, p.OrgID && p.OrgID.Title, p.PositionID && p.PositionID.Title, p.PersonID].join(' ').toLowerCase();
@@ -2438,6 +2699,160 @@ function savePersonEdit(){
   }).catch(function(){ toast('Person update failed.', 'danger'); });
 }
 
+/* ─── Person Detail Page (unified) ─── */
+function openPersonDetailPage(id){
+  var p = findPersonById(id);
+  if (!p) { toast('Person not found.', 'danger'); return; }
+  Promise.all([ensureAssetsLoaded(), ensureFacilitiesLoaded(), ensureTrainingCatalogLoaded(), ensureTrainingRecordsLoaded(), ensureTimeOffLoaded().catch(function(){ return []; })]).then(function(){
+    var body = '<div class="person-detail">';
+    /* Contact info */
+    body += '<div class="pd-section"><div class="pd-section-title">Contact &amp; Identity</div><div class="kv">'
+      + '<div class="k">Name</div><div class="v">' + escHtml(formatPerson(p)) + '</div>'
+      + '<div class="k">Person ID</div><div class="v">' + escHtml(p.PersonID || '') + '</div>'
+      + '<div class="k">Email</div><div class="v">' + escHtml(p.Email || '') + '</div>'
+      + '<div class="k">Primary Phone</div><div class="v">' + escHtml(p.PrimaryPhone || '') + '</div>'
+      + '<div class="k">Office Phone</div><div class="v">' + escHtml(p.OfficePhone || '') + '</div>'
+      + '<div class="k">AFSC</div><div class="v">' + escHtml(p.AFSC || '') + '</div>'
+      + '<div class="k">Grade</div><div class="v">' + escHtml(p.Grade || '') + '</div>'
+      + '<div class="k">Status</div><div class="v">' + statusBadge(p.Status || 'Unknown') + '</div>'
+      + '<div class="k">Notes</div><div class="v">' + escHtml(p.Notes || '') + '</div>'
+      + '</div></div>';
+    /* Org info */
+    body += '<div class="pd-section"><div class="pd-section-title">Organization &amp; Position</div><div class="kv">'
+      + '<div class="k">Organization</div><div class="v">' + escHtml((p.OrgID && p.OrgID.Title) || '') + '</div>'
+      + '<div class="k">Position</div><div class="v">' + escHtml((p.PositionID && p.PositionID.Title) || '') + '</div>'
+      + '<div class="k">Seat</div><div class="v">' + escHtml((p.SeatID && p.SeatID.Title) || '') + '</div>'
+      + '<div class="k">Supervisor Chain</div><div class="v">' + renderSupervisorChain(p.Id) + '</div>'
+      + '</div></div>';
+    /* Training */
+    var allTraining = getMyTrainingModel();
+    var personTraining = allTraining.filter(function(t){ return t.applicable; });
+    body += '<div class="pd-section"><div class="pd-section-title">Training (' + personTraining.length + ' items)</div>';
+    if (!personTraining.length) { body += '<div class="empty">No training records.</div>'; }
+    else {
+      body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Training</th><th>Status</th><th>Completed</th><th>Expires</th></tr></thead><tbody>';
+      personTraining.slice(0, 15).forEach(function(t){
+        body += '<tr><td>' + escHtml(t.name || '') + '</td><td>' + statusBadge(t.status) + '</td><td>' + escHtml(t.latest && t.latest.CompletionDate ? formatDate(t.latest.CompletionDate) : '—') + '</td><td>' + escHtml(t.latest && t.latest.ExpirationDate ? formatDate(t.latest.ExpirationDate) : '—') + '</td></tr>';
+      });
+      body += '</tbody></table>';
+    }
+    body += '</div>';
+    /* Time Off */
+    var personTimeOff = (APP.state.data.timeOff || []).filter(function(e){
+      var pid = e.PersonID ? (e.PersonID.Id || e.PersonID) : null;
+      return String(pid) === String(p.Id);
+    });
+    body += '<div class="pd-section"><div class="pd-section-title">Time Off (' + personTimeOff.length + ' entries)</div>';
+    if (!personTimeOff.length) { body += '<div class="empty">No time-off records.</div>'; }
+    else {
+      body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Type</th><th>Start</th><th>End</th><th>Status</th><th>Hours</th></tr></thead><tbody>';
+      personTimeOff.slice(0, 10).forEach(function(e){
+        body += '<tr><td>' + escHtml(e.TimeOffType || '') + '</td><td>' + escHtml(formatDate(e.StartDate)) + '</td><td>' + escHtml(formatDate(e.EndDate || e.StartDate)) + '</td><td>' + statusBadge(e.Status || '') + '</td><td>' + escHtml(e.Hours || '') + '</td></tr>';
+      });
+      body += '</tbody></table>';
+    }
+    body += '</div>';
+    /* Assets */
+    body += '<div class="pd-section pd-full"><div class="pd-section-title">Assigned Assets</div>' + renderPersonAssetPanel(p, true) + '</div>';
+    body += '</div>';
+    var footer = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      + '<button class="btn subtle" data-action="focus-person-assets" data-id="' + escAttr(p.Id) + '">Full Assets View</button>'
+      + (canEditPeople() ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit Person</button>' : '')
+      + (canEditPeople() ? '<button class="btn warn" data-action="depart-person" data-id="' + escAttr(p.Id) + '">Process Departure</button>' : '')
+      + (canEditPeople() ? '<button class="btn subtle" data-action="transfer-person" data-id="' + escAttr(p.Id) + '">Transfer Org</button>' : '')
+      + '</div><button class="btn" data-action="close-modal">Close</button>';
+    openModal('Personnel Detail — ' + escHtml(formatPerson(p)), body, footer, p.PersonID || '');
+  });
+}
+
+/* ─── Departure Processing ─── */
+function openDepartureModal(personId){
+  var p = findPersonById(personId);
+  if (!p) { toast('Person not found.', 'danger'); return; }
+  var body = '<div style="margin-bottom:12px">This will mark <strong>' + escHtml(formatPerson(p)) + '</strong> as Departed and flag all open assignments, training gaps, and seats for reassignment.</div>'
+    + '<div class="form-grid">'
+    + formField('Departure Date', '<input id="departDate" class="input" type="date" value="' + new Date().toISOString().slice(0,10) + '" />')
+    + formField('Reason', '<select id="departReason" class="select"><option value="PCS">PCS</option><option value="Separation">Separation</option><option value="Retirement">Retirement</option><option value="Transfer">Transfer to Other Agency</option><option value="Other">Other</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="departNotes" class="textarea" placeholder="Optional notes about departure"></textarea>') + '</div>'
+    + '</div>';
+  APP.modalState.departPersonId = p.Id;
+  openModal('Process Departure', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn danger" data-action="confirm-departure">Confirm Departure</button></div>', formatPerson(p));
+}
+function confirmDeparture(){
+  var personId = APP.modalState.departPersonId;
+  var p = findPersonById(personId);
+  if (!personId || !p) { toast('Missing person context.', 'danger'); return; }
+  var departDate = document.getElementById('departDate').value;
+  var reason = document.getElementById('departReason').value;
+  var notes = document.getElementById('departNotes').value;
+  var values = { Status: 'Departed', Notes: (p.Notes || '') + '\n[Departed ' + departDate + ' - ' + reason + '] ' + notes };
+  updateListItem(APP.lists.Personnel, personId, values, { entityType: 'Personnel', before: p, reason: 'Departure processing: ' + reason }).then(function(){
+    toast('Person marked as Departed. Review their assets and seat assignments.', 'ok');
+    closeModal();
+    return ensurePeopleLoaded(true).then(function(){ renderPeople(); });
+  }).catch(function(){ toast('Departure processing failed.', 'danger'); });
+}
+
+/* ─── Org Transfer ─── */
+function openTransferPersonModal(personId){
+  var p = findPersonById(personId);
+  if (!p) { toast('Person not found.', 'danger'); return; }
+  var orgOptions = (APP.state.data.organizations || []).map(function(o){
+    var sel = (p.OrgID && p.OrgID.Id === o.Id) ? ' selected' : '';
+    return '<option value="' + escAttr(o.Id) + '"' + sel + '>' + escHtml(o.OrgName || o.Title || '') + '</option>';
+  }).join('');
+  var posOptions = (APP.state.data.positions || []).map(function(o){
+    var sel = (p.PositionID && p.PositionID.Id === o.Id) ? ' selected' : '';
+    return '<option value="' + escAttr(o.Id) + '"' + sel + '>' + escHtml(o.PositionTitle || o.Title || '') + '</option>';
+  }).join('');
+  var body = '<div style="margin-bottom:12px">Transfer <strong>' + escHtml(formatPerson(p)) + '</strong> to a new organization.</div>'
+    + '<div class="form-grid">'
+    + formField('New Organization', '<select id="xferOrg" class="select"><option value="">-- Select --</option>' + orgOptions + '</select>')
+    + formField('New Position (optional)', '<select id="xferPos" class="select"><option value="">-- Keep Current --</option>' + posOptions + '</select>')
+    + formField('Effective Date', '<input id="xferDate" class="input" type="date" value="' + new Date().toISOString().slice(0,10) + '" />')
+    + '</div>';
+  APP.modalState.xferPersonId = p.Id;
+  openModal('Transfer Person', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="confirm-transfer-person">Transfer</button></div>', formatPerson(p));
+}
+function confirmTransferPerson(){
+  var personId = APP.modalState.xferPersonId;
+  var p = findPersonById(personId);
+  if (!personId || !p) { toast('Missing person context.', 'danger'); return; }
+  var newOrg = document.getElementById('xferOrg').value;
+  if (!newOrg) { toast('Please select a new organization.', 'danger'); return; }
+  var values = { OrgID: parseInt(newOrg, 10) };
+  var newPos = document.getElementById('xferPos').value;
+  if (newPos) { values.PositionID = parseInt(newPos, 10); }
+  var date = document.getElementById('xferDate').value;
+  values.Notes = (p.Notes || '') + '\n[Transferred ' + date + ' to Org ID ' + newOrg + ']';
+  updateListItem(APP.lists.Personnel, personId, values, { entityType: 'Personnel', before: p, reason: 'Org transfer' }).then(function(){
+    toast('Person transferred to new organization.', 'ok');
+    closeModal();
+    return ensurePeopleLoaded(true).then(function(){ renderPeople(); });
+  }).catch(function(){ toast('Transfer failed.', 'danger'); });
+}
+
+/* ─── Personnel CSV Export ─── */
+function exportPeopleCSV(){
+  var rows = APP.state.data.people || [];
+  var headers = ['PersonID','FirstName','LastName','Email','Status','Organization','Position','OfficePhone','PrimaryPhone','Grade','AFSC'];
+  var csv = headers.join(',') + '\n';
+  rows.forEach(function(p){
+    var cols = [
+      p.PersonID || '', p.FirstName || '', p.LastName || '', p.Email || '', p.Status || '',
+      (p.OrgID && p.OrgID.Title) || '', (p.PositionID && p.PositionID.Title) || '',
+      p.OfficePhone || '', p.PrimaryPhone || '', p.Grade || '', p.AFSC || ''
+    ];
+    csv += cols.map(function(c){ return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
+  });
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'personnel_export_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Personnel exported to CSV.', 'ok');
+}
 
 function ensureOrgChartUi(){
   if (!APP.state.orgUi) { APP.state.orgUi = { selectedOrgId: null, expanded: {}, search: '', focusOrgId: null, showAboveRoot: false }; }
@@ -2941,7 +3356,7 @@ function renderOrganizationsView(){
     crumbs.forEach(function(org){ detailHtml += '<button class="org-crumb" data-action="org-select" data-id="' + escAttr(org.Id) + '">' + escHtml(getOrgDisplayName(org)) + '</button>'; });
     detailHtml += '</div>';
     detailHtml += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roll.directPeople)) + '</div><div class="t">Direct Personnel</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.totalPeople)) + '</div><div class="t">Branch Personnel</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.childCount)) + '</div><div class="t">Immediate Child Units</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.totalPositions)) + '</div><div class="t">Positions in Branch</div></div></div>';
-    detailHtml += '<div class="org-root-actions"><button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(selected.Id) + '">View Leadership</button><button class="btn subtle" data-action="org-focus" data-id="' + escAttr(selected.Id) + '">' + (ui.focusOrgId === selected.Id ? 'Focused Branch' : 'Focus This Branch') + '</button>';
+    detailHtml += '<div class="org-root-actions"><button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(selected.Id) + '">View Leadership</button><button class="btn subtle" data-action="org-dashboard" data-id="' + escAttr(selected.Id) + '">Dashboard</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="edit-org" data-id="' + escAttr(selected.Id) + '">Edit Org</button>' : '') + '<button class="btn subtle" data-action="org-focus" data-id="' + escAttr(selected.Id) + '">' + (ui.focusOrgId === selected.Id ? 'Focused Branch' : 'Focus This Branch') + '</button>';
     if (ui.focusOrgId) { detailHtml += '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>'; }
     if (selected.SharePointURL) { detailHtml += '<a class="btn subtle" href="' + escAttr(selected.SharePointURL) + '" target="_blank" rel="noopener">Open SharePoint Site</a>'; }
     detailHtml += '</div>';
@@ -2972,7 +3387,7 @@ function renderOrganizationsView(){
   html += renderOrgBand(index, 'Functional Support Offices', 'Cross-cutting offices supporting training, engineering, finance, contracting, communications, and workforce support.', functionalCodes, 'functional', 'These units provide enterprise support across the division.');
   html += renderOrgBand(index, 'Groups', 'Primary operational groups under the headquarters structure.', groupCodes, 'group', 'These are the principal operational groupings for the division.');
   html += '</div></div>';
-  html += '<div class="org-search-panel card"><div class="card-head"><div><div class="card-title">Branch Explorer</div><div class="card-sub">Use search and branch focus to drill down into branches, sections, and teams without overcrowding the headquarters layout above.</div></div><div class="org-chart-toolbar"><input id="orgSearchInput" class="input" placeholder="Search organization name, code, type, or leader" value="' + escAttr(ui.search || '') + '" /><button class="btn subtle" data-action="org-expand-visible">Expand Visible</button><button class="btn subtle" data-action="org-collapse-tree">Reset Branch View</button>' + (ui.focusOrgId ? '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>' : '') + '<span class="mini-note">Visible nodes: ' + escHtml(String(visibleIds.length)) + '</span></div></div><div class="card-body"><div class="org-branch-shell"><div class="card org-tree-panel org-branch-panel"><div class="card-head"><div><div class="card-title">Explorer Structure</div><div class="card-sub">Expandable structure starting from ' + escHtml(ui.showAboveRoot && rootOrg ? 'the higher-headquarters path' : 'headquarters') + ' or the currently focused branch.</div></div></div><div class="card-body"><div class="org-tree-wrap">' + treeHtml + '</div></div></div>' + detailHtml + '</div></div></div>';
+  html += '<div class="org-search-panel card"><div class="card-head"><div><div class="card-title">Branch Explorer</div><div class="card-sub">Use search and branch focus to drill down into branches, sections, and teams without overcrowding the headquarters layout above.</div></div><div class="org-chart-toolbar"><input id="orgSearchInput" class="input" placeholder="Search organization name, code, type, or leader" value="' + escAttr(ui.search || '') + '" /><button class="btn subtle" data-action="org-expand-visible">Expand Visible</button><button class="btn subtle" data-action="org-collapse-tree">Reset Branch View</button>' + (ui.focusOrgId ? '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>' : '') + '<span class="mini-note">Visible nodes: ' + escHtml(String(visibleIds.length)) + '</span>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="create-org">+ New Org</button>' : '') + '<button class="btn subtle" data-action="print-org-chart">Print</button></div></div><div class="card-body"><div class="org-branch-shell"><div class="card org-tree-panel org-branch-panel"><div class="card-head"><div><div class="card-title">Explorer Structure</div><div class="card-sub">Expandable structure starting from ' + escHtml(ui.showAboveRoot && rootOrg ? 'the higher-headquarters path' : 'headquarters') + ' or the currently focused branch.</div></div></div><div class="card-body"><div class="org-tree-wrap">' + treeHtml + '</div></div></div>' + detailHtml + '</div></div></div>';
   setView(html);
 }
 function renderOrganizations(){
@@ -2984,6 +3399,122 @@ function renderOrganizations(){
   });
 }
 
+/* ─── Create / Edit Organization ─── */
+function openCreateOrgModal(){
+  var orgs = APP.state.data.organizations || [];
+  var parentOptions = orgs.map(function(o){ return '<option value="' + escAttr(o.Id) + '">' + escHtml(getOrgDisplayName(o)) + '</option>'; }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Organization Name', '<input id="orgName" class="input" />')
+    + formField('Org Code', '<input id="orgCode" class="input" placeholder="e.g. HNC-SE" />')
+    + formField('Org Type', '<select id="orgType" class="select"><option value="Division">Division</option><option value="Group">Group</option><option value="Branch">Branch</option><option value="Section">Section</option><option value="Team">Team</option><option value="Office">Office</option><option value="Directorate">Directorate</option></select>')
+    + formField('Parent Organization', '<select id="orgParent" class="select"><option value="">-- None (Root) --</option>' + parentOptions + '</select>')
+    + formField('Org Email', '<input id="orgEmail" class="input" type="email" />')
+    + formField('Is Active', '<select id="orgActive" class="select"><option value="true" selected>Yes</option><option value="false">No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="orgNotes" class="textarea"></textarea>') + '</div>'
+    + '</div>';
+  APP.modalState.editOrgId = null;
+  openModal('Create Organization', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-org">Create</button></div>');
+}
+function openEditOrgModal(orgId){
+  var orgs = APP.state.data.organizations || [];
+  var org = null;
+  orgs.some(function(o){ if (String(o.Id) === String(orgId)) { org = o; return true; } return false; });
+  if (!org) { toast('Organization not found.', 'danger'); return; }
+  var parentOptions = orgs.filter(function(o){ return o.Id !== org.Id; }).map(function(o){
+    var sel = (org.ParentOrgID && org.ParentOrgID.Id === o.Id) ? ' selected' : '';
+    return '<option value="' + escAttr(o.Id) + '"' + sel + '>' + escHtml(getOrgDisplayName(o)) + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Organization Name', '<input id="orgName" class="input" value="' + escAttr(org.OrgName || org.Title || '') + '" />')
+    + formField('Org Code', '<input id="orgCode" class="input" value="' + escAttr(org.OrgCode || '') + '" />')
+    + formField('Org Type', '<select id="orgType" class="select"><option value="Division"' + (org.OrgType === 'Division' ? ' selected' : '') + '>Division</option><option value="Group"' + (org.OrgType === 'Group' ? ' selected' : '') + '>Group</option><option value="Branch"' + (org.OrgType === 'Branch' ? ' selected' : '') + '>Branch</option><option value="Section"' + (org.OrgType === 'Section' ? ' selected' : '') + '>Section</option><option value="Team"' + (org.OrgType === 'Team' ? ' selected' : '') + '>Team</option><option value="Office"' + (org.OrgType === 'Office' ? ' selected' : '') + '>Office</option><option value="Directorate"' + (org.OrgType === 'Directorate' ? ' selected' : '') + '>Directorate</option></select>')
+    + formField('Parent Organization', '<select id="orgParent" class="select"><option value="">-- None (Root) --</option>' + parentOptions + '</select>')
+    + formField('Org Email', '<input id="orgEmail" class="input" value="' + escAttr(org.OrgEmail || '') + '" />')
+    + formField('Is Active', '<select id="orgActive" class="select"><option value="true"' + (normalizeBoolean(org.IsActive) !== false ? ' selected' : '') + '>Yes</option><option value="false"' + (normalizeBoolean(org.IsActive) === false ? ' selected' : '') + '>No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="orgNotes" class="textarea">' + escHtml(org.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  APP.modalState.editOrgId = org.Id;
+  openModal('Edit Organization', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-org">Save Changes</button></div>', getOrgDisplayName(org));
+}
+function saveOrg(){
+  var orgId = APP.modalState.editOrgId;
+  var name = document.getElementById('orgName').value;
+  if (!name) { toast('Organization Name is required.', 'danger'); return; }
+  var values = {
+    OrgName: name,
+    OrgCode: document.getElementById('orgCode').value,
+    OrgType: document.getElementById('orgType').value,
+    ParentOrgID: document.getElementById('orgParent').value ? parseInt(document.getElementById('orgParent').value, 10) : null,
+    OrgEmail: document.getElementById('orgEmail').value,
+    IsActive: document.getElementById('orgActive').value === 'true',
+    Notes: document.getElementById('orgNotes').value
+  };
+  var promise = orgId
+    ? updateListItem(APP.lists.Organizations, orgId, values, { entityType: 'Organization', reason: 'SPA edit org' })
+    : createListItem(APP.lists.Organizations, values, { entityType: 'Organization', reason: 'SPA create org' });
+  promise.then(function(){
+    toast(orgId ? 'Organization updated.' : 'Organization created.', 'ok');
+    closeModal();
+    return ensureOrganizationsLoaded(true).then(function(){ renderOrganizations(); });
+  }).catch(function(){ toast('Save failed.', 'danger'); });
+}
+
+/* ─── Org Dashboard (aggregate metrics per org) ─── */
+function openOrgDashboard(orgId){
+  var orgs = APP.state.data.organizations || [];
+  var org = null;
+  orgs.some(function(o){ if (String(o.Id) === String(orgId)) { org = o; return true; } return false; });
+  if (!org) { toast('Organization not found.', 'danger'); return; }
+  Promise.all([ensurePeopleLoaded(), ensureTrainingCatalogLoaded(), ensureTrainingRecordsLoaded(), ensureAssetsLoaded(), ensureRequestsLoaded()]).then(function(){
+    var index = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []);
+    var descIds = getOrgAndDescendants(org.Id);
+    var people = (APP.state.data.people || []).filter(function(p){ var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null; return oid && descIds[oid]; });
+    var activePeople = people.filter(function(p){ var s = String(p.Status || '').toLowerCase(); return s.indexOf('depart') < 0 && s.indexOf('inactive') < 0; });
+    /* Training compliance */
+    var catalog = APP.state.data.trainingCatalog || [];
+    var records = APP.state.data.trainingRecords || [];
+    var totalApplicable = 0; var totalCurrent = 0;
+    activePeople.forEach(function(p){
+      catalog.forEach(function(t){
+        if (!trainingAppliesToPerson(t, p)) { return; }
+        totalApplicable++;
+        var rec = null;
+        records.some(function(r){ if (r.TrainingID && String(r.TrainingID.Id || r.TrainingID) === String(t.Id) && r.PersonID && String(r.PersonID.Id || r.PersonID) === String(p.Id)) { rec = r; return true; } return false; });
+        if (rec && rec.ExpirationDate && new Date(rec.ExpirationDate) > new Date()) { totalCurrent++; }
+        else if (rec && !rec.ExpirationDate && rec.CompletionDate) { totalCurrent++; }
+      });
+    });
+    var compPct = totalApplicable ? Math.round((totalCurrent / totalApplicable) * 100) : 100;
+    /* Asset count */
+    var idx = buildAssetIndex();
+    var assetCount = 0;
+    activePeople.forEach(function(p){
+      (idx.hwAssignments || []).forEach(function(a){ if (isActiveHardwareAssignment(a) && a.PersonID && String(a.PersonID.Id || a.PersonID) === String(p.Id)) { assetCount++; } });
+    });
+    /* Requests */
+    var requests = APP.state.data.requests || [];
+    var orgRequests = requests.filter(function(r){
+      var rPersonId = r.RequestedBy ? (r.RequestedBy.Id || r.RequestedBy) : null;
+      return rPersonId && people.some(function(p){ return String(p.Id) === String(rPersonId); });
+    });
+    var openReqs = orgRequests.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('complete') < 0; });
+    var body = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + activePeople.length + '</div><div class="kpi-label">Active Personnel</div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + compPct + '%</div><div class="kpi-label">Training Compliance</div><div class="kpi-bar ' + (compPct >= 80 ? 'green' : compPct >= 60 ? 'orange' : 'red') + '" style="width:' + compPct + '%"></div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + assetCount + '</div><div class="kpi-label">Active HW Assets</div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + openReqs.length + '</div><div class="kpi-label">Open Requests</div></div>';
+    body += '</div>';
+    body += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Includes ' + escHtml(String(Object.keys(descIds).length)) + ' organizations in this branch (' + escHtml(String(people.length)) + ' total personnel, ' + escHtml(String(activePeople.length)) + ' active).</div>';
+    if (people.length - activePeople.length > 0) { body += '<div style="font-size:11px;color:var(--warn);margin-bottom:10px">' + (people.length - activePeople.length) + ' personnel in Departed/Inactive status.</div>'; }
+    openModal('Org Dashboard — ' + escHtml(getOrgDisplayName(org)), body, '<div></div><button class="btn" data-action="close-modal">Close</button>', org.OrgCode || '');
+  });
+}
+
+/* ─── Org Chart Print ─── */
+function printOrgChart(){
+  window.print();
+  toast('Print dialog opened.', 'ok');
+}
 
 function renderTraining(){
   renderLoading('Loading training...');
@@ -3020,7 +3551,7 @@ function renderTraining(){
     html += '</div></div>';
     html += '</div>';
     if (canReviewTraining()) {
-      html += '<div style="margin-top:16px"><div class="section-head"><div class="section-title">Team Training Compliance</div><button class="btn subtle" data-action="toggle-team-training">' + (APP.state.showTeamTraining ? 'Hide' : 'Show') + ' Team View</button></div>';
+      html += '<div style="margin-top:16px"><div class="section-head"><div class="section-title">Team Training Compliance</div><div style="display:flex;gap:6px"><button class="btn subtle" data-action="training-gap-analysis">Gap Analysis</button><button class="btn subtle" data-action="bulk-training-entry">Bulk Entry</button><button class="btn subtle" data-action="toggle-team-training">' + (APP.state.showTeamTraining ? 'Hide' : 'Show') + ' Team View</button></div></div>';
       if (APP.state.showTeamTraining) { html += renderTeamTraining(); }
       html += '</div>';
     }
@@ -3141,6 +3672,109 @@ function createSF182FromTrainingId(id){
     Promise.all([ensureRequestsLoaded(true), ensureSF182Loaded(true)]).then(function(){ if (APP.state.route === 'sf182') { renderSF182(); } });
   }).catch(function(){ toast('SF182 request failed.', 'danger'); });
 }
+
+/* ─── Training Gap Analysis per Org ─── */
+function openTrainingGapAnalysis(){
+  Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureTrainingCatalogLoaded(), ensureTrainingRecordsLoaded()]).then(function(){
+    var orgs = APP.state.data.organizations || [];
+    var people = APP.state.data.people || [];
+    var catalog = APP.state.data.trainingCatalog || [];
+    var records = APP.state.data.trainingRecords || [];
+    var orgStats = [];
+    orgs.forEach(function(org){
+      var orgPeople = people.filter(function(p){
+        var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null;
+        return String(oid) === String(org.Id) && String(p.Status || '').toLowerCase().indexOf('depart') < 0;
+      });
+      if (!orgPeople.length) { return; }
+      var totalApplicable = 0; var totalCurrent = 0;
+      orgPeople.forEach(function(p){
+        catalog.forEach(function(t){
+          if (!trainingAppliesToPerson(t, p)) { return; }
+          totalApplicable++;
+          var rec = null;
+          records.some(function(r){
+            if (r.TrainingID && String(r.TrainingID.Id || r.TrainingID) === String(t.Id) && r.PersonID && String(r.PersonID.Id || r.PersonID) === String(p.Id)) { rec = r; return true; }
+            return false;
+          });
+          if (rec && rec.ExpirationDate && new Date(rec.ExpirationDate) > new Date()) { totalCurrent++; }
+          else if (rec && !rec.ExpirationDate && rec.CompletionDate) { totalCurrent++; }
+        });
+      });
+      var pct = totalApplicable ? Math.round((totalCurrent / totalApplicable) * 100) : 100;
+      orgStats.push({ org: org, people: orgPeople.length, applicable: totalApplicable, current: totalCurrent, pct: pct });
+    });
+    orgStats.sort(function(a, b){ return a.pct - b.pct; });
+    var body = '<table class="table-wrap" style="width:100%;font-size:12px"><thead><tr><th>Organization</th><th>Personnel</th><th>Compliance</th><th>Gaps</th></tr></thead><tbody>';
+    orgStats.forEach(function(s){
+      var color = s.pct >= 80 ? 'var(--ok)' : s.pct >= 60 ? 'var(--warn)' : 'var(--danger)';
+      body += '<tr><td>' + escHtml(getOrgDisplayName(s.org)) + '</td><td>' + s.people + '</td><td><span style="color:' + color + ';font-weight:700">' + s.pct + '%</span></td><td>' + (s.applicable - s.current) + '</td></tr>';
+    });
+    body += '</tbody></table>';
+    openModal('Training Gap Analysis by Organization', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+  });
+}
+
+/* ─── Bulk Training Record Entry ─── */
+function openBulkTrainingEntryModal(){
+  var catalog = APP.state.data.trainingCatalog || [];
+  var trainingOptions = catalog.map(function(t){ return '<option value="' + escAttr(t.Id) + '">' + escHtml(t.TrainingName || t.Title || t.TrainingCode || '') + '</option>'; }).join('');
+  var body = '<div style="margin-bottom:12px">Upload training completions for multiple people at once. Paste CSV data below.</div>'
+    + '<div class="form-grid">'
+    + formField('Training', '<select id="bulkTrainingId" class="select"><option value="">-- Select Training --</option>' + trainingOptions + '</select>')
+    + formField('Completion Date', '<input id="bulkCompDate" class="input" type="date" value="' + new Date().toISOString().slice(0,10) + '" />')
+    + '</div>'
+    + '<div style="margin-top:12px">' + formField('Person IDs (one per line or comma-separated)', '<textarea id="bulkPersonIds" class="textarea" rows="6" placeholder="Enter SharePoint list item IDs for each person, one per line:\n101\n102\n103"></textarea>') + '</div>';
+  openModal('Bulk Training Entry', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-training">Create Records</button></div>');
+}
+function saveBulkTraining(){
+  var trainingId = document.getElementById('bulkTrainingId').value;
+  var compDate = document.getElementById('bulkCompDate').value;
+  var idsRaw = document.getElementById('bulkPersonIds').value;
+  if (!trainingId || !compDate || !idsRaw.trim()) { toast('Please fill all fields.', 'danger'); return; }
+  var ids = idsRaw.split(/[\n,]+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  if (!ids.length) { toast('No person IDs provided.', 'danger'); return; }
+  var t = findTrainingById(trainingId);
+  var promises = ids.map(function(pid){
+    return createListItem(APP.lists.TrainingRecords, {
+      Title: (t ? (t.TrainingName || t.Title || '') : 'Training') + ' - Person ' + pid,
+      PersonID: parseInt(pid, 10),
+      TrainingID: parseInt(trainingId, 10),
+      CompletionDate: compDate,
+      Status: 'Current',
+      EnteredOn: new Date().toISOString()
+    }, { entityType: 'Training Record', reason: 'Bulk entry' });
+  });
+  toast('Creating ' + ids.length + ' records...', 'ok');
+  Promise.all(promises).then(function(){
+    toast(ids.length + ' training records created.', 'ok');
+    closeModal();
+    return ensureTrainingRecordsLoaded(true).then(function(){ if (APP.state.route === 'training') { renderTraining(); } });
+  }).catch(function(){ toast('Some records may have failed.', 'danger'); });
+}
+
+/* ─── Certification Expiration Alerts ─── */
+function getCertExpirationAlerts(daysAhead){
+  daysAhead = daysAhead || 90;
+  var now = new Date(); now.setHours(0,0,0,0);
+  var cutoff = new Date(now.getTime() + daysAhead * 86400000);
+  var records = APP.state.data.trainingRecords || [];
+  var catalog = APP.state.data.trainingCatalog || [];
+  var catalogMap = {};
+  catalog.forEach(function(t){ catalogMap[t.Id] = t; });
+  var alerts = [];
+  records.forEach(function(r){
+    if (!r.ExpirationDate) { return; }
+    var exp = new Date(r.ExpirationDate);
+    if (exp < now || exp > cutoff) { return; }
+    var daysLeft = Math.round((exp - now) / 86400000);
+    var t = r.TrainingID ? catalogMap[r.TrainingID.Id || r.TrainingID] : null;
+    alerts.push({ record: r, training: t, daysLeft: daysLeft, expirationDate: exp });
+  });
+  alerts.sort(function(a, b){ return a.daysLeft - b.daysLeft; });
+  return alerts;
+}
+
 function wSla(days){
   var n = parseInt(days, 10);
   if (!n || isNaN(n)) { return ''; }
@@ -3180,7 +3814,7 @@ function renderRequests(){
     html += '<div class="exec-strip"><div class="title">Request Backbone</div><div class="item"><span class="swatch"></span>Visible Requests ' + escHtml(String(visible.length)) + '</div><div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(openCount)) + '</div><div class="item"><span class="swatch"></span>Office Queue ' + escHtml(String(summary.queue.length)) + '</div><div class="item"><span class="swatch"></span>Overdue ' + escHtml(String(overdueCount)) + '</div></div>';
     html += '<div class="grid cols-2">';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">My Requests</div><div class="card-sub">Requests connected to the current user or personnel record.</div></div><div class="filter-row"><input id="requestsSearchInput" class="input" style="width:260px" placeholder="Search requests" /></div></div><div class="card-body">' + renderRequestTable(visible, true) + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Office Queue</div><div class="card-sub">Assigned or office-routed items needing action.</div></div><button class="btn subtle" data-action="open-create-request">New Request</button></div><div class="card-body">' + renderRequestTable(summary.queue, false) + '</div></div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Office Queue</div><div class="card-sub">Assigned or office-routed items needing action.</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn subtle" data-action="open-create-request">New Request</button><button class="btn subtle" data-action="open-request-templates">From Template</button>' + (canManageInOut() ? '<button class="btn subtle" data-action="supervisor-request-dashboard">Team Requests</button>' : '') + '</div></div><div class="card-body">' + renderRequestTable(summary.queue, false) + '</div></div>';
     html += '</div>';
     setView(html);
   }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">Requests failed to load.</div></div></div>'); });
@@ -3199,7 +3833,18 @@ function openRequestDetail(id){
   var row = null;
   (APP.state.data.requests || []).some(function(r){ if (String(r.Id) === String(id)) { row = r; return true; } return false; });
   if (!row) { toast('Request not found.', 'danger'); return; }
-  var body = '<div class="kv">'
+  /* SLA indicator */
+  var slaHtml = '';
+  if (row.DueDate) {
+    var dl = daysUntil(row.DueDate);
+    var isClosed = String(row.Status || '').toLowerCase().indexOf('closed') >= 0 || String(row.Status || '').toLowerCase().indexOf('complete') >= 0;
+    if (!isClosed && dl != null) {
+      var slaColor = dl < 0 ? 'var(--danger)' : dl <= 3 ? 'var(--warn)' : 'var(--ok)';
+      var slaLabel = dl < 0 ? Math.abs(dl) + ' days overdue' : dl === 0 ? 'Due today' : dl + ' days remaining';
+      slaHtml = '<div style="margin-bottom:12px;padding:8px 12px;border-radius:10px;border:1px solid ' + slaColor + ';background:rgba(255,255,255,.03);display:flex;align-items:center;gap:10px"><div style="width:10px;height:10px;border-radius:50%;background:' + slaColor + '"></div><span style="font-weight:700;color:' + slaColor + '">' + escHtml(slaLabel) + '</span></div>';
+    }
+  }
+  var body = slaHtml + '<div class="kv">'
     + '<div class="k">Title</div><div class="v">' + escHtml(row.Title || '') + '</div>'
     + '<div class="k">Request Type</div><div class="v">' + escHtml(row.RequestType || '') + '</div>'
     + '<div class="k">Status</div><div class="v">' + statusBadge(row.Status || 'Open') + '</div>'
@@ -3213,6 +3858,15 @@ function openRequestDetail(id){
     + '<div class="k">Details</div><div class="v">' + escHtml(row.Details || '') + '</div>'
     + '<div class="k">Correlation ID</div><div class="v">' + escHtml(row.CorrelationID || '') + '</div>'
     + '</div>';
+  /* Comment thread */
+  var comments = parseRequestComments(row);
+  if (comments.length) {
+    body += '<div style="margin-top:14px"><div class="small-note" style="margin-bottom:6px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Comment History</div>';
+    comments.forEach(function(c){
+      body += '<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:12px"><div style="font-weight:600;color:var(--accent)">' + escHtml(c.by || '') + ' <span style="color:var(--muted);font-weight:400">' + escHtml(c.on || '') + '</span></div><div style="margin-top:4px">' + escHtml(c.text || '') + '</div></div>';
+    });
+    body += '</div>';
+  }
   openModal('Request Detail', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', row.RequestID || '');
 }
 function openCreateRequestModal(){
@@ -3262,6 +3916,70 @@ function saveRequest(){
     return ensureRequestsLoaded(true).then(function(){ renderRequests(); });
   }).catch(function(){ toast('Request creation failed.', 'danger'); });
 }
+
+/* ─── Supervisor Request Dashboard ─── */
+function openSupervisorRequestDashboard(){
+  Promise.all([ensureRequestsLoaded(), ensurePeopleLoaded()]).then(function(){
+    var me = APP.state.currentPersonnel;
+    if (!me) { toast('Current personnel not loaded.', 'danger'); return; }
+    var myOrgId = me.OrgID ? (me.OrgID.Id || me.OrgID) : null;
+    var orgIds = myOrgId ? getOrgAndDescendants(myOrgId) : {};
+    var people = APP.state.data.people || [];
+    var teamPeople = people.filter(function(p){
+      var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null;
+      return oid && orgIds[oid];
+    });
+    var teamPeopleIds = {};
+    teamPeople.forEach(function(p){ teamPeopleIds[p.Id] = true; });
+    var requests = APP.state.data.requests || [];
+    var teamRequests = requests.filter(function(r){
+      var pid = r.PersonID ? (r.PersonID.Id || r.PersonID) : null;
+      return pid && teamPeopleIds[pid];
+    });
+    var open = teamRequests.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('complete') < 0; });
+    var overdue = open.filter(function(r){ var d = daysUntil(r.DueDate); return d != null && d < 0; });
+    var body = '<div style="display:flex;gap:12px;margin-bottom:14px">';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + teamRequests.length + '</div><div class="kpi-label">Total Team Requests</div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + open.length + '</div><div class="kpi-label">Open</div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value" style="color:' + (overdue.length ? 'var(--danger)' : 'var(--ok)') + '">' + overdue.length + '</div><div class="kpi-label">Overdue</div></div>';
+    body += '</div>';
+    if (!open.length) { body += '<div class="empty">No open requests from your team.</div>'; }
+    else {
+      body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Title</th><th>Requester</th><th>Type</th><th>Status</th><th>Due</th><th>SLA</th></tr></thead><tbody>';
+      open.forEach(function(r){
+        var d = daysUntil(r.DueDate);
+        var slaColor = d == null ? '' : d < 0 ? 'var(--danger)' : d <= 3 ? 'var(--warn)' : 'var(--ok)';
+        var slaText = d == null ? '—' : d < 0 ? Math.abs(d) + 'd overdue' : d + 'd left';
+        body += '<tr><td><button class="btn subtle" data-action="view-request" data-id="' + escAttr(r.Id) + '" style="padding:2px 6px">' + escHtml(r.Title || r.RequestID || '') + '</button></td><td>' + escHtml((r.Requester && r.Requester.Title) || '') + '</td><td>' + escHtml(r.RequestType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(formatDate(r.DueDate)) + '</td><td style="color:' + slaColor + ';font-weight:700">' + escHtml(slaText) + '</td></tr>';
+      });
+      body += '</tbody></table>';
+    }
+    openModal('Supervisor Request Dashboard', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Your team\'s requests');
+  });
+}
+
+/* ─── Request Templates ─── */
+var REQUEST_TEMPLATES = {
+  'IT - New Account': { type: 'IT', priority: 'Routine', details: 'Request new user account for: [Name]\nSystem(s): [System names]\nJustification: [Reason]\nSponsor: [Supervisor name]' },
+  'IT - Hardware Issue': { type: 'IT', priority: 'High', details: 'Hardware issue:\nAsset Tag: [Tag #]\nDescription: [What is wrong]\nLocation: [Building/Room]\nImpact: [Who is affected]' },
+  'HR - Personnel Action': { type: 'HR', priority: 'Routine', details: 'Personnel action requested:\nAction type: [Award/Promotion/Reassignment/Other]\nEmployee: [Name]\nEffective date: [Date]\nJustification: [Reason]' },
+  'Facilities - Maintenance': { type: 'Facilities', priority: 'Routine', details: 'Maintenance request:\nBuilding: [Building name]\nRoom/Area: [Location]\nIssue: [Description]\nUrgency: [Routine/Urgent/Emergency]' },
+  'Security - Access Request': { type: 'Security', priority: 'Routine', details: 'Access request:\nPerson: [Name]\nArea/System: [What access is needed]\nJustification: [Reason]\nDuration: [Permanent/Temporary - end date]' },
+  'Training - Course Request': { type: 'Training', priority: 'Routine', details: 'Training request:\nCourse: [Course name]\nProvider: [Training provider]\nDates: [Start - End]\nCost: [$Amount]\nJustification: [Why this training is needed]' }
+};
+function openCreateRequestFromTemplate(templateName){
+  var tmpl = REQUEST_TEMPLATES[templateName];
+  if (!tmpl) { openCreateRequestModal(); return; }
+  var body = '<div class="form-grid">'
+    + formField('Title', '<input id="requestTitle" class="input" value="' + escAttr(templateName) + '" />')
+    + formField('Type', '<select id="requestType" class="select"><option value="Administrative"' + (tmpl.type === 'Administrative' ? ' selected' : '') + '>Administrative</option><option value="Training"' + (tmpl.type === 'Training' ? ' selected' : '') + '>Training</option><option value="SF182"' + (tmpl.type === 'SF182' ? ' selected' : '') + '>SF182</option><option value="Facilities"' + (tmpl.type === 'Facilities' ? ' selected' : '') + '>Facilities</option><option value="IT"' + (tmpl.type === 'IT' ? ' selected' : '') + '>IT</option><option value="Security"' + (tmpl.type === 'Security' ? ' selected' : '') + '>Security</option><option value="HR"' + (tmpl.type === 'HR' ? ' selected' : '') + '>HR</option><option value="Hardware"' + (tmpl.type === 'Hardware' ? ' selected' : '') + '>Hardware</option><option value="Software"' + (tmpl.type === 'Software' ? ' selected' : '') + '>Software</option></select>')
+    + formField('Priority', '<select id="requestPriority" class="select"><option value="Routine"' + (tmpl.priority === 'Routine' ? ' selected' : '') + '>Routine</option><option value="High"' + (tmpl.priority === 'High' ? ' selected' : '') + '>High</option><option value="Urgent"' + (tmpl.priority === 'Urgent' ? ' selected' : '') + '>Urgent</option></select>')
+    + formField('Due Date', '<input id="requestDueDate" type="date" class="input" />')
+    + '<div class="full">' + formField('Details', '<textarea id="requestDetails" class="textarea" style="min-height:120px">' + escHtml(tmpl.details || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('New Request — ' + escHtml(templateName), body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-request">Create Request</button></div>');
+}
+
 function renderInOut(){
   renderLoading('Loading in/out processing...');
   return Promise.all([ensureInOutLoaded(), ensureInOutStepsLoaded(), ensureCurrentPersonnelLoaded()]).then(function(){
@@ -3915,7 +4633,7 @@ function renderFacilities(){
     html += metricCard('SCIF Spaces', scifRooms, 'Rooms flagged as SCIF', Math.min(100, scifRooms * 15));
     html += '</div>';
     html += '<div class="org-branch-shell" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="export-facilities">Export CSV</button></div></div><div class="card-body">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="facility-capacity-report">Capacity</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-seat-import">Bulk Seats</button>' : '') + '<button class="btn subtle" data-action="export-facilities">Export CSV</button></div></div><div class="card-body">';
     facilities.forEach(function(f){
       var fRooms = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; });
       var roomIds = {};
@@ -3966,6 +4684,71 @@ function renderFacilities(){
     html += '</div></div></div>';
     setView(html);
   }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">Facilities failed to load.</div></div></div>'); });
+}
+
+/* ─── Bulk Seat Import from CSV ─── */
+function openBulkSeatImportModal(){
+  var rooms = APP.state.data.rooms || [];
+  var roomOptions = rooms.map(function(r){ return '<option value="' + escAttr(r.Id) + '">' + escHtml((r.RoomNumber || r.Title || 'Room') + (r.FacilityID ? ' @ ' + (r.FacilityID.Title || '') : '')) + '</option>'; }).join('');
+  var body = '<div style="margin-bottom:12px">Bulk-create seats. Format: <code>SeatLabel, X%, Y%</code></div>'
+    + '<div class="form-grid">' + formField('Room', '<select id="bulkSeatRoom" class="select"><option value="">-- Select Room --</option>' + roomOptions + '</select>') + '</div>'
+    + '<div style="margin-top:12px">' + formField('CSV Data', '<textarea id="bulkSeatCsv" class="textarea" rows="8" placeholder="A-101, 25.5, 42.3\nA-102, 30.2, 42.3\nA-103, 35.0, 42.3"></textarea>') + '</div>';
+  openModal('Bulk Seat Import', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-seats">Import</button></div>');
+}
+function saveBulkSeats(){
+  var roomId = document.getElementById('bulkSeatRoom').value;
+  if (!roomId) { toast('Please select a room.', 'danger'); return; }
+  var raw = (document.getElementById('bulkSeatCsv').value || '').trim();
+  if (!raw) { toast('No data provided.', 'danger'); return; }
+  var lines = raw.split('\n').filter(function(l){ return l.trim(); });
+  var promises = lines.map(function(line){
+    var parts = line.split(',').map(function(s){ return s.trim(); });
+    if (parts.length < 1) { return Promise.resolve(); }
+    return createListItem(APP.lists.Seats, {
+      Title: parts[0] || 'Seat',
+      RoomID: parseInt(roomId, 10),
+      SeatX: parts[1] ? parseFloat(parts[1]) : 0,
+      SeatY: parts[2] ? parseFloat(parts[2]) : 0,
+      SeatType: 'Standard'
+    }, { entityType: 'Seat', reason: 'Bulk import' });
+  });
+  toast('Importing ' + lines.length + ' seats...', 'ok');
+  Promise.all(promises).then(function(){
+    toast(lines.length + ' seats imported.', 'ok');
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Some imports may have failed.', 'danger'); });
+}
+
+/* ─── Multi-Floor Navigation ─── */
+function getFloorNumbers(facilityId){
+  var rooms = APP.state.data.rooms || [];
+  var floors = {};
+  rooms.forEach(function(r){
+    if (r.FacilityID && String(r.FacilityID.Id) === String(facilityId) && r.Floor != null) { floors[r.Floor] = true; }
+  });
+  return Object.keys(floors).sort(function(a, b){ return Number(a) - Number(b); });
+}
+
+/* ─── Facility Capacity Reporting ─── */
+function openFacilityCapacityReport(){
+  var facilities = APP.state.data.facilities || [];
+  var rooms = APP.state.data.rooms || [];
+  var seats = APP.state.data.seats || [];
+  var body = '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Facility</th><th>Rooms</th><th>Total Seats</th><th>Occupied</th><th>Vacancy</th><th>Occupancy %</th></tr></thead><tbody>';
+  facilities.forEach(function(f){
+    var fRooms = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; });
+    var roomIds = {};
+    fRooms.forEach(function(r){ roomIds[r.Id] = true; });
+    var fSeats = seats.filter(function(s){ return s.RoomID && roomIds[s.RoomID.Id]; });
+    var occupied = fSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
+    var vacancy = fSeats.length - occupied;
+    var pct = fSeats.length ? Math.round((occupied / fSeats.length) * 100) : 0;
+    var color = pct >= 90 ? 'var(--danger)' : pct >= 70 ? 'var(--warn)' : 'var(--ok)';
+    body += '<tr><td>' + escHtml(f.BuildingNumber || f.Title || '') + '</td><td>' + fRooms.length + '</td><td>' + fSeats.length + '</td><td>' + occupied + '</td><td>' + vacancy + '</td><td style="color:' + color + ';font-weight:700">' + pct + '%</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Facility Capacity Report', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
 }
 
 function getAssetUi(){
@@ -4362,6 +5145,7 @@ function openHwAssetDetail(assetId){
     body += '</tbody></table></div>';
   }
   var footer = '<div>';
+  footer += '<button class="btn subtle" data-action="asset-timeline" data-id="' + escAttr(assetId) + '">Timeline</button> ';
   if (canSeeAdmin()) { footer += '<button class="btn primary" data-action="edit-hw-asset" data-id="' + escAttr(assetId) + '">Edit Asset</button>'; }
   footer += '</div><div><button class="btn" data-action="close-modal">Close</button></div>';
   openModal('Hardware Asset Detail', body, footer, getHardwareDisplayName(asset));
@@ -4712,6 +5496,133 @@ function confirmTransferSw(){
   }).catch(function(){ toast('Transfer failed.', 'danger'); });
 }
 
+/* ─── Asset Depreciation / Age Tracking ─── */
+var USEFUL_LIFE_YEARS = { Laptop: 5, Desktop: 7, Monitor: 7, Printer: 7, Phone: 5, Tablet: 4, Server: 7, 'Network Equipment': 7 };
+function getAssetAge(asset){
+  if (!asset.PurchaseDate) { return null; }
+  var purchase = new Date(asset.PurchaseDate);
+  var now = new Date();
+  var years = (now - purchase) / (365.25 * 86400000);
+  return Math.round(years * 10) / 10;
+}
+function isAssetPastUsefulLife(asset){
+  var age = getAssetAge(asset);
+  if (age == null) { return false; }
+  var type = asset.AssetType || asset.HardwareType || '';
+  var life = USEFUL_LIFE_YEARS[type] || 6;
+  return age > life;
+}
+function renderAssetDepreciation(){
+  var idx = buildAssetIndex();
+  var hw = idx.hwAssets || [];
+  var aging = hw.filter(function(a){ return getAssetAge(a) != null; }).map(function(a){
+    var age = getAssetAge(a);
+    var type = a.AssetType || a.HardwareType || 'Unknown';
+    return { asset: a, age: age, type: type, pastLife: isAssetPastUsefulLife(a) };
+  }).sort(function(a, b){ return b.age - a.age; });
+  var pastCount = aging.filter(function(a){ return a.pastLife; }).length;
+  var body = '<div style="margin-bottom:12px"><strong>' + pastCount + '</strong> assets past useful life out of <strong>' + aging.length + '</strong> with purchase dates.</div>';
+  body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Asset</th><th>Type</th><th>Age (years)</th><th>Status</th></tr></thead><tbody>';
+  aging.slice(0, 50).forEach(function(a){
+    var color = a.pastLife ? 'var(--danger)' : a.age > 4 ? 'var(--warn)' : 'var(--ok)';
+    body += '<tr><td>' + escHtml(getHardwareDisplayName(a.asset)) + '</td><td>' + escHtml(a.type) + '</td><td style="color:' + color + ';font-weight:700">' + a.age + '</td><td>' + statusBadge(a.pastLife ? 'Past Life' : 'Active') + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Asset Depreciation / Age Tracking', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* ─── Inventory Discrepancy Report ─── */
+function renderInventoryDiscrepancies(){
+  var idx = buildAssetIndex();
+  var people = APP.state.data.people || [];
+  var departed = {};
+  people.forEach(function(p){ if (String(p.Status || '').toLowerCase().indexOf('depart') >= 0) { departed[p.Id] = p; } });
+  var issues = [];
+  /* Assets assigned to departed personnel */
+  (idx.hwAssignments || []).forEach(function(a){
+    if (!isActiveHardwareAssignment(a)) { return; }
+    var pid = a.PersonID ? (a.PersonID.Id || a.PersonID) : null;
+    if (pid && departed[pid]) { issues.push({ type: 'Departed Assignee', asset: getHardwareDisplayName(a.HardwareAssetID || {}), person: formatPerson(departed[pid]) }); }
+  });
+  /* Hardware with no active assignment and status = Assigned */
+  (idx.hwAssets || []).forEach(function(a){
+    if (String(a.Status || '').toLowerCase() !== 'assigned') { return; }
+    var hasActive = (idx.hwAssignments || []).some(function(asgn){ return isActiveHardwareAssignment(asgn) && asgn.HardwareAssetID && String(asgn.HardwareAssetID.Id || asgn.HardwareAssetID) === String(a.Id); });
+    if (!hasActive) { issues.push({ type: 'Ghost Assignment', asset: getHardwareDisplayName(a), person: '(no active assignment found)' }); }
+  });
+  var body = '<div style="margin-bottom:12px"><strong>' + issues.length + '</strong> discrepancies found.</div>';
+  if (!issues.length) { body += '<div class="empty">No discrepancies detected. All assignments look clean.</div>'; }
+  else {
+    body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Issue</th><th>Asset</th><th>Person</th></tr></thead><tbody>';
+    issues.forEach(function(i){
+      body += '<tr><td>' + statusBadge(i.type) + '</td><td>' + escHtml(i.asset) + '</td><td>' + escHtml(i.person) + '</td></tr>';
+    });
+    body += '</tbody></table>';
+  }
+  openModal('Inventory Discrepancy Report', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* ─── Assignment History Timeline ─── */
+function renderAssignmentTimeline(assetId){
+  var idx = buildAssetIndex();
+  var all = (idx.hwAssignments || []).filter(function(a){ return a.HardwareAssetID && String(a.HardwareAssetID.Id || a.HardwareAssetID) === String(assetId); });
+  all.sort(function(a, b){ return new Date(b.AssignedDate || 0) - new Date(a.AssignedDate || 0); });
+  var body = '<div style="border-left:3px solid var(--accent);padding-left:16px">';
+  all.forEach(function(a){
+    var name = a.PersonID && a.PersonID.Title ? a.PersonID.Title : 'Unknown';
+    var s = a.AssignedDate ? formatDate(a.AssignedDate) : '—';
+    var e = a.ReturnDate ? formatDate(a.ReturnDate) : 'Present';
+    body += '<div style="margin-bottom:14px;position:relative"><div style="position:absolute;left:-22px;top:2px;width:10px;height:10px;border-radius:50%;background:var(--accent)"></div>';
+    body += '<div style="font-weight:700">' + escHtml(name) + '</div>';
+    body += '<div style="font-size:11px;color:var(--muted)">' + escHtml(s) + ' — ' + escHtml(e) + '</div>';
+    body += '<div style="font-size:11px;margin-top:2px">' + statusBadge(a.AssignmentStatus || a.Status || '') + '</div>';
+    body += '</div>';
+  });
+  if (!all.length) { body += '<div class="empty">No assignment history found.</div>'; }
+  body += '</div>';
+  openModal('Assignment History Timeline', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* ─── Duplicate Assignment Detection ─── */
+function checkDuplicateAssignment(assetId, personId){
+  var idx = buildAssetIndex();
+  var existing = (idx.hwAssignments || []).filter(function(a){
+    return isActiveHardwareAssignment(a) && a.HardwareAssetID && String(a.HardwareAssetID.Id || a.HardwareAssetID) === String(assetId) && a.PersonID && String(a.PersonID.Id || a.PersonID) !== String(personId);
+  });
+  return existing.length > 0;
+}
+
+/* ─── Bulk Asset Import from CSV ─── */
+function openBulkAssetImportModal(){
+  var body = '<div style="margin-bottom:12px">Paste CSV data to bulk-create hardware assets. Format: <code>Title, AssetType, Manufacturer, Model, SerialNumber, Status, PurchaseDate</code></div>'
+    + '<div>' + formField('CSV Data', '<textarea id="bulkAssetCsv" class="textarea" rows="8" placeholder="Dell Latitude 5540, Laptop, Dell, Latitude 5540, SN12345, Available, 2025-01-15\nHP Monitor 27, Monitor, HP, E27, SN67890, Available, 2024-06-01"></textarea>') + '</div>';
+  openModal('Bulk Hardware Asset Import', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-assets">Import</button></div>');
+}
+function saveBulkAssets(){
+  var raw = (document.getElementById('bulkAssetCsv').value || '').trim();
+  if (!raw) { toast('No data provided.', 'danger'); return; }
+  var lines = raw.split('\n').filter(function(l){ return l.trim(); });
+  var promises = lines.map(function(line){
+    var parts = line.split(',').map(function(s){ return s.trim(); });
+    if (parts.length < 3) { return Promise.resolve(); }
+    return createListItem(APP.lists.HardwareAssets, {
+      Title: parts[0] || 'Hardware Asset',
+      AssetType: parts[1] || '',
+      Manufacturer: parts[2] || '',
+      Model: parts[3] || '',
+      SerialNumber: parts[4] || '',
+      Status: parts[5] || 'Available',
+      PurchaseDate: parts[6] || null
+    }, { entityType: 'Hardware Asset', reason: 'Bulk import' });
+  });
+  toast('Importing ' + lines.length + ' assets...', 'ok');
+  Promise.all(promises).then(function(){
+    toast(lines.length + ' assets imported.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Some imports may have failed.', 'danger'); });
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
  *  CALENDAR MODULE – Time Off, Federal Holidays, Senior Leaders
  * ═══════════════════════════════════════════════════════════════════════ */
@@ -4823,7 +5734,10 @@ function renderCalendarHeader(ui){
   /* Search */
   html += '<input class="cal-scope-select" id="calSearchInput" placeholder="Search names..." value="' + escAttr(ui.search) + '" style="width:140px" />';
   /* Add entry (admin) */
+  html += '<button class="btn subtle" data-action="cal-export-csv" style="padding:4px 8px;font-size:10px">CSV</button>';
+  html += '<button class="btn subtle" data-action="cal-export-ics" style="padding:4px 8px;font-size:10px">ICS</button>';
   if (canSeeAdmin()) {
+    html += '<button class="btn subtle" data-action="cal-bulk-import" style="padding:4px 8px;font-size:10px">Import</button>';
     html += '<button class="btn primary" data-action="cal-add-entry" style="padding:6px 12px;font-size:11px">+ Time Off</button>';
   }
   html += '</div></div>';
@@ -4843,7 +5757,8 @@ function renderCalendarLegend(){
 /* ─── Calendar Data Helpers ─── */
 function getCalendarEntries(ui){
   var entries = (APP.state.data.timeOff || []).filter(function(e){
-    return e.Status === 'Approved' || e.Status === 'approved';
+    var s = String(e.Status || '').toLowerCase();
+    return s === 'approved' || s === 'pending' || s === 'denied';
   });
   var people = APP.state.data.people || [];
   var peopleById = {};
@@ -4952,7 +5867,9 @@ function renderCalendarMonth(ui){
     dayEntries.slice(0, 4).forEach(function(e){
       var t = getCalType(e.TimeOffType);
       var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title.split(',')[0] : 'Unknown';
-      html += '<div class="cal-entry ' + t.key + '" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '" title="' + escAttr(name + ' – ' + (e.TimeOffType || 'Time Off')) + '">' + escHtml(name) + '</div>';
+      var entryStatus = String(e.Status || '').toLowerCase();
+      var entryStyle = entryStatus === 'pending' ? 'opacity:.5;border:1px dashed rgba(255,255,255,.3)' : entryStatus === 'denied' ? 'opacity:.35;text-decoration:line-through' : '';
+      html += '<div class="cal-entry ' + t.key + '" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '" title="' + escAttr(name + ' – ' + (e.TimeOffType || 'Time Off') + (entryStatus !== 'approved' ? ' (' + entryStatus + ')' : '')) + '" style="' + entryStyle + '">' + escHtml(name) + '</div>';
     });
     if (dayEntries.length > 4) {
       html += '<div class="cal-entry other" style="text-align:center;font-size:8px">+' + (dayEntries.length - 4) + ' more</div>';
@@ -5243,6 +6160,104 @@ function deleteTimeOffEntry(entryId){
   }).catch(function(){ toast('Delete failed.', 'danger'); });
 }
 
+/* ─── Calendar: Export to CSV ─── */
+function exportCalendarCSV(){
+  var ui = ensureCalendarUi();
+  var entries = getCalendarEntries(ui);
+  var headers = ['Person','Type','Start','End','Status','Hours','Notes'];
+  var csv = headers.join(',') + '\n';
+  entries.forEach(function(e){
+    var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : '';
+    csv += [name, e.TimeOffType || '', (e.StartDate || '').slice(0,10), (e.EndDate || e.StartDate || '').slice(0,10), e.Status || '', e.Hours || '', (e.Notes || '').replace(/[\n\r]/g, ' ')].map(function(c){ return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
+  });
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'calendar_export_' + ui.year + '-' + String(ui.month + 1).padStart(2, '0') + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Calendar exported to CSV.', 'ok');
+}
+
+/* ─── Calendar: Export to ICS ─── */
+function exportCalendarICS(){
+  var ui = ensureCalendarUi();
+  var entries = getCalendarEntries(ui);
+  var ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//CCSD Admin SPA//EN\r\n';
+  entries.forEach(function(e){
+    var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title : 'Unknown';
+    var start = (e.StartDate || '').slice(0,10).replace(/-/g, '');
+    var end = (e.EndDate || e.StartDate || '').slice(0,10).replace(/-/g, '');
+    /* ICS DTEND for all-day is exclusive, so add 1 day */
+    var endDt = new Date((e.EndDate || e.StartDate || '').slice(0,10));
+    endDt.setDate(endDt.getDate() + 1);
+    var endStr = endDt.toISOString().slice(0,10).replace(/-/g, '');
+    ics += 'BEGIN:VEVENT\r\n';
+    ics += 'DTSTART;VALUE=DATE:' + start + '\r\n';
+    ics += 'DTEND;VALUE=DATE:' + endStr + '\r\n';
+    ics += 'SUMMARY:' + (e.TimeOffType || 'Time Off') + ' - ' + name + '\r\n';
+    ics += 'DESCRIPTION:' + (e.Notes || '').replace(/[\r\n]/g, '\\n') + '\r\n';
+    ics += 'UID:' + (e.Id || Math.random()) + '@ccsd-spa\r\n';
+    ics += 'END:VEVENT\r\n';
+  });
+  ics += 'END:VCALENDAR\r\n';
+  var blob = new Blob([ics], { type: 'text/calendar' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'calendar_export_' + ui.year + '-' + String(ui.month + 1).padStart(2, '0') + '.ics';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Calendar exported to ICS.', 'ok');
+}
+
+/* ─── Calendar: Bulk Import Time-Off from CSV ─── */
+function openBulkTimeOffImportModal(){
+  var body = '<div style="margin-bottom:12px">Paste CSV data to bulk-create time-off entries. Format: <code>PersonID, StartDate, EndDate, Type, Hours, Notes</code></div>'
+    + '<div>' + formField('CSV Data', '<textarea id="bulkTimeOffCsv" class="textarea" rows="8" placeholder="101, 2026-04-10, 2026-04-11, Annual Leave, 16, Spring break\n102, 2026-04-14, 2026-04-14, TDY, 8, Conference"></textarea>') + '</div>';
+  openModal('Bulk Time-Off Import', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-timeoff">Import</button></div>');
+}
+function saveBulkTimeOff(){
+  var raw = (document.getElementById('bulkTimeOffCsv').value || '').trim();
+  if (!raw) { toast('No data provided.', 'danger'); return; }
+  var lines = raw.split('\n').filter(function(l){ return l.trim(); });
+  var promises = lines.map(function(line){
+    var parts = line.split(',').map(function(s){ return s.trim(); });
+    if (parts.length < 4) { return Promise.resolve(); }
+    return createListItem(APP.lists.TimeOff, {
+      Title: (parts[3] || 'Time Off') + ' - Person ' + parts[0],
+      PersonID: parseInt(parts[0], 10),
+      StartDate: parts[1],
+      EndDate: parts[2] || parts[1],
+      TimeOffType: parts[3] || 'Other',
+      Hours: parts[4] ? parseFloat(parts[4]) : null,
+      Notes: parts[5] || '',
+      Status: 'Approved'
+    }, { entityType: 'TimeOff', reason: 'Bulk import' });
+  });
+  toast('Importing ' + lines.length + ' entries...', 'ok');
+  Promise.all(promises).then(function(){
+    toast(lines.length + ' time-off entries imported.', 'ok');
+    closeModal();
+    APP.state.data.timeOff = null;
+    renderCalendar();
+  }).catch(function(){ toast('Some imports may have failed.', 'danger'); });
+}
+
+/* ─── Calendar: Upcoming Time Off for Home ─── */
+function getUpcomingTimeOff(daysAhead){
+  daysAhead = daysAhead || 7;
+  var now = new Date(); now.setHours(0,0,0,0);
+  var cutoff = new Date(now.getTime() + daysAhead * 86400000);
+  var me = APP.state.currentPersonnel;
+  if (!me) { return []; }
+  return (APP.state.data.timeOff || []).filter(function(e){
+    var pid = e.PersonID ? (e.PersonID.Id || e.PersonID) : null;
+    if (String(pid) !== String(me.Id)) { return false; }
+    var sd = new Date((e.StartDate || '').slice(0,10));
+    return sd >= now && sd <= cutoff;
+  });
+}
+
 function renderAssets(){
   renderLoading('Loading assets...');
   return Promise.all([ensureAssetsLoaded(), ensurePeopleLoaded(), ensureFacilitiesLoaded(), ensureOrganizationsLoaded()]).then(function(){
@@ -5259,7 +6274,7 @@ function renderAssets(){
     html += metricCard('Portable Devices', portableCount, 'Laptops and other portable equipment', Math.min(100, portableCount / 3));
     html += metricCard('Software Titles Near ATO Attention', atoSoon, 'Titles with ATO expiry within 90 days', Math.min(100, atoSoon * 12));
     html += '</div>';
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
     if (ui.personId) {
       var focusPerson = findPersonById(ui.personId);
       if (focusPerson) {
@@ -5859,10 +6874,240 @@ function renderRoute(){
   if (route === 'facilities') { return renderFacilities(); }
   if (route === 'calendar') { return renderCalendar(); }
   if (route === 'assets') { return renderAssets(); }
+  if (route === 'reporting') { return renderReporting(); }
   if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
   if (route === 'diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderDiagnostics(); }
   return renderHome();
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ *  PLATFORM FEATURES
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Theme Toggle ─── */
+function toggleTheme(){
+  var isLight = document.body.classList.toggle('light-theme');
+  try { localStorage.setItem('ccsd-theme', isLight ? 'light' : 'dark'); } catch(e) {}
+  toast('Theme switched to ' + (isLight ? 'light' : 'dark') + ' mode.', 'ok');
+}
+function loadThemePreference(){
+  try {
+    var saved = localStorage.getItem('ccsd-theme');
+    if (saved === 'light') { document.body.classList.add('light-theme'); }
+  } catch(e) {}
+}
+
+/* ─── Session Timeout ─── */
+var SESSION_TIMEOUT_MS = 30 * 60 * 1000; /* 30 minutes */
+var SESSION_WARNING_MS = 5 * 60 * 1000; /* warn 5 min before */
+var sessionTimer = null;
+var sessionWarningTimer = null;
+function resetSessionTimer(){
+  if (sessionTimer) { clearTimeout(sessionTimer); }
+  if (sessionWarningTimer) { clearTimeout(sessionWarningTimer); }
+  var overlay = document.getElementById('sessionTimeoutOverlay');
+  if (overlay) { overlay.remove(); }
+  sessionWarningTimer = setTimeout(function(){
+    var overlay = document.createElement('div');
+    overlay.id = 'sessionTimeoutOverlay';
+    overlay.className = 'session-timeout-overlay';
+    overlay.innerHTML = '<div class="session-timeout-box"><div class="sto-title">Session Expiring</div><div class="sto-sub">Your session will expire in 5 minutes due to inactivity. Click anywhere to continue.</div><button class="btn primary" onclick="resetSessionTimer()">Continue Session</button></div>';
+    document.body.appendChild(overlay);
+  }, SESSION_TIMEOUT_MS - SESSION_WARNING_MS);
+  sessionTimer = setTimeout(function(){
+    window.location.reload();
+  }, SESSION_TIMEOUT_MS);
+}
+function initSessionTimeout(){
+  ['click','keydown','mousemove','touchstart'].forEach(function(evt){
+    document.addEventListener(evt, function(){ resetSessionTimer(); }, { passive: true });
+  });
+  resetSessionTimer();
+}
+
+/* ─── Input Sanitization ─── */
+function sanitizeInput(value){
+  if (typeof value !== 'string') { return value; }
+  return value.replace(/<script[\s>]/gi, '').replace(/javascript:/gi, '').replace(/on\w+\s*=/gi, '');
+}
+
+/* ─── Soft Delete Pattern ─── */
+function softDeleteItem(listTitle, itemId, entityType){
+  return updateListItem(listTitle, itemId, { IsDeleted: true, DeletedOn: new Date().toISOString() }, { entityType: entityType, reason: 'Soft delete' }).then(function(){
+    toast(entityType + ' archived.', 'ok');
+  });
+}
+
+/* ─── Expanded Data Quality Checks ─── */
+function runExpandedDataQualityChecks(){
+  var issues = runDataQualityChecks();
+  var people = APP.state.data.people || [];
+  var orgs = APP.state.data.organizations || [];
+  var orgIds = {};
+  orgs.forEach(function(o){ orgIds[o.Id] = true; });
+  /* People referencing non-existent orgs */
+  people.forEach(function(p){
+    var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null;
+    if (oid && !orgIds[oid]) { issues.push({ severity: 'warn', message: 'Person ' + formatPerson(p) + ' references non-existent org ID ' + oid }); }
+  });
+  /* Orgs referencing non-existent parent orgs */
+  orgs.forEach(function(o){
+    var pid = o.ParentOrgID ? (o.ParentOrgID.Id || o.ParentOrgID) : null;
+    if (pid && !orgIds[pid]) { issues.push({ severity: 'warn', message: 'Org ' + getOrgDisplayName(o) + ' references non-existent parent org ID ' + pid }); }
+  });
+  return issues;
+}
+
+/* ─── Reporting Module ─── */
+function renderReporting(){
+  renderLoading('Loading reports...');
+  return Promise.all([
+    ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureTrainingCatalogLoaded(),
+    ensureTrainingRecordsLoaded(), ensureAssetsLoaded(), ensureRequestsLoaded(),
+    ensureTimeOffLoaded().catch(function(){ return []; })
+  ]).then(function(){
+    var html = '<div class="card"><div class="card-head"><div><div class="card-title">Reports</div><div class="card-sub">Generate and view organizational reports. Use Print button for print-friendly output.</div></div><div class="filter-row"><button class="btn subtle" data-action="print-view">Print</button></div></div><div class="card-body">';
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">';
+    html += '<button class="btn" data-action="report-headcount" style="padding:16px;text-align:left"><strong>Headcount by Org</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Personnel distribution with drill-down</div></button>';
+    html += '<button class="btn" data-action="report-training" style="padding:16px;text-align:left"><strong>Training Compliance</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Compliance rates by organization</div></button>';
+    html += '<button class="btn" data-action="report-assets" style="padding:16px;text-align:left"><strong>Asset Inventory</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Assets by type, status, environment</div></button>';
+    html += '<button class="btn" data-action="report-timeoff" style="padding:16px;text-align:left"><strong>Time-Off Utilization</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Usage by person, org, and month</div></button>';
+    html += '<button class="btn" data-action="report-sla" style="padding:16px;text-align:left"><strong>Request SLA</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">On-time completion and overdue rates</div></button>';
+    html += '<button class="btn" data-action="report-data-quality" style="padding:16px;text-align:left"><strong>Data Quality</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Cross-list reference integrity</div></button>';
+    html += '</div></div></div>';
+    html += '<div id="reportOutput" style="margin-top:16px"></div>';
+    setView(html);
+  });
+}
+
+function renderHeadcountReport(){
+  var orgs = APP.state.data.organizations || [];
+  var people = APP.state.data.people || [];
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Headcount by Organization</div></div><div class="card-body">';
+  body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th data-sort="org">Organization</th><th data-sort="total">Total</th><th data-sort="active">Active</th><th data-sort="departed">Departed</th></tr></thead><tbody>';
+  orgs.forEach(function(o){
+    var orgPeople = people.filter(function(p){ var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null; return String(oid) === String(o.Id); });
+    var active = orgPeople.filter(function(p){ return String(p.Status || '').toLowerCase().indexOf('depart') < 0; }).length;
+    body += '<tr><td>' + escHtml(getOrgDisplayName(o)) + '</td><td>' + orgPeople.length + '</td><td>' + active + '</td><td>' + (orgPeople.length - active) + '</td></tr>';
+  });
+  body += '</tbody></table></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; initSortableHeaders(); }
+}
+
+function renderTrainingComplianceReport(){
+  var orgs = APP.state.data.organizations || [];
+  var people = APP.state.data.people || [];
+  var catalog = APP.state.data.trainingCatalog || [];
+  var records = APP.state.data.trainingRecords || [];
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Training Compliance by Organization</div></div><div class="card-body">';
+  body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Organization</th><th>Personnel</th><th>Applicable</th><th>Current</th><th>Compliance</th></tr></thead><tbody>';
+  orgs.forEach(function(o){
+    var orgPeople = people.filter(function(p){ var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null; return String(oid) === String(o.Id) && String(p.Status || '').toLowerCase().indexOf('depart') < 0; });
+    if (!orgPeople.length) { return; }
+    var totalApplicable = 0; var totalCurrent = 0;
+    orgPeople.forEach(function(p){
+      catalog.forEach(function(t){
+        if (!trainingAppliesToPerson(t, p)) { return; }
+        totalApplicable++;
+        var rec = null;
+        records.some(function(r){ if (r.TrainingID && String(r.TrainingID.Id || r.TrainingID) === String(t.Id) && r.PersonID && String(r.PersonID.Id || r.PersonID) === String(p.Id)) { rec = r; return true; } return false; });
+        if (rec && rec.ExpirationDate && new Date(rec.ExpirationDate) > new Date()) { totalCurrent++; }
+        else if (rec && !rec.ExpirationDate && rec.CompletionDate) { totalCurrent++; }
+      });
+    });
+    var pct = totalApplicable ? Math.round((totalCurrent / totalApplicable) * 100) : 100;
+    var color = pct >= 80 ? 'var(--ok)' : pct >= 60 ? 'var(--warn)' : 'var(--danger)';
+    body += '<tr><td>' + escHtml(getOrgDisplayName(o)) + '</td><td>' + orgPeople.length + '</td><td>' + totalApplicable + '</td><td>' + totalCurrent + '</td><td style="color:' + color + ';font-weight:700">' + pct + '%</td></tr>';
+  });
+  body += '</tbody></table></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; initSortableHeaders(); }
+}
+
+function renderAssetInventoryReport(){
+  var idx = buildAssetIndex();
+  var typeCounts = {};
+  var statusCounts = {};
+  (idx.hwAssets || []).forEach(function(a){
+    var t = a.AssetType || a.HardwareType || 'Unknown';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+    var s = a.Status || 'Unknown';
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Asset Inventory Report</div></div><div class="card-body">';
+  body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+  body += '<div><div style="font-weight:700;margin-bottom:8px">By Type</div><table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>';
+  Object.keys(typeCounts).sort().forEach(function(k){ body += '<tr><td>' + escHtml(k) + '</td><td>' + typeCounts[k] + '</td></tr>'; });
+  body += '</tbody></table></div>';
+  body += '<div><div style="font-weight:700;margin-bottom:8px">By Status</div><table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>';
+  Object.keys(statusCounts).sort().forEach(function(k){ body += '<tr><td>' + statusBadge(k) + '</td><td>' + statusCounts[k] + '</td></tr>'; });
+  body += '</tbody></table></div></div></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; }
+}
+
+function renderTimeOffReport(){
+  var entries = APP.state.data.timeOff || [];
+  var people = APP.state.data.people || [];
+  var personMap = {};
+  people.forEach(function(p){ personMap[p.Id] = p; });
+  var monthCounts = {};
+  entries.forEach(function(e){
+    if (e.Status !== 'Approved' && e.Status !== 'approved') { return; }
+    var m = (e.StartDate || '').slice(0, 7);
+    if (!m) { return; }
+    monthCounts[m] = (monthCounts[m] || 0) + 1;
+  });
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Time-Off Utilization</div></div><div class="card-body">';
+  body += '<div style="font-weight:700;margin-bottom:8px">Approved Entries by Month</div>';
+  body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Month</th><th>Entries</th></tr></thead><tbody>';
+  Object.keys(monthCounts).sort().forEach(function(m){ body += '<tr><td>' + escHtml(m) + '</td><td>' + monthCounts[m] + '</td></tr>'; });
+  body += '</tbody></table></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; }
+}
+
+function renderSlaReport(){
+  var requests = APP.state.data.requests || [];
+  var total = requests.length;
+  var closed = requests.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') >= 0 || s.indexOf('complete') >= 0; });
+  var onTime = closed.filter(function(r){
+    if (!r.DueDate || !r.ClosedOn) { return true; }
+    return new Date(r.ClosedOn) <= new Date(r.DueDate);
+  }).length;
+  var overdue = requests.filter(function(r){
+    var s = String(r.Status || '').toLowerCase();
+    if (s.indexOf('closed') >= 0 || s.indexOf('complete') >= 0) { return false; }
+    var d = daysUntil(r.DueDate);
+    return d != null && d < 0;
+  }).length;
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Request SLA Compliance</div></div><div class="card-body">';
+  body += '<div style="display:flex;gap:16px;margin-bottom:16px">';
+  body += '<div class="dash-kpi"><div class="kpi-value">' + total + '</div><div class="kpi-label">Total Requests</div></div>';
+  body += '<div class="dash-kpi"><div class="kpi-value">' + closed.length + '</div><div class="kpi-label">Closed</div></div>';
+  body += '<div class="dash-kpi"><div class="kpi-value">' + (closed.length ? Math.round((onTime / closed.length) * 100) : 0) + '%</div><div class="kpi-label">On-Time Rate</div></div>';
+  body += '<div class="dash-kpi"><div class="kpi-value" style="color:' + (overdue ? 'var(--danger)' : 'var(--ok)') + '">' + overdue + '</div><div class="kpi-label">Currently Overdue</div></div>';
+  body += '</div></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; }
+}
+
+function renderDataQualityReport(){
+  var issues = runExpandedDataQualityChecks();
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Data Quality Report</div></div><div class="card-body">';
+  body += '<div style="margin-bottom:10px"><strong>' + issues.length + '</strong> issues found.</div>';
+  if (!issues.length) { body += '<div class="empty">All data quality checks passed.</div>'; }
+  else {
+    body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Severity</th><th>Issue</th></tr></thead><tbody>';
+    issues.forEach(function(i){ body += '<tr><td>' + statusBadge(i.severity || 'info') + '</td><td>' + escHtml(i.message || '') + '</td></tr>'; });
+    body += '</tbody></table>';
+  }
+  body += '</div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; initSortableHeaders(); }
+}
+
 function filterCards(selector, term){
   var host = document.querySelector(selector);
   if (!host) { return; }
@@ -5927,14 +7172,24 @@ function handleClick(e){
   if (action === 'org-clear-focus') { ensureOrgChartUi(); APP.state.orgUi.focusOrgId = null; renderOrganizationsView(); return; }
   if (action === 'org-toggle-above-root') { ensureOrgChartUi(); APP.state.orgUi.showAboveRoot = !APP.state.orgUi.showAboveRoot; renderOrganizationsView(); return; }
   if (action === 'org-view-leadership') { openOrgLeadershipModal(el.getAttribute('data-id')); return; }
+  if (action === 'create-org') { openCreateOrgModal(); return; }
+  if (action === 'edit-org') { openEditOrgModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-org') { saveOrg(); return; }
+  if (action === 'org-dashboard') { openOrgDashboard(el.getAttribute('data-id')); return; }
+  if (action === 'print-org-chart') { printOrgChart(); return; }
   if (action === 'org-expand-visible') { ensureOrgChartUi(); var orgIdxExpand = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); var orgSearchExpand = String(APP.state.orgUi.search || '').toLowerCase().trim(); var orgMemoExpand = {}; var orgRootsExpand = getOrganizationExplorerRoots(orgIdxExpand); function expandOrgBranch(orgId){ if (orgSearchExpand && !orgBranchMatchesSearch(orgIdxExpand, orgId, orgSearchExpand, orgMemoExpand)) { return; } APP.state.orgUi.expanded[orgId] = true; (orgIdxExpand.childrenByParentId[orgId] || []).forEach(expandOrgBranch); } orgRootsExpand.forEach(expandOrgBranch); renderOrganizationsView(); return; }
   if (action === 'org-collapse-tree') { ensureOrgChartUi(); APP.state.orgUi.expanded = {}; var orgIdxCollapse = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); getOrganizationExplorerRoots(orgIdxCollapse).forEach(function(rootId){ APP.state.orgUi.expanded[rootId] = true; }); if (APP.state.orgUi.selectedOrgId) { var orgChainCollapse = getOrgBreadcrumb(orgIdxCollapse, APP.state.orgUi.selectedOrgId); orgChainCollapse.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; }); } renderOrganizationsView(); return; }
-  if (action === 'view-person') { openPersonModal(el.getAttribute('data-id'), false); return; }
+  if (action === 'view-person') { openPersonDetailPage(el.getAttribute('data-id')); return; }
   if (action === 'focus-person-assets') { getAssetUi(); APP.state.assetUi.personId = Number(el.getAttribute('data-id')); closeModal(); routeTo('assets'); return; }
   if (action === 'clear-person-assets') { getAssetUi(); APP.state.assetUi.personId = null; if (APP.state.route === 'assets') { renderAssets(); } closeModal(); return; }
   if (action === 'focus-seat-assets') { routeTo('facilities'); toast('Seat-focused map support will plug into Facilities next.', 'ok'); return; }
   if (action === 'edit-person') { openPersonModal(el.getAttribute('data-id'), true); return; }
   if (action === 'save-person') { savePersonEdit(); return; }
+  if (action === 'depart-person') { openDepartureModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-departure') { confirmDeparture(); return; }
+  if (action === 'transfer-person') { openTransferPersonModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-transfer-person') { confirmTransferPerson(); return; }
+  if (action === 'export-people-csv') { exportPeopleCSV(); return; }
   if (action === 'view-training') { openTrainingModal(el.getAttribute('data-id')); return; }
   if (action === 'submit-training' || action === 'open-training-submit') { openTrainingSubmissionModal(el.getAttribute('data-id')); return; }
   if (action === 'save-training-submission') { saveTrainingSubmission(); return; }
@@ -5943,6 +7198,15 @@ function handleClick(e){
   if (action === 'review-submission-reject') { reviewSubmission(el.getAttribute('data-id'), false); return; }
   if (action === 'view-request') { openRequestDetail(el.getAttribute('data-id')); return; }
   if (action === 'open-create-request') { openCreateRequestModal(); return; }
+  if (action === 'open-request-templates') {
+    var tmplBody = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">';
+    Object.keys(REQUEST_TEMPLATES).forEach(function(name){ tmplBody += '<button class="btn" data-action="use-request-template" data-template="' + escAttr(name) + '" style="text-align:left;padding:12px">' + escHtml(name) + '</button>'; });
+    tmplBody += '</div>';
+    openModal('Request Templates', tmplBody, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+    return;
+  }
+  if (action === 'use-request-template') { closeModal(); openCreateRequestFromTemplate(el.getAttribute('data-template')); return; }
+  if (action === 'supervisor-request-dashboard') { openSupervisorRequestDashboard(); return; }
   if (action === 'save-request') { saveRequest(); return; }
   if (action === 'open-inout-create') { openCreateInOutModal(); return; }
   if (action === 'save-inout') { saveInOut(); return; }
@@ -5960,6 +7224,9 @@ function handleClick(e){
   if (action === 'sidebar-seat-click') { highlightSeatOnMap(el.getAttribute('data-seat-id'), el.getAttribute('data-seat-x'), el.getAttribute('data-seat-y')); return; }
   if (action === 'enter-floorplan-url') { setFloorPlanUrl(); return; }
   if (action === 'save-floorplan-url') { saveFloorPlanUrl(); return; }
+  if (action === 'bulk-seat-import') { openBulkSeatImportModal(); return; }
+  if (action === 'save-bulk-seats') { saveBulkSeats(); return; }
+  if (action === 'facility-capacity-report') { openFacilityCapacityReport(); return; }
   if (action === 'floorplan-zoom-in') { floorPlanZoom('in'); return; }
   if (action === 'floorplan-zoom-out') { floorPlanZoom('out'); return; }
   if (action === 'floorplan-zoom-reset') { floorPlanZoom('reset'); return; }
@@ -5972,6 +7239,10 @@ function handleClick(e){
   if (action === 'cal-add-entry') { openAddTimeOffModal(); return; }
   if (action === 'cal-save-entry') { saveTimeOffEntry(); return; }
   if (action === 'cal-delete-entry') { deleteTimeOffEntry(el.getAttribute('data-entry-id')); return; }
+  if (action === 'cal-export-csv') { exportCalendarCSV(); return; }
+  if (action === 'cal-export-ics') { exportCalendarICS(); return; }
+  if (action === 'cal-bulk-import') { openBulkTimeOffImportModal(); return; }
+  if (action === 'save-bulk-timeoff') { saveBulkTimeOff(); return; }
   if (action === 'export-facilities') { exportTableToCSV('.table-wrap table', 'facilities_export'); return; }
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
   if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
@@ -5983,6 +7254,9 @@ function handleClick(e){
   if (action === 'complete-step') { completeInOutStep(el.getAttribute('data-id')); return; }
   if (action === 'view-inout-detail') { openInOutDetail(el.getAttribute('data-id')); return; }
   if (action === 'toggle-team-training') { APP.state.showTeamTraining = !APP.state.showTeamTraining; renderTraining(); return; }
+  if (action === 'training-gap-analysis') { openTrainingGapAnalysis(); return; }
+  if (action === 'bulk-training-entry') { openBulkTrainingEntryModal(); return; }
+  if (action === 'save-bulk-training') { saveBulkTraining(); return; }
   if (action === 'edit-sf182') { openSF182EditModal(el.getAttribute('data-id')); return; }
   if (action === 'save-sf182-edit') { saveSF182Edit(); return; }
   if (action === 'create-hw-assignment') { openCreateHardwareAssignmentModal(); return; }
@@ -6009,7 +7283,19 @@ function handleClick(e){
   if (action === 'confirm-transfer-hw') { confirmTransferHw(); return; }
   if (action === 'transfer-sw') { openTransferSwModal(el.getAttribute('data-id')); return; }
   if (action === 'confirm-transfer-sw') { confirmTransferSw(); return; }
+  if (action === 'asset-depreciation') { renderAssetDepreciation(); return; }
+  if (action === 'asset-discrepancies') { renderInventoryDiscrepancies(); return; }
+  if (action === 'asset-timeline') { renderAssignmentTimeline(el.getAttribute('data-id')); return; }
+  if (action === 'bulk-asset-import') { openBulkAssetImportModal(); return; }
+  if (action === 'save-bulk-assets') { saveBulkAssets(); return; }
   if (action === 'popout-fullscreen') { popoutFullscreen(); return; }
+  if (action === 'toggle-theme') { toggleTheme(); return; }
+  if (action === 'report-headcount') { renderHeadcountReport(); return; }
+  if (action === 'report-training') { renderTrainingComplianceReport(); return; }
+  if (action === 'report-assets') { renderAssetInventoryReport(); return; }
+  if (action === 'report-timeoff') { renderTimeOffReport(); return; }
+  if (action === 'report-sla') { renderSlaReport(); return; }
+  if (action === 'report-data-quality') { renderDataQualityReport(); return; }
   if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
 function detectEmbeddedMode(){
@@ -6031,6 +7317,8 @@ function popoutFullscreen(){
 
 function bootstrap(){
   detectEmbeddedMode();
+  loadThemePreference();
+  initSessionTimeout();
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
   initSortableHeaders();
