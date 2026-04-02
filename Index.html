@@ -3330,7 +3330,7 @@ function renderOrganizationsView(){
     crumbs.forEach(function(org){ detailHtml += '<button class="org-crumb" data-action="org-select" data-id="' + escAttr(org.Id) + '">' + escHtml(getOrgDisplayName(org)) + '</button>'; });
     detailHtml += '</div>';
     detailHtml += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roll.directPeople)) + '</div><div class="t">Direct Personnel</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.totalPeople)) + '</div><div class="t">Branch Personnel</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.childCount)) + '</div><div class="t">Immediate Child Units</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.totalPositions)) + '</div><div class="t">Positions in Branch</div></div></div>';
-    detailHtml += '<div class="org-root-actions"><button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(selected.Id) + '">View Leadership</button><button class="btn subtle" data-action="org-focus" data-id="' + escAttr(selected.Id) + '">' + (ui.focusOrgId === selected.Id ? 'Focused Branch' : 'Focus This Branch') + '</button>';
+    detailHtml += '<div class="org-root-actions"><button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(selected.Id) + '">View Leadership</button><button class="btn subtle" data-action="org-dashboard" data-id="' + escAttr(selected.Id) + '">Dashboard</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="edit-org" data-id="' + escAttr(selected.Id) + '">Edit Org</button>' : '') + '<button class="btn subtle" data-action="org-focus" data-id="' + escAttr(selected.Id) + '">' + (ui.focusOrgId === selected.Id ? 'Focused Branch' : 'Focus This Branch') + '</button>';
     if (ui.focusOrgId) { detailHtml += '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>'; }
     if (selected.SharePointURL) { detailHtml += '<a class="btn subtle" href="' + escAttr(selected.SharePointURL) + '" target="_blank" rel="noopener">Open SharePoint Site</a>'; }
     detailHtml += '</div>';
@@ -3361,7 +3361,7 @@ function renderOrganizationsView(){
   html += renderOrgBand(index, 'Functional Support Offices', 'Cross-cutting offices supporting training, engineering, finance, contracting, communications, and workforce support.', functionalCodes, 'functional', 'These units provide enterprise support across the division.');
   html += renderOrgBand(index, 'Groups', 'Primary operational groups under the headquarters structure.', groupCodes, 'group', 'These are the principal operational groupings for the division.');
   html += '</div></div>';
-  html += '<div class="org-search-panel card"><div class="card-head"><div><div class="card-title">Branch Explorer</div><div class="card-sub">Use search and branch focus to drill down into branches, sections, and teams without overcrowding the headquarters layout above.</div></div><div class="org-chart-toolbar"><input id="orgSearchInput" class="input" placeholder="Search organization name, code, type, or leader" value="' + escAttr(ui.search || '') + '" /><button class="btn subtle" data-action="org-expand-visible">Expand Visible</button><button class="btn subtle" data-action="org-collapse-tree">Reset Branch View</button>' + (ui.focusOrgId ? '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>' : '') + '<span class="mini-note">Visible nodes: ' + escHtml(String(visibleIds.length)) + '</span></div></div><div class="card-body"><div class="org-branch-shell"><div class="card org-tree-panel org-branch-panel"><div class="card-head"><div><div class="card-title">Explorer Structure</div><div class="card-sub">Expandable structure starting from ' + escHtml(ui.showAboveRoot && rootOrg ? 'the higher-headquarters path' : 'headquarters') + ' or the currently focused branch.</div></div></div><div class="card-body"><div class="org-tree-wrap">' + treeHtml + '</div></div></div>' + detailHtml + '</div></div></div>';
+  html += '<div class="org-search-panel card"><div class="card-head"><div><div class="card-title">Branch Explorer</div><div class="card-sub">Use search and branch focus to drill down into branches, sections, and teams without overcrowding the headquarters layout above.</div></div><div class="org-chart-toolbar"><input id="orgSearchInput" class="input" placeholder="Search organization name, code, type, or leader" value="' + escAttr(ui.search || '') + '" /><button class="btn subtle" data-action="org-expand-visible">Expand Visible</button><button class="btn subtle" data-action="org-collapse-tree">Reset Branch View</button>' + (ui.focusOrgId ? '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>' : '') + '<span class="mini-note">Visible nodes: ' + escHtml(String(visibleIds.length)) + '</span>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="create-org">+ New Org</button>' : '') + '<button class="btn subtle" data-action="print-org-chart">Print</button></div></div><div class="card-body"><div class="org-branch-shell"><div class="card org-tree-panel org-branch-panel"><div class="card-head"><div><div class="card-title">Explorer Structure</div><div class="card-sub">Expandable structure starting from ' + escHtml(ui.showAboveRoot && rootOrg ? 'the higher-headquarters path' : 'headquarters') + ' or the currently focused branch.</div></div></div><div class="card-body"><div class="org-tree-wrap">' + treeHtml + '</div></div></div>' + detailHtml + '</div></div></div>';
   setView(html);
 }
 function renderOrganizations(){
@@ -3373,6 +3373,122 @@ function renderOrganizations(){
   });
 }
 
+/* ─── Create / Edit Organization ─── */
+function openCreateOrgModal(){
+  var orgs = APP.state.data.organizations || [];
+  var parentOptions = orgs.map(function(o){ return '<option value="' + escAttr(o.Id) + '">' + escHtml(getOrgDisplayName(o)) + '</option>'; }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Organization Name', '<input id="orgName" class="input" />')
+    + formField('Org Code', '<input id="orgCode" class="input" placeholder="e.g. HNC-SE" />')
+    + formField('Org Type', '<select id="orgType" class="select"><option value="Division">Division</option><option value="Group">Group</option><option value="Branch">Branch</option><option value="Section">Section</option><option value="Team">Team</option><option value="Office">Office</option><option value="Directorate">Directorate</option></select>')
+    + formField('Parent Organization', '<select id="orgParent" class="select"><option value="">-- None (Root) --</option>' + parentOptions + '</select>')
+    + formField('Org Email', '<input id="orgEmail" class="input" type="email" />')
+    + formField('Is Active', '<select id="orgActive" class="select"><option value="true" selected>Yes</option><option value="false">No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="orgNotes" class="textarea"></textarea>') + '</div>'
+    + '</div>';
+  APP.modalState.editOrgId = null;
+  openModal('Create Organization', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-org">Create</button></div>');
+}
+function openEditOrgModal(orgId){
+  var orgs = APP.state.data.organizations || [];
+  var org = null;
+  orgs.some(function(o){ if (String(o.Id) === String(orgId)) { org = o; return true; } return false; });
+  if (!org) { toast('Organization not found.', 'danger'); return; }
+  var parentOptions = orgs.filter(function(o){ return o.Id !== org.Id; }).map(function(o){
+    var sel = (org.ParentOrgID && org.ParentOrgID.Id === o.Id) ? ' selected' : '';
+    return '<option value="' + escAttr(o.Id) + '"' + sel + '>' + escHtml(getOrgDisplayName(o)) + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Organization Name', '<input id="orgName" class="input" value="' + escAttr(org.OrgName || org.Title || '') + '" />')
+    + formField('Org Code', '<input id="orgCode" class="input" value="' + escAttr(org.OrgCode || '') + '" />')
+    + formField('Org Type', '<select id="orgType" class="select"><option value="Division"' + (org.OrgType === 'Division' ? ' selected' : '') + '>Division</option><option value="Group"' + (org.OrgType === 'Group' ? ' selected' : '') + '>Group</option><option value="Branch"' + (org.OrgType === 'Branch' ? ' selected' : '') + '>Branch</option><option value="Section"' + (org.OrgType === 'Section' ? ' selected' : '') + '>Section</option><option value="Team"' + (org.OrgType === 'Team' ? ' selected' : '') + '>Team</option><option value="Office"' + (org.OrgType === 'Office' ? ' selected' : '') + '>Office</option><option value="Directorate"' + (org.OrgType === 'Directorate' ? ' selected' : '') + '>Directorate</option></select>')
+    + formField('Parent Organization', '<select id="orgParent" class="select"><option value="">-- None (Root) --</option>' + parentOptions + '</select>')
+    + formField('Org Email', '<input id="orgEmail" class="input" value="' + escAttr(org.OrgEmail || '') + '" />')
+    + formField('Is Active', '<select id="orgActive" class="select"><option value="true"' + (normalizeBoolean(org.IsActive) !== false ? ' selected' : '') + '>Yes</option><option value="false"' + (normalizeBoolean(org.IsActive) === false ? ' selected' : '') + '>No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="orgNotes" class="textarea">' + escHtml(org.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  APP.modalState.editOrgId = org.Id;
+  openModal('Edit Organization', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-org">Save Changes</button></div>', getOrgDisplayName(org));
+}
+function saveOrg(){
+  var orgId = APP.modalState.editOrgId;
+  var name = document.getElementById('orgName').value;
+  if (!name) { toast('Organization Name is required.', 'danger'); return; }
+  var values = {
+    OrgName: name,
+    OrgCode: document.getElementById('orgCode').value,
+    OrgType: document.getElementById('orgType').value,
+    ParentOrgID: document.getElementById('orgParent').value ? parseInt(document.getElementById('orgParent').value, 10) : null,
+    OrgEmail: document.getElementById('orgEmail').value,
+    IsActive: document.getElementById('orgActive').value === 'true',
+    Notes: document.getElementById('orgNotes').value
+  };
+  var promise = orgId
+    ? updateListItem(APP.lists.Organizations, orgId, values, { entityType: 'Organization', reason: 'SPA edit org' })
+    : createListItem(APP.lists.Organizations, values, { entityType: 'Organization', reason: 'SPA create org' });
+  promise.then(function(){
+    toast(orgId ? 'Organization updated.' : 'Organization created.', 'ok');
+    closeModal();
+    return ensureOrganizationsLoaded(true).then(function(){ renderOrganizations(); });
+  }).catch(function(){ toast('Save failed.', 'danger'); });
+}
+
+/* ─── Org Dashboard (aggregate metrics per org) ─── */
+function openOrgDashboard(orgId){
+  var orgs = APP.state.data.organizations || [];
+  var org = null;
+  orgs.some(function(o){ if (String(o.Id) === String(orgId)) { org = o; return true; } return false; });
+  if (!org) { toast('Organization not found.', 'danger'); return; }
+  Promise.all([ensurePeopleLoaded(), ensureTrainingCatalogLoaded(), ensureTrainingRecordsLoaded(), ensureAssetsLoaded(), ensureRequestsLoaded()]).then(function(){
+    var index = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []);
+    var descIds = getOrgAndDescendants(org.Id);
+    var people = (APP.state.data.people || []).filter(function(p){ var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null; return oid && descIds[oid]; });
+    var activePeople = people.filter(function(p){ var s = String(p.Status || '').toLowerCase(); return s.indexOf('depart') < 0 && s.indexOf('inactive') < 0; });
+    /* Training compliance */
+    var catalog = APP.state.data.trainingCatalog || [];
+    var records = APP.state.data.trainingRecords || [];
+    var totalApplicable = 0; var totalCurrent = 0;
+    activePeople.forEach(function(p){
+      catalog.forEach(function(t){
+        if (!trainingAppliesToPerson(t, p)) { return; }
+        totalApplicable++;
+        var rec = null;
+        records.some(function(r){ if (r.TrainingID && String(r.TrainingID.Id || r.TrainingID) === String(t.Id) && r.PersonID && String(r.PersonID.Id || r.PersonID) === String(p.Id)) { rec = r; return true; } return false; });
+        if (rec && rec.ExpirationDate && new Date(rec.ExpirationDate) > new Date()) { totalCurrent++; }
+        else if (rec && !rec.ExpirationDate && rec.CompletionDate) { totalCurrent++; }
+      });
+    });
+    var compPct = totalApplicable ? Math.round((totalCurrent / totalApplicable) * 100) : 100;
+    /* Asset count */
+    var idx = buildAssetIndex();
+    var assetCount = 0;
+    activePeople.forEach(function(p){
+      (idx.hwAssignments || []).forEach(function(a){ if (isActiveHardwareAssignment(a) && a.PersonID && String(a.PersonID.Id || a.PersonID) === String(p.Id)) { assetCount++; } });
+    });
+    /* Requests */
+    var requests = APP.state.data.requests || [];
+    var orgRequests = requests.filter(function(r){
+      var rPersonId = r.RequestedBy ? (r.RequestedBy.Id || r.RequestedBy) : null;
+      return rPersonId && people.some(function(p){ return String(p.Id) === String(rPersonId); });
+    });
+    var openReqs = orgRequests.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('complete') < 0; });
+    var body = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + activePeople.length + '</div><div class="kpi-label">Active Personnel</div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + compPct + '%</div><div class="kpi-label">Training Compliance</div><div class="kpi-bar ' + (compPct >= 80 ? 'green' : compPct >= 60 ? 'orange' : 'red') + '" style="width:' + compPct + '%"></div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + assetCount + '</div><div class="kpi-label">Active HW Assets</div></div>';
+    body += '<div class="dash-kpi"><div class="kpi-value">' + openReqs.length + '</div><div class="kpi-label">Open Requests</div></div>';
+    body += '</div>';
+    body += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Includes ' + escHtml(String(Object.keys(descIds).length)) + ' organizations in this branch (' + escHtml(String(people.length)) + ' total personnel, ' + escHtml(String(activePeople.length)) + ' active).</div>';
+    if (people.length - activePeople.length > 0) { body += '<div style="font-size:11px;color:var(--warn);margin-bottom:10px">' + (people.length - activePeople.length) + ' personnel in Departed/Inactive status.</div>'; }
+    openModal('Org Dashboard — ' + escHtml(getOrgDisplayName(org)), body, '<div></div><button class="btn" data-action="close-modal">Close</button>', org.OrgCode || '');
+  });
+}
+
+/* ─── Org Chart Print ─── */
+function printOrgChart(){
+  window.print();
+  toast('Print dialog opened.', 'ok');
+}
 
 function renderTraining(){
   renderLoading('Loading training...');
@@ -6317,6 +6433,11 @@ function handleClick(e){
   if (action === 'org-clear-focus') { ensureOrgChartUi(); APP.state.orgUi.focusOrgId = null; renderOrganizationsView(); return; }
   if (action === 'org-toggle-above-root') { ensureOrgChartUi(); APP.state.orgUi.showAboveRoot = !APP.state.orgUi.showAboveRoot; renderOrganizationsView(); return; }
   if (action === 'org-view-leadership') { openOrgLeadershipModal(el.getAttribute('data-id')); return; }
+  if (action === 'create-org') { openCreateOrgModal(); return; }
+  if (action === 'edit-org') { openEditOrgModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-org') { saveOrg(); return; }
+  if (action === 'org-dashboard') { openOrgDashboard(el.getAttribute('data-id')); return; }
+  if (action === 'print-org-chart') { printOrgChart(); return; }
   if (action === 'org-expand-visible') { ensureOrgChartUi(); var orgIdxExpand = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); var orgSearchExpand = String(APP.state.orgUi.search || '').toLowerCase().trim(); var orgMemoExpand = {}; var orgRootsExpand = getOrganizationExplorerRoots(orgIdxExpand); function expandOrgBranch(orgId){ if (orgSearchExpand && !orgBranchMatchesSearch(orgIdxExpand, orgId, orgSearchExpand, orgMemoExpand)) { return; } APP.state.orgUi.expanded[orgId] = true; (orgIdxExpand.childrenByParentId[orgId] || []).forEach(expandOrgBranch); } orgRootsExpand.forEach(expandOrgBranch); renderOrganizationsView(); return; }
   if (action === 'org-collapse-tree') { ensureOrgChartUi(); APP.state.orgUi.expanded = {}; var orgIdxCollapse = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); getOrganizationExplorerRoots(orgIdxCollapse).forEach(function(rootId){ APP.state.orgUi.expanded[rootId] = true; }); if (APP.state.orgUi.selectedOrgId) { var orgChainCollapse = getOrgBreadcrumb(orgIdxCollapse, APP.state.orgUi.selectedOrgId); orgChainCollapse.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; }); } renderOrganizationsView(); return; }
   if (action === 'view-person') { openPersonDetailPage(el.getAttribute('data-id')); return; }
