@@ -3525,7 +3525,7 @@ function renderTraining(){
     html += '</div></div>';
     html += '</div>';
     if (canReviewTraining()) {
-      html += '<div style="margin-top:16px"><div class="section-head"><div class="section-title">Team Training Compliance</div><button class="btn subtle" data-action="toggle-team-training">' + (APP.state.showTeamTraining ? 'Hide' : 'Show') + ' Team View</button></div>';
+      html += '<div style="margin-top:16px"><div class="section-head"><div class="section-title">Team Training Compliance</div><div style="display:flex;gap:6px"><button class="btn subtle" data-action="training-gap-analysis">Gap Analysis</button><button class="btn subtle" data-action="bulk-training-entry">Bulk Entry</button><button class="btn subtle" data-action="toggle-team-training">' + (APP.state.showTeamTraining ? 'Hide' : 'Show') + ' Team View</button></div></div>';
       if (APP.state.showTeamTraining) { html += renderTeamTraining(); }
       html += '</div>';
     }
@@ -3646,6 +3646,109 @@ function createSF182FromTrainingId(id){
     Promise.all([ensureRequestsLoaded(true), ensureSF182Loaded(true)]).then(function(){ if (APP.state.route === 'sf182') { renderSF182(); } });
   }).catch(function(){ toast('SF182 request failed.', 'danger'); });
 }
+
+/* ─── Training Gap Analysis per Org ─── */
+function openTrainingGapAnalysis(){
+  Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureTrainingCatalogLoaded(), ensureTrainingRecordsLoaded()]).then(function(){
+    var orgs = APP.state.data.organizations || [];
+    var people = APP.state.data.people || [];
+    var catalog = APP.state.data.trainingCatalog || [];
+    var records = APP.state.data.trainingRecords || [];
+    var orgStats = [];
+    orgs.forEach(function(org){
+      var orgPeople = people.filter(function(p){
+        var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null;
+        return String(oid) === String(org.Id) && String(p.Status || '').toLowerCase().indexOf('depart') < 0;
+      });
+      if (!orgPeople.length) { return; }
+      var totalApplicable = 0; var totalCurrent = 0;
+      orgPeople.forEach(function(p){
+        catalog.forEach(function(t){
+          if (!trainingAppliesToPerson(t, p)) { return; }
+          totalApplicable++;
+          var rec = null;
+          records.some(function(r){
+            if (r.TrainingID && String(r.TrainingID.Id || r.TrainingID) === String(t.Id) && r.PersonID && String(r.PersonID.Id || r.PersonID) === String(p.Id)) { rec = r; return true; }
+            return false;
+          });
+          if (rec && rec.ExpirationDate && new Date(rec.ExpirationDate) > new Date()) { totalCurrent++; }
+          else if (rec && !rec.ExpirationDate && rec.CompletionDate) { totalCurrent++; }
+        });
+      });
+      var pct = totalApplicable ? Math.round((totalCurrent / totalApplicable) * 100) : 100;
+      orgStats.push({ org: org, people: orgPeople.length, applicable: totalApplicable, current: totalCurrent, pct: pct });
+    });
+    orgStats.sort(function(a, b){ return a.pct - b.pct; });
+    var body = '<table class="table-wrap" style="width:100%;font-size:12px"><thead><tr><th>Organization</th><th>Personnel</th><th>Compliance</th><th>Gaps</th></tr></thead><tbody>';
+    orgStats.forEach(function(s){
+      var color = s.pct >= 80 ? 'var(--ok)' : s.pct >= 60 ? 'var(--warn)' : 'var(--danger)';
+      body += '<tr><td>' + escHtml(getOrgDisplayName(s.org)) + '</td><td>' + s.people + '</td><td><span style="color:' + color + ';font-weight:700">' + s.pct + '%</span></td><td>' + (s.applicable - s.current) + '</td></tr>';
+    });
+    body += '</tbody></table>';
+    openModal('Training Gap Analysis by Organization', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+  });
+}
+
+/* ─── Bulk Training Record Entry ─── */
+function openBulkTrainingEntryModal(){
+  var catalog = APP.state.data.trainingCatalog || [];
+  var trainingOptions = catalog.map(function(t){ return '<option value="' + escAttr(t.Id) + '">' + escHtml(t.TrainingName || t.Title || t.TrainingCode || '') + '</option>'; }).join('');
+  var body = '<div style="margin-bottom:12px">Upload training completions for multiple people at once. Paste CSV data below.</div>'
+    + '<div class="form-grid">'
+    + formField('Training', '<select id="bulkTrainingId" class="select"><option value="">-- Select Training --</option>' + trainingOptions + '</select>')
+    + formField('Completion Date', '<input id="bulkCompDate" class="input" type="date" value="' + new Date().toISOString().slice(0,10) + '" />')
+    + '</div>'
+    + '<div style="margin-top:12px">' + formField('Person IDs (one per line or comma-separated)', '<textarea id="bulkPersonIds" class="textarea" rows="6" placeholder="Enter SharePoint list item IDs for each person, one per line:\n101\n102\n103"></textarea>') + '</div>';
+  openModal('Bulk Training Entry', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-training">Create Records</button></div>');
+}
+function saveBulkTraining(){
+  var trainingId = document.getElementById('bulkTrainingId').value;
+  var compDate = document.getElementById('bulkCompDate').value;
+  var idsRaw = document.getElementById('bulkPersonIds').value;
+  if (!trainingId || !compDate || !idsRaw.trim()) { toast('Please fill all fields.', 'danger'); return; }
+  var ids = idsRaw.split(/[\n,]+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  if (!ids.length) { toast('No person IDs provided.', 'danger'); return; }
+  var t = findTrainingById(trainingId);
+  var promises = ids.map(function(pid){
+    return createListItem(APP.lists.TrainingRecords, {
+      Title: (t ? (t.TrainingName || t.Title || '') : 'Training') + ' - Person ' + pid,
+      PersonID: parseInt(pid, 10),
+      TrainingID: parseInt(trainingId, 10),
+      CompletionDate: compDate,
+      Status: 'Current',
+      EnteredOn: new Date().toISOString()
+    }, { entityType: 'Training Record', reason: 'Bulk entry' });
+  });
+  toast('Creating ' + ids.length + ' records...', 'ok');
+  Promise.all(promises).then(function(){
+    toast(ids.length + ' training records created.', 'ok');
+    closeModal();
+    return ensureTrainingRecordsLoaded(true).then(function(){ if (APP.state.route === 'training') { renderTraining(); } });
+  }).catch(function(){ toast('Some records may have failed.', 'danger'); });
+}
+
+/* ─── Certification Expiration Alerts ─── */
+function getCertExpirationAlerts(daysAhead){
+  daysAhead = daysAhead || 90;
+  var now = new Date(); now.setHours(0,0,0,0);
+  var cutoff = new Date(now.getTime() + daysAhead * 86400000);
+  var records = APP.state.data.trainingRecords || [];
+  var catalog = APP.state.data.trainingCatalog || [];
+  var catalogMap = {};
+  catalog.forEach(function(t){ catalogMap[t.Id] = t; });
+  var alerts = [];
+  records.forEach(function(r){
+    if (!r.ExpirationDate) { return; }
+    var exp = new Date(r.ExpirationDate);
+    if (exp < now || exp > cutoff) { return; }
+    var daysLeft = Math.round((exp - now) / 86400000);
+    var t = r.TrainingID ? catalogMap[r.TrainingID.Id || r.TrainingID] : null;
+    alerts.push({ record: r, training: t, daysLeft: daysLeft, expirationDate: exp });
+  });
+  alerts.sort(function(a, b){ return a.daysLeft - b.daysLeft; });
+  return alerts;
+}
+
 function wSla(days){
   var n = parseInt(days, 10);
   if (!n || isNaN(n)) { return ''; }
@@ -6499,6 +6602,9 @@ function handleClick(e){
   if (action === 'complete-step') { completeInOutStep(el.getAttribute('data-id')); return; }
   if (action === 'view-inout-detail') { openInOutDetail(el.getAttribute('data-id')); return; }
   if (action === 'toggle-team-training') { APP.state.showTeamTraining = !APP.state.showTeamTraining; renderTraining(); return; }
+  if (action === 'training-gap-analysis') { openTrainingGapAnalysis(); return; }
+  if (action === 'bulk-training-entry') { openBulkTrainingEntryModal(); return; }
+  if (action === 'save-bulk-training') { saveBulkTraining(); return; }
   if (action === 'edit-sf182') { openSF182EditModal(el.getAttribute('data-id')); return; }
   if (action === 'save-sf182-edit') { saveSF182Edit(); return; }
   if (action === 'create-hw-assignment') { openCreateHardwareAssignmentModal(); return; }
