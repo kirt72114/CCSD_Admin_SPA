@@ -4607,7 +4607,7 @@ function renderFacilities(){
     html += metricCard('SCIF Spaces', scifRooms, 'Rooms flagged as SCIF', Math.min(100, scifRooms * 15));
     html += '</div>';
     html += '<div class="org-branch-shell" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="export-facilities">Export CSV</button></div></div><div class="card-body">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="facility-capacity-report">Capacity</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-seat-import">Bulk Seats</button>' : '') + '<button class="btn subtle" data-action="export-facilities">Export CSV</button></div></div><div class="card-body">';
     facilities.forEach(function(f){
       var fRooms = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; });
       var roomIds = {};
@@ -4658,6 +4658,71 @@ function renderFacilities(){
     html += '</div></div></div>';
     setView(html);
   }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">Facilities failed to load.</div></div></div>'); });
+}
+
+/* ─── Bulk Seat Import from CSV ─── */
+function openBulkSeatImportModal(){
+  var rooms = APP.state.data.rooms || [];
+  var roomOptions = rooms.map(function(r){ return '<option value="' + escAttr(r.Id) + '">' + escHtml((r.RoomNumber || r.Title || 'Room') + (r.FacilityID ? ' @ ' + (r.FacilityID.Title || '') : '')) + '</option>'; }).join('');
+  var body = '<div style="margin-bottom:12px">Bulk-create seats. Format: <code>SeatLabel, X%, Y%</code></div>'
+    + '<div class="form-grid">' + formField('Room', '<select id="bulkSeatRoom" class="select"><option value="">-- Select Room --</option>' + roomOptions + '</select>') + '</div>'
+    + '<div style="margin-top:12px">' + formField('CSV Data', '<textarea id="bulkSeatCsv" class="textarea" rows="8" placeholder="A-101, 25.5, 42.3\nA-102, 30.2, 42.3\nA-103, 35.0, 42.3"></textarea>') + '</div>';
+  openModal('Bulk Seat Import', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-seats">Import</button></div>');
+}
+function saveBulkSeats(){
+  var roomId = document.getElementById('bulkSeatRoom').value;
+  if (!roomId) { toast('Please select a room.', 'danger'); return; }
+  var raw = (document.getElementById('bulkSeatCsv').value || '').trim();
+  if (!raw) { toast('No data provided.', 'danger'); return; }
+  var lines = raw.split('\n').filter(function(l){ return l.trim(); });
+  var promises = lines.map(function(line){
+    var parts = line.split(',').map(function(s){ return s.trim(); });
+    if (parts.length < 1) { return Promise.resolve(); }
+    return createListItem(APP.lists.Seats, {
+      Title: parts[0] || 'Seat',
+      RoomID: parseInt(roomId, 10),
+      SeatX: parts[1] ? parseFloat(parts[1]) : 0,
+      SeatY: parts[2] ? parseFloat(parts[2]) : 0,
+      SeatType: 'Standard'
+    }, { entityType: 'Seat', reason: 'Bulk import' });
+  });
+  toast('Importing ' + lines.length + ' seats...', 'ok');
+  Promise.all(promises).then(function(){
+    toast(lines.length + ' seats imported.', 'ok');
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Some imports may have failed.', 'danger'); });
+}
+
+/* ─── Multi-Floor Navigation ─── */
+function getFloorNumbers(facilityId){
+  var rooms = APP.state.data.rooms || [];
+  var floors = {};
+  rooms.forEach(function(r){
+    if (r.FacilityID && String(r.FacilityID.Id) === String(facilityId) && r.Floor != null) { floors[r.Floor] = true; }
+  });
+  return Object.keys(floors).sort(function(a, b){ return Number(a) - Number(b); });
+}
+
+/* ─── Facility Capacity Reporting ─── */
+function openFacilityCapacityReport(){
+  var facilities = APP.state.data.facilities || [];
+  var rooms = APP.state.data.rooms || [];
+  var seats = APP.state.data.seats || [];
+  var body = '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Facility</th><th>Rooms</th><th>Total Seats</th><th>Occupied</th><th>Vacancy</th><th>Occupancy %</th></tr></thead><tbody>';
+  facilities.forEach(function(f){
+    var fRooms = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; });
+    var roomIds = {};
+    fRooms.forEach(function(r){ roomIds[r.Id] = true; });
+    var fSeats = seats.filter(function(s){ return s.RoomID && roomIds[s.RoomID.Id]; });
+    var occupied = fSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
+    var vacancy = fSeats.length - occupied;
+    var pct = fSeats.length ? Math.round((occupied / fSeats.length) * 100) : 0;
+    var color = pct >= 90 ? 'var(--danger)' : pct >= 70 ? 'var(--warn)' : 'var(--ok)';
+    body += '<tr><td>' + escHtml(f.BuildingNumber || f.Title || '') + '</td><td>' + fRooms.length + '</td><td>' + fSeats.length + '</td><td>' + occupied + '</td><td>' + vacancy + '</td><td style="color:' + color + ';font-weight:700">' + pct + '%</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Facility Capacity Report', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
 }
 
 function getAssetUi(){
@@ -6904,6 +6969,9 @@ function handleClick(e){
   if (action === 'sidebar-seat-click') { highlightSeatOnMap(el.getAttribute('data-seat-id'), el.getAttribute('data-seat-x'), el.getAttribute('data-seat-y')); return; }
   if (action === 'enter-floorplan-url') { setFloorPlanUrl(); return; }
   if (action === 'save-floorplan-url') { saveFloorPlanUrl(); return; }
+  if (action === 'bulk-seat-import') { openBulkSeatImportModal(); return; }
+  if (action === 'save-bulk-seats') { saveBulkSeats(); return; }
+  if (action === 'facility-capacity-report') { openFacilityCapacityReport(); return; }
   if (action === 'floorplan-zoom-in') { floorPlanZoom('in'); return; }
   if (action === 'floorplan-zoom-out') { floorPlanZoom('out'); return; }
   if (action === 'floorplan-zoom-reset') { floorPlanZoom('reset'); return; }
