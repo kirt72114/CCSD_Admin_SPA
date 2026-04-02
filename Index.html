@@ -5054,6 +5054,7 @@ function openHwAssetDetail(assetId){
     body += '</tbody></table></div>';
   }
   var footer = '<div>';
+  footer += '<button class="btn subtle" data-action="asset-timeline" data-id="' + escAttr(assetId) + '">Timeline</button> ';
   if (canSeeAdmin()) { footer += '<button class="btn primary" data-action="edit-hw-asset" data-id="' + escAttr(assetId) + '">Edit Asset</button>'; }
   footer += '</div><div><button class="btn" data-action="close-modal">Close</button></div>';
   openModal('Hardware Asset Detail', body, footer, getHardwareDisplayName(asset));
@@ -5402,6 +5403,133 @@ function confirmTransferSw(){
     closeModal();
     return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
   }).catch(function(){ toast('Transfer failed.', 'danger'); });
+}
+
+/* ─── Asset Depreciation / Age Tracking ─── */
+var USEFUL_LIFE_YEARS = { Laptop: 5, Desktop: 7, Monitor: 7, Printer: 7, Phone: 5, Tablet: 4, Server: 7, 'Network Equipment': 7 };
+function getAssetAge(asset){
+  if (!asset.PurchaseDate) { return null; }
+  var purchase = new Date(asset.PurchaseDate);
+  var now = new Date();
+  var years = (now - purchase) / (365.25 * 86400000);
+  return Math.round(years * 10) / 10;
+}
+function isAssetPastUsefulLife(asset){
+  var age = getAssetAge(asset);
+  if (age == null) { return false; }
+  var type = asset.AssetType || asset.HardwareType || '';
+  var life = USEFUL_LIFE_YEARS[type] || 6;
+  return age > life;
+}
+function renderAssetDepreciation(){
+  var idx = buildAssetIndex();
+  var hw = idx.hwAssets || [];
+  var aging = hw.filter(function(a){ return getAssetAge(a) != null; }).map(function(a){
+    var age = getAssetAge(a);
+    var type = a.AssetType || a.HardwareType || 'Unknown';
+    return { asset: a, age: age, type: type, pastLife: isAssetPastUsefulLife(a) };
+  }).sort(function(a, b){ return b.age - a.age; });
+  var pastCount = aging.filter(function(a){ return a.pastLife; }).length;
+  var body = '<div style="margin-bottom:12px"><strong>' + pastCount + '</strong> assets past useful life out of <strong>' + aging.length + '</strong> with purchase dates.</div>';
+  body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Asset</th><th>Type</th><th>Age (years)</th><th>Status</th></tr></thead><tbody>';
+  aging.slice(0, 50).forEach(function(a){
+    var color = a.pastLife ? 'var(--danger)' : a.age > 4 ? 'var(--warn)' : 'var(--ok)';
+    body += '<tr><td>' + escHtml(getHardwareDisplayName(a.asset)) + '</td><td>' + escHtml(a.type) + '</td><td style="color:' + color + ';font-weight:700">' + a.age + '</td><td>' + statusBadge(a.pastLife ? 'Past Life' : 'Active') + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Asset Depreciation / Age Tracking', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* ─── Inventory Discrepancy Report ─── */
+function renderInventoryDiscrepancies(){
+  var idx = buildAssetIndex();
+  var people = APP.state.data.people || [];
+  var departed = {};
+  people.forEach(function(p){ if (String(p.Status || '').toLowerCase().indexOf('depart') >= 0) { departed[p.Id] = p; } });
+  var issues = [];
+  /* Assets assigned to departed personnel */
+  (idx.hwAssignments || []).forEach(function(a){
+    if (!isActiveHardwareAssignment(a)) { return; }
+    var pid = a.PersonID ? (a.PersonID.Id || a.PersonID) : null;
+    if (pid && departed[pid]) { issues.push({ type: 'Departed Assignee', asset: getHardwareDisplayName(a.HardwareAssetID || {}), person: formatPerson(departed[pid]) }); }
+  });
+  /* Hardware with no active assignment and status = Assigned */
+  (idx.hwAssets || []).forEach(function(a){
+    if (String(a.Status || '').toLowerCase() !== 'assigned') { return; }
+    var hasActive = (idx.hwAssignments || []).some(function(asgn){ return isActiveHardwareAssignment(asgn) && asgn.HardwareAssetID && String(asgn.HardwareAssetID.Id || asgn.HardwareAssetID) === String(a.Id); });
+    if (!hasActive) { issues.push({ type: 'Ghost Assignment', asset: getHardwareDisplayName(a), person: '(no active assignment found)' }); }
+  });
+  var body = '<div style="margin-bottom:12px"><strong>' + issues.length + '</strong> discrepancies found.</div>';
+  if (!issues.length) { body += '<div class="empty">No discrepancies detected. All assignments look clean.</div>'; }
+  else {
+    body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Issue</th><th>Asset</th><th>Person</th></tr></thead><tbody>';
+    issues.forEach(function(i){
+      body += '<tr><td>' + statusBadge(i.type) + '</td><td>' + escHtml(i.asset) + '</td><td>' + escHtml(i.person) + '</td></tr>';
+    });
+    body += '</tbody></table>';
+  }
+  openModal('Inventory Discrepancy Report', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* ─── Assignment History Timeline ─── */
+function renderAssignmentTimeline(assetId){
+  var idx = buildAssetIndex();
+  var all = (idx.hwAssignments || []).filter(function(a){ return a.HardwareAssetID && String(a.HardwareAssetID.Id || a.HardwareAssetID) === String(assetId); });
+  all.sort(function(a, b){ return new Date(b.AssignedDate || 0) - new Date(a.AssignedDate || 0); });
+  var body = '<div style="border-left:3px solid var(--accent);padding-left:16px">';
+  all.forEach(function(a){
+    var name = a.PersonID && a.PersonID.Title ? a.PersonID.Title : 'Unknown';
+    var s = a.AssignedDate ? formatDate(a.AssignedDate) : '—';
+    var e = a.ReturnDate ? formatDate(a.ReturnDate) : 'Present';
+    body += '<div style="margin-bottom:14px;position:relative"><div style="position:absolute;left:-22px;top:2px;width:10px;height:10px;border-radius:50%;background:var(--accent)"></div>';
+    body += '<div style="font-weight:700">' + escHtml(name) + '</div>';
+    body += '<div style="font-size:11px;color:var(--muted)">' + escHtml(s) + ' — ' + escHtml(e) + '</div>';
+    body += '<div style="font-size:11px;margin-top:2px">' + statusBadge(a.AssignmentStatus || a.Status || '') + '</div>';
+    body += '</div>';
+  });
+  if (!all.length) { body += '<div class="empty">No assignment history found.</div>'; }
+  body += '</div>';
+  openModal('Assignment History Timeline', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* ─── Duplicate Assignment Detection ─── */
+function checkDuplicateAssignment(assetId, personId){
+  var idx = buildAssetIndex();
+  var existing = (idx.hwAssignments || []).filter(function(a){
+    return isActiveHardwareAssignment(a) && a.HardwareAssetID && String(a.HardwareAssetID.Id || a.HardwareAssetID) === String(assetId) && a.PersonID && String(a.PersonID.Id || a.PersonID) !== String(personId);
+  });
+  return existing.length > 0;
+}
+
+/* ─── Bulk Asset Import from CSV ─── */
+function openBulkAssetImportModal(){
+  var body = '<div style="margin-bottom:12px">Paste CSV data to bulk-create hardware assets. Format: <code>Title, AssetType, Manufacturer, Model, SerialNumber, Status, PurchaseDate</code></div>'
+    + '<div>' + formField('CSV Data', '<textarea id="bulkAssetCsv" class="textarea" rows="8" placeholder="Dell Latitude 5540, Laptop, Dell, Latitude 5540, SN12345, Available, 2025-01-15\nHP Monitor 27, Monitor, HP, E27, SN67890, Available, 2024-06-01"></textarea>') + '</div>';
+  openModal('Bulk Hardware Asset Import', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-assets">Import</button></div>');
+}
+function saveBulkAssets(){
+  var raw = (document.getElementById('bulkAssetCsv').value || '').trim();
+  if (!raw) { toast('No data provided.', 'danger'); return; }
+  var lines = raw.split('\n').filter(function(l){ return l.trim(); });
+  var promises = lines.map(function(line){
+    var parts = line.split(',').map(function(s){ return s.trim(); });
+    if (parts.length < 3) { return Promise.resolve(); }
+    return createListItem(APP.lists.HardwareAssets, {
+      Title: parts[0] || 'Hardware Asset',
+      AssetType: parts[1] || '',
+      Manufacturer: parts[2] || '',
+      Model: parts[3] || '',
+      SerialNumber: parts[4] || '',
+      Status: parts[5] || 'Available',
+      PurchaseDate: parts[6] || null
+    }, { entityType: 'Hardware Asset', reason: 'Bulk import' });
+  });
+  toast('Importing ' + lines.length + ' assets...', 'ok');
+  Promise.all(promises).then(function(){
+    toast(lines.length + ' assets imported.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Some imports may have failed.', 'danger'); });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -6055,7 +6183,7 @@ function renderAssets(){
     html += metricCard('Portable Devices', portableCount, 'Laptops and other portable equipment', Math.min(100, portableCount / 3));
     html += metricCard('Software Titles Near ATO Attention', atoSoon, 'Titles with ATO expiry within 90 days', Math.min(100, atoSoon * 12));
     html += '</div>';
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
     if (ui.personId) {
       var focusPerson = findPersonById(ui.personId);
       if (focusPerson) {
@@ -6832,6 +6960,11 @@ function handleClick(e){
   if (action === 'confirm-transfer-hw') { confirmTransferHw(); return; }
   if (action === 'transfer-sw') { openTransferSwModal(el.getAttribute('data-id')); return; }
   if (action === 'confirm-transfer-sw') { confirmTransferSw(); return; }
+  if (action === 'asset-depreciation') { renderAssetDepreciation(); return; }
+  if (action === 'asset-discrepancies') { renderInventoryDiscrepancies(); return; }
+  if (action === 'asset-timeline') { renderAssignmentTimeline(el.getAttribute('data-id')); return; }
+  if (action === 'bulk-asset-import') { openBulkAssetImportModal(); return; }
+  if (action === 'save-bulk-assets') { saveBulkAssets(); return; }
   if (action === 'popout-fullscreen') { popoutFullscreen(); return; }
   if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
