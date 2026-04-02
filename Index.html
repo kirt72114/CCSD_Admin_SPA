@@ -648,6 +648,107 @@ tr:hover td{background:#eef5ff}
 .embedded .btn-popout{display:inline-flex}
 .fullscreen-badge{display:none;font-size:9px;color:var(--accent-3);padding:2px 6px;border:1px solid rgba(37,244,199,.2);border-radius:6px;background:rgba(37,244,199,.06);margin-left:6px}
 body:not(.embedded) .fullscreen-badge{display:inline-block}
+
+/* ─── Person Detail Page ─── */
+.person-detail{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.person-detail .pd-section{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.person-detail .pd-section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}
+.person-detail .pd-full{grid-column:1/-1}
+
+/* ─── Reporting Module ─── */
+.report-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.report-chart{display:flex;gap:2px;align-items:flex-end;height:120px;padding:8px 0}
+.report-bar{flex:1;min-width:18px;background:linear-gradient(180deg,var(--accent),var(--accent-2));border-radius:4px 4px 0 0;position:relative;transition:.3s height}
+.report-bar:hover{opacity:.8}
+.report-bar-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--muted);white-space:nowrap}
+.report-bar-value{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:var(--text);white-space:nowrap}
+
+/* ─── Theme Toggle ─── */
+body.light-theme{--bg:#f0f2f5;--bg2:#e4e8ee;--panel:rgba(255,255,255,.92);--panel-2:rgba(255,255,255,.96);--line:rgba(0,0,0,.10);--text:#1a1a2e;--muted:#5a6478;--shadow:0 24px 60px rgba(0,0,0,.10)}
+body.light-theme:before,body.light-theme:after{opacity:.10}
+body.light-theme .hero{background:linear-gradient(180deg,rgba(240,242,245,.98),rgba(240,242,245,.92))}
+body.light-theme .btn{background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.08));color:var(--text)}
+body.light-theme .nav-link{color:var(--muted)}
+body.light-theme .nav-link.active{color:var(--text);border-bottom-color:var(--accent-2)}
+body.light-theme .card,.light-theme .dash-card{background:var(--panel);border-color:var(--line)}
+body.light-theme .tile{background:rgba(0,0,0,.03);border-color:var(--line)}
+body.light-theme .input,body.light-theme .select,body.light-theme .textarea{background:rgba(0,0,0,.04);border-color:var(--line);color:var(--text)}
+body.light-theme .modal{background:var(--panel-2);border-color:var(--line)}
+body.light-theme .modal-mask{background:rgba(0,0,0,.3)}
+body.light-theme .toast{background:var(--panel-2);color:var(--text);border-color:var(--line)}
+body.light-theme .seat-marker{border-color:rgba(0,0,0,.4)}
+body.light-theme .seat-tooltip{background:var(--panel-2);color:var(--text);border-color:var(--line)}
+body.light-theme .kv .k{color:var(--muted)}
+body.light-theme .dash-welcome{background:linear-gradient(135deg,rgba(101,213,255,.08),rgba(140,123,255,.08))}
+body.light-theme .dash-kpi{background:var(--panel)}
+body.light-theme .dash-nav-tile{background:rgba(0,0,0,.04)}
+body.light-theme .dash-nav-tile:hover{background:rgba(0,0,0,.08)}
+
+/* ─── Loading Skeletons ─── */
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
+body.light-theme .skeleton{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,rgba(0,0,0,.08) 50%,rgba(0,0,0,.04) 75%);background-size:200% 100%}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton-text{height:12px;margin:6px 0;width:80%}
+.skeleton-title{height:18px;margin:8px 0;width:60%}
+.skeleton-card{height:100px;margin:10px 0}
+.skeleton-row{height:36px;margin:4px 0;border-radius:6px}
+
+/* ─── Breadcrumbs ─── */
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);padding:4px 0}
+.breadcrumb a{color:var(--accent);cursor:pointer}
+.breadcrumb .sep{opacity:.4}
+
+/* ─── Undo Toast ─── */
+.toast .undo-btn{margin-left:10px;padding:2px 8px;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:transparent;color:var(--accent);cursor:pointer;font-size:11px}
+.toast .undo-btn:hover{background:rgba(255,255,255,.1)}
+
+/* ─── Print Styles ─── */
+@media print{
+  body,html{background:#fff!important;color:#000!important;overflow:visible!important;height:auto!important}
+  body:before,body:after,.hero,.modal-mask,.toast-host,.btn-popout,.fullscreen-badge{display:none!important}
+  #app{overflow:visible!important;height:auto!important;padding:0!important}
+  #viewHost{overflow:visible!important;height:auto!important}
+  .card,.dash-card{background:#fff!important;border:1px solid #ddd!important;box-shadow:none!important;break-inside:avoid}
+  .tile{background:#f9f9f9!important;border:1px solid #ddd!important}
+  .nav-bar,.header-actions,.quick-actions,.btn{display:none!important}
+  .badge,.status-pill{border:1px solid #999!important;color:#333!important;background:#eee!important}
+  .report-bar{background:#666!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cal-day-pill{border:1px solid #999!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .report-controls .btn,.report-controls .select{display:none!important}
+  .dash-nav-grid,.dash-welcome .dw-actions{display:none!important}
+  @page{margin:0.5in;size:landscape}
+}
+
+/* ─── Responsive (Tablet/Mobile) ─── */
+@media(max-width:900px){
+  .dash-grid,.dash-grid-3{grid-template-columns:1fr!important}
+  .person-detail{grid-template-columns:1fr!important}
+  .report-controls{flex-direction:column;align-items:stretch}
+  .hero-top{flex-direction:column;gap:8px}
+  .nav-bar{flex-wrap:wrap;gap:4px}
+  .nav-link{font-size:10px;padding:4px 8px}
+  .kv{grid-template-columns:1fr!important}
+  .form-grid{grid-template-columns:1fr!important}
+  .dash-kpis{grid-template-columns:repeat(2,1fr)!important}
+  .floorplan-sidebar{display:none}
+  .modal{max-width:98vw!important;max-height:90vh!important}
+  .card-head{flex-direction:column;gap:8px}
+  .filter-row{flex-direction:column}
+}
+@media(max-width:600px){
+  #app{padding:4px 6px 0}
+  .hero{padding:8px 10px 6px}
+  .brand-title{font-size:14px}
+  .brand-sub{display:none}
+  .dash-kpis{grid-template-columns:1fr!important}
+  .tile-grid{grid-template-columns:1fr!important}
+}
+
+/* ─── Session Timeout Overlay ─── */
+.session-timeout-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center}
+.session-timeout-box{background:var(--panel-2);border:1px solid var(--line);border-radius:18px;padding:32px;text-align:center;max-width:380px;box-shadow:var(--shadow)}
+.session-timeout-box .sto-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.session-timeout-box .sto-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
 </style>
 
 
@@ -696,7 +797,7 @@ body:not(.embedded) .fullscreen-badge{display:inline-block}
 'use strict';
 
 var APP = {
-  version: '2026.04.02.2',
+  version: '2026.04.03.1',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -722,6 +823,7 @@ var APP = {
     { key: 'facilities', label: 'Facilities' },
     { key: 'calendar', label: 'Calendar' },
     { key: 'assets', label: 'Assets' },
+    { key: 'reporting', label: 'Reports' },
     { key: 'admin', label: 'Admin' },
     { key: 'diagnostics', label: 'Diagnostics' }
   ],
@@ -2462,7 +2564,7 @@ function renderPeople(){
   return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensurePositionsLoaded()]).then(function(){
     var rows = APP.state.data.people || [];
     var canEdit = canEditPeople();
-    var html = '<div class="card"><div class="card-head"><div><div class="card-title">People</div><div class="card-sub">Fast search, details, and role-gated editing for CCSD personnel.</div></div><div class="filter-row"><input id="peopleSearchInput" class="input" style="width:260px" placeholder="Search name, email, org, status" /></div></div><div class="card-body">';
+    var html = '<div class="card"><div class="card-head"><div><div class="card-title">People</div><div class="card-sub">Fast search, details, and role-gated editing for CCSD personnel.</div></div><div class="filter-row"><input id="peopleSearchInput" class="input" style="width:260px" placeholder="Search name, email, org, status" /><button class="btn subtle" data-action="export-people-csv" style="padding:6px 10px;font-size:11px">Export CSV</button></div></div><div class="card-body">';
     html += '<div class="tile-grid" id="peopleGrid">';
     rows.forEach(function(p){
       var search = [formatPerson(p), p.Email, p.Status, p.OrgID && p.OrgID.Title, p.PositionID && p.PositionID.Title, p.PersonID].join(' ').toLowerCase();
@@ -2571,6 +2673,160 @@ function savePersonEdit(){
   }).catch(function(){ toast('Person update failed.', 'danger'); });
 }
 
+/* ─── Person Detail Page (unified) ─── */
+function openPersonDetailPage(id){
+  var p = findPersonById(id);
+  if (!p) { toast('Person not found.', 'danger'); return; }
+  Promise.all([ensureAssetsLoaded(), ensureFacilitiesLoaded(), ensureTrainingCatalogLoaded(), ensureTrainingRecordsLoaded(), ensureTimeOffLoaded().catch(function(){ return []; })]).then(function(){
+    var body = '<div class="person-detail">';
+    /* Contact info */
+    body += '<div class="pd-section"><div class="pd-section-title">Contact &amp; Identity</div><div class="kv">'
+      + '<div class="k">Name</div><div class="v">' + escHtml(formatPerson(p)) + '</div>'
+      + '<div class="k">Person ID</div><div class="v">' + escHtml(p.PersonID || '') + '</div>'
+      + '<div class="k">Email</div><div class="v">' + escHtml(p.Email || '') + '</div>'
+      + '<div class="k">Primary Phone</div><div class="v">' + escHtml(p.PrimaryPhone || '') + '</div>'
+      + '<div class="k">Office Phone</div><div class="v">' + escHtml(p.OfficePhone || '') + '</div>'
+      + '<div class="k">AFSC</div><div class="v">' + escHtml(p.AFSC || '') + '</div>'
+      + '<div class="k">Grade</div><div class="v">' + escHtml(p.Grade || '') + '</div>'
+      + '<div class="k">Status</div><div class="v">' + statusBadge(p.Status || 'Unknown') + '</div>'
+      + '<div class="k">Notes</div><div class="v">' + escHtml(p.Notes || '') + '</div>'
+      + '</div></div>';
+    /* Org info */
+    body += '<div class="pd-section"><div class="pd-section-title">Organization &amp; Position</div><div class="kv">'
+      + '<div class="k">Organization</div><div class="v">' + escHtml((p.OrgID && p.OrgID.Title) || '') + '</div>'
+      + '<div class="k">Position</div><div class="v">' + escHtml((p.PositionID && p.PositionID.Title) || '') + '</div>'
+      + '<div class="k">Seat</div><div class="v">' + escHtml((p.SeatID && p.SeatID.Title) || '') + '</div>'
+      + '<div class="k">Supervisor Chain</div><div class="v">' + renderSupervisorChain(p.Id) + '</div>'
+      + '</div></div>';
+    /* Training */
+    var allTraining = getMyTrainingModel();
+    var personTraining = allTraining.filter(function(t){ return t.applicable; });
+    body += '<div class="pd-section"><div class="pd-section-title">Training (' + personTraining.length + ' items)</div>';
+    if (!personTraining.length) { body += '<div class="empty">No training records.</div>'; }
+    else {
+      body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Training</th><th>Status</th><th>Completed</th><th>Expires</th></tr></thead><tbody>';
+      personTraining.slice(0, 15).forEach(function(t){
+        body += '<tr><td>' + escHtml(t.name || '') + '</td><td>' + statusBadge(t.status) + '</td><td>' + escHtml(t.latest && t.latest.CompletionDate ? formatDate(t.latest.CompletionDate) : '—') + '</td><td>' + escHtml(t.latest && t.latest.ExpirationDate ? formatDate(t.latest.ExpirationDate) : '—') + '</td></tr>';
+      });
+      body += '</tbody></table>';
+    }
+    body += '</div>';
+    /* Time Off */
+    var personTimeOff = (APP.state.data.timeOff || []).filter(function(e){
+      var pid = e.PersonID ? (e.PersonID.Id || e.PersonID) : null;
+      return String(pid) === String(p.Id);
+    });
+    body += '<div class="pd-section"><div class="pd-section-title">Time Off (' + personTimeOff.length + ' entries)</div>';
+    if (!personTimeOff.length) { body += '<div class="empty">No time-off records.</div>'; }
+    else {
+      body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Type</th><th>Start</th><th>End</th><th>Status</th><th>Hours</th></tr></thead><tbody>';
+      personTimeOff.slice(0, 10).forEach(function(e){
+        body += '<tr><td>' + escHtml(e.TimeOffType || '') + '</td><td>' + escHtml(formatDate(e.StartDate)) + '</td><td>' + escHtml(formatDate(e.EndDate || e.StartDate)) + '</td><td>' + statusBadge(e.Status || '') + '</td><td>' + escHtml(e.Hours || '') + '</td></tr>';
+      });
+      body += '</tbody></table>';
+    }
+    body += '</div>';
+    /* Assets */
+    body += '<div class="pd-section pd-full"><div class="pd-section-title">Assigned Assets</div>' + renderPersonAssetPanel(p, true) + '</div>';
+    body += '</div>';
+    var footer = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      + '<button class="btn subtle" data-action="focus-person-assets" data-id="' + escAttr(p.Id) + '">Full Assets View</button>'
+      + (canEditPeople() ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit Person</button>' : '')
+      + (canEditPeople() ? '<button class="btn warn" data-action="depart-person" data-id="' + escAttr(p.Id) + '">Process Departure</button>' : '')
+      + (canEditPeople() ? '<button class="btn subtle" data-action="transfer-person" data-id="' + escAttr(p.Id) + '">Transfer Org</button>' : '')
+      + '</div><button class="btn" data-action="close-modal">Close</button>';
+    openModal('Personnel Detail — ' + escHtml(formatPerson(p)), body, footer, p.PersonID || '');
+  });
+}
+
+/* ─── Departure Processing ─── */
+function openDepartureModal(personId){
+  var p = findPersonById(personId);
+  if (!p) { toast('Person not found.', 'danger'); return; }
+  var body = '<div style="margin-bottom:12px">This will mark <strong>' + escHtml(formatPerson(p)) + '</strong> as Departed and flag all open assignments, training gaps, and seats for reassignment.</div>'
+    + '<div class="form-grid">'
+    + formField('Departure Date', '<input id="departDate" class="input" type="date" value="' + new Date().toISOString().slice(0,10) + '" />')
+    + formField('Reason', '<select id="departReason" class="select"><option value="PCS">PCS</option><option value="Separation">Separation</option><option value="Retirement">Retirement</option><option value="Transfer">Transfer to Other Agency</option><option value="Other">Other</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="departNotes" class="textarea" placeholder="Optional notes about departure"></textarea>') + '</div>'
+    + '</div>';
+  APP.modalState.departPersonId = p.Id;
+  openModal('Process Departure', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn danger" data-action="confirm-departure">Confirm Departure</button></div>', formatPerson(p));
+}
+function confirmDeparture(){
+  var personId = APP.modalState.departPersonId;
+  var p = findPersonById(personId);
+  if (!personId || !p) { toast('Missing person context.', 'danger'); return; }
+  var departDate = document.getElementById('departDate').value;
+  var reason = document.getElementById('departReason').value;
+  var notes = document.getElementById('departNotes').value;
+  var values = { Status: 'Departed', Notes: (p.Notes || '') + '\n[Departed ' + departDate + ' - ' + reason + '] ' + notes };
+  updateListItem(APP.lists.Personnel, personId, values, { entityType: 'Personnel', before: p, reason: 'Departure processing: ' + reason }).then(function(){
+    toast('Person marked as Departed. Review their assets and seat assignments.', 'ok');
+    closeModal();
+    return ensurePeopleLoaded(true).then(function(){ renderPeople(); });
+  }).catch(function(){ toast('Departure processing failed.', 'danger'); });
+}
+
+/* ─── Org Transfer ─── */
+function openTransferPersonModal(personId){
+  var p = findPersonById(personId);
+  if (!p) { toast('Person not found.', 'danger'); return; }
+  var orgOptions = (APP.state.data.organizations || []).map(function(o){
+    var sel = (p.OrgID && p.OrgID.Id === o.Id) ? ' selected' : '';
+    return '<option value="' + escAttr(o.Id) + '"' + sel + '>' + escHtml(o.OrgName || o.Title || '') + '</option>';
+  }).join('');
+  var posOptions = (APP.state.data.positions || []).map(function(o){
+    var sel = (p.PositionID && p.PositionID.Id === o.Id) ? ' selected' : '';
+    return '<option value="' + escAttr(o.Id) + '"' + sel + '>' + escHtml(o.PositionTitle || o.Title || '') + '</option>';
+  }).join('');
+  var body = '<div style="margin-bottom:12px">Transfer <strong>' + escHtml(formatPerson(p)) + '</strong> to a new organization.</div>'
+    + '<div class="form-grid">'
+    + formField('New Organization', '<select id="xferOrg" class="select"><option value="">-- Select --</option>' + orgOptions + '</select>')
+    + formField('New Position (optional)', '<select id="xferPos" class="select"><option value="">-- Keep Current --</option>' + posOptions + '</select>')
+    + formField('Effective Date', '<input id="xferDate" class="input" type="date" value="' + new Date().toISOString().slice(0,10) + '" />')
+    + '</div>';
+  APP.modalState.xferPersonId = p.Id;
+  openModal('Transfer Person', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="confirm-transfer-person">Transfer</button></div>', formatPerson(p));
+}
+function confirmTransferPerson(){
+  var personId = APP.modalState.xferPersonId;
+  var p = findPersonById(personId);
+  if (!personId || !p) { toast('Missing person context.', 'danger'); return; }
+  var newOrg = document.getElementById('xferOrg').value;
+  if (!newOrg) { toast('Please select a new organization.', 'danger'); return; }
+  var values = { OrgID: parseInt(newOrg, 10) };
+  var newPos = document.getElementById('xferPos').value;
+  if (newPos) { values.PositionID = parseInt(newPos, 10); }
+  var date = document.getElementById('xferDate').value;
+  values.Notes = (p.Notes || '') + '\n[Transferred ' + date + ' to Org ID ' + newOrg + ']';
+  updateListItem(APP.lists.Personnel, personId, values, { entityType: 'Personnel', before: p, reason: 'Org transfer' }).then(function(){
+    toast('Person transferred to new organization.', 'ok');
+    closeModal();
+    return ensurePeopleLoaded(true).then(function(){ renderPeople(); });
+  }).catch(function(){ toast('Transfer failed.', 'danger'); });
+}
+
+/* ─── Personnel CSV Export ─── */
+function exportPeopleCSV(){
+  var rows = APP.state.data.people || [];
+  var headers = ['PersonID','FirstName','LastName','Email','Status','Organization','Position','OfficePhone','PrimaryPhone','Grade','AFSC'];
+  var csv = headers.join(',') + '\n';
+  rows.forEach(function(p){
+    var cols = [
+      p.PersonID || '', p.FirstName || '', p.LastName || '', p.Email || '', p.Status || '',
+      (p.OrgID && p.OrgID.Title) || '', (p.PositionID && p.PositionID.Title) || '',
+      p.OfficePhone || '', p.PrimaryPhone || '', p.Grade || '', p.AFSC || ''
+    ];
+    csv += cols.map(function(c){ return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
+  });
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'personnel_export_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Personnel exported to CSV.', 'ok');
+}
 
 function ensureOrgChartUi(){
   if (!APP.state.orgUi) { APP.state.orgUi = { selectedOrgId: null, expanded: {}, search: '', focusOrgId: null, showAboveRoot: false }; }
@@ -5992,6 +6248,7 @@ function renderRoute(){
   if (route === 'facilities') { return renderFacilities(); }
   if (route === 'calendar') { return renderCalendar(); }
   if (route === 'assets') { return renderAssets(); }
+  if (route === 'reporting') { return renderReporting(); }
   if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
   if (route === 'diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderDiagnostics(); }
   return renderHome();
@@ -6062,12 +6319,17 @@ function handleClick(e){
   if (action === 'org-view-leadership') { openOrgLeadershipModal(el.getAttribute('data-id')); return; }
   if (action === 'org-expand-visible') { ensureOrgChartUi(); var orgIdxExpand = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); var orgSearchExpand = String(APP.state.orgUi.search || '').toLowerCase().trim(); var orgMemoExpand = {}; var orgRootsExpand = getOrganizationExplorerRoots(orgIdxExpand); function expandOrgBranch(orgId){ if (orgSearchExpand && !orgBranchMatchesSearch(orgIdxExpand, orgId, orgSearchExpand, orgMemoExpand)) { return; } APP.state.orgUi.expanded[orgId] = true; (orgIdxExpand.childrenByParentId[orgId] || []).forEach(expandOrgBranch); } orgRootsExpand.forEach(expandOrgBranch); renderOrganizationsView(); return; }
   if (action === 'org-collapse-tree') { ensureOrgChartUi(); APP.state.orgUi.expanded = {}; var orgIdxCollapse = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); getOrganizationExplorerRoots(orgIdxCollapse).forEach(function(rootId){ APP.state.orgUi.expanded[rootId] = true; }); if (APP.state.orgUi.selectedOrgId) { var orgChainCollapse = getOrgBreadcrumb(orgIdxCollapse, APP.state.orgUi.selectedOrgId); orgChainCollapse.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; }); } renderOrganizationsView(); return; }
-  if (action === 'view-person') { openPersonModal(el.getAttribute('data-id'), false); return; }
+  if (action === 'view-person') { openPersonDetailPage(el.getAttribute('data-id')); return; }
   if (action === 'focus-person-assets') { getAssetUi(); APP.state.assetUi.personId = Number(el.getAttribute('data-id')); closeModal(); routeTo('assets'); return; }
   if (action === 'clear-person-assets') { getAssetUi(); APP.state.assetUi.personId = null; if (APP.state.route === 'assets') { renderAssets(); } closeModal(); return; }
   if (action === 'focus-seat-assets') { routeTo('facilities'); toast('Seat-focused map support will plug into Facilities next.', 'ok'); return; }
   if (action === 'edit-person') { openPersonModal(el.getAttribute('data-id'), true); return; }
   if (action === 'save-person') { savePersonEdit(); return; }
+  if (action === 'depart-person') { openDepartureModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-departure') { confirmDeparture(); return; }
+  if (action === 'transfer-person') { openTransferPersonModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-transfer-person') { confirmTransferPerson(); return; }
+  if (action === 'export-people-csv') { exportPeopleCSV(); return; }
   if (action === 'view-training') { openTrainingModal(el.getAttribute('data-id')); return; }
   if (action === 'submit-training' || action === 'open-training-submit') { openTrainingSubmissionModal(el.getAttribute('data-id')); return; }
   if (action === 'save-training-submission') { saveTrainingSubmission(); return; }
