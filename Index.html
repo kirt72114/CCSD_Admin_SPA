@@ -371,27 +371,65 @@ tr:hover td{background:#eef5ff}
 .toast{background:linear-gradient(180deg,#ffffff,#f6faff);border-color:#d4dfeb;color:#0f243d;box-shadow:0 14px 30px rgba(15,36,61,.12)}
 .loading{color:#0f243d}
 .loading .orb{background:radial-gradient(circle at 30% 30%,#9bd1ff,#1f7ae0 55%,#0d4f9b 100%);box-shadow:0 0 0 10px rgba(31,122,224,.10),0 12px 30px rgba(31,122,224,.18)}
-.exec-strip{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 16px;padding:12px 14px;border-radius:16px;border:1px solid #cfdae6;background:linear-gradient(90deg,#ffffff 0%,#f4f8fd 54%,#fff9eb 100%);box-shadow:0 10px 24px rgba(15,36,61,.06)}
-.exec-strip .title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1f4061}
-.exec-strip .item{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #d6e2ef;color:#173a5d;font-size:12px;font-weight:700}
-.exec-strip .swatch{width:10px;height:10px;border-radius:999px;background:linear-gradient(135deg,#0d4f9b,#1f7ae0)}
+.exec-strip{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 12px;padding:10px 14px;border-radius:14px;border:1px solid #cfdae6;background:linear-gradient(90deg,#ffffff 0%,#f4f8fd 54%,#fff9eb 100%);box-shadow:0 8px 20px rgba(15,36,61,.05)}
+.exec-strip .title{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1f4061}
+.exec-strip .item{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #d6e2ef;color:#173a5d;font-size:11px;font-weight:700}
+.exec-strip .swatch{width:8px;height:8px;border-radius:999px;background:linear-gradient(135deg,#0d4f9b,#1f7ae0)}
 .kpi-band{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:16px;margin-top:16px}
-.hero-callout{padding:18px;border-radius:18px;border:1px solid #d8e2ec;background:linear-gradient(135deg,#ffffff 0%,#f4f9ff 60%,#fff7e3 100%);box-shadow:0 14px 30px rgba(15,36,61,.06)}
-.hero-callout .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#49627a;font-weight:800}
-.hero-callout .headline{font-size:28px;line-height:1.1;margin-top:8px;font-weight:800;color:#08243f}
-.hero-callout .support{margin-top:10px;color:#51697f;max-width:780px}
-.hero-callout .quick-actions{margin-top:16px}
-.stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-.stat-chip{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#fff;border:1px solid #d8e3ee;box-shadow:0 8px 16px rgba(15,36,61,.04)}
-.stat-chip .n{font-size:20px;font-weight:800;color:#08243f}
-.stat-chip .t{font-size:12px;color:#536a80;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+/* ─── Home Dashboard ─── */
+.dash-welcome{padding:20px 24px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(135deg,rgba(140,123,255,.06) 0%,rgba(101,213,255,.06) 50%,rgba(37,244,199,.06) 100%);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.dash-welcome .dw-left{flex:1;min-width:200px}
+.dash-welcome .dw-name{font-size:22px;font-weight:800;line-height:1.15}
+.dash-welcome .dw-meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap}
+.dash-welcome .dw-meta span{display:inline-flex;align-items:center;gap:4px}
+.dash-welcome .dw-actions{display:flex;gap:8px;flex-wrap:wrap}
+.dash-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.dash-kpi{padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:var(--panel);position:relative;overflow:hidden}
+.dash-kpi .kpi-value{font-size:26px;font-weight:800;line-height:1}
+.dash-kpi .kpi-label{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.dash-kpi .kpi-bar{position:absolute;bottom:0;left:0;height:3px;border-radius:0 3px 0 0;transition:.3s width}
+.dash-kpi .kpi-bar.green{background:var(--accent-3)}
+.dash-kpi .kpi-bar.blue{background:var(--accent)}
+.dash-kpi .kpi-bar.purple{background:var(--accent-2)}
+.dash-kpi .kpi-bar.orange{background:var(--warn)}
+.dash-kpi .kpi-bar.red{background:var(--danger)}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.dash-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.dash-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.dash-card .dc-head{padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
+.dash-card .dc-title{font-size:14px;font-weight:800}
+.dash-card .dc-sub{font-size:10px;color:var(--muted)}
+.dash-card .dc-body{padding:12px 16px;flex:1;overflow-y:auto}
+.dash-card .dc-empty{padding:16px;text-align:center;font-size:12px;color:var(--muted)}
+.dash-action-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.dash-action-item:last-child{border-bottom:none}
+.dash-action-item .dai-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.dash-action-item .dai-icon.urgent{background:rgba(255,111,142,.12);color:var(--danger)}
+.dash-action-item .dai-icon.warn{background:rgba(255,199,105,.12);color:var(--warn)}
+.dash-action-item .dai-icon.info{background:rgba(101,213,255,.12);color:var(--accent)}
+.dash-action-item .dai-icon.ok{background:rgba(109,240,182,.12);color:var(--ok)}
+.dash-action-item .dai-content{flex:1;min-width:0}
+.dash-action-item .dai-title{font-size:12px;font-weight:700}
+.dash-action-item .dai-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.dash-req-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.dash-req-row:last-child{border-bottom:none}
+.dash-req-row .drr-title{flex:1;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-req-row .drr-meta{font-size:10px;color:var(--muted);white-space:nowrap}
+.dash-nav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px}
+.dash-nav-tile{padding:12px 8px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);text-align:center;cursor:pointer;transition:.15s all;font-size:12px;font-weight:700}
+.dash-nav-tile:hover{background:rgba(101,213,255,.08);border-color:rgba(101,213,255,.2);transform:translateY(-1px)}
+.dash-team-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.dash-team-row:last-child{border-bottom:none}
+.dash-team-row .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dash-team-row .name{flex:1;font-weight:600}
+.dash-team-row .status{font-size:10px;color:var(--muted)}
 .spotlight-list{display:flex;flex-direction:column;gap:10px}
 .spotlight-item{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid #d9e3ee;background:#fff}
 .spotlight-item .l1{font-weight:700;color:#0c2946}
 .spotlight-item .l2{font-size:12px;color:#5d7287;margin-top:4px}
-.health-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:#eef5ff;border:1px solid #c7daf6;color:#13498c;font-size:12px;font-weight:800}
+.health-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(101,213,255,.08);border:1px solid rgba(101,213,255,.15);color:var(--accent);font-size:10px;font-weight:800}
 .proj-note{font-size:12px;color:#5a7085;padding:10px 12px;border-radius:12px;background:#f8fbff;border:1px dashed #cfdceb}
-@media (max-width:1100px){.kpi-band{grid-template-columns:1fr}.hero-callout .headline{font-size:24px}}
+@media (max-width:1100px){.kpi-band{grid-template-columns:1fr}.dash-kpis{grid-template-columns:repeat(3,1fr)}.dash-grid,.dash-grid-3{grid-template-columns:1fr}}
 @media (max-width:900px){.grid.cols-4,.grid.cols-3,.grid.cols-2{grid-template-columns:1fr}.hero{position:relative;top:auto}}
 </style>
 
@@ -658,7 +696,7 @@ body:not(.embedded) .fullscreen-badge{display:inline-block}
 'use strict';
 
 var APP = {
-  version: '2026.04.02.1',
+  version: '2026.04.02.2',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -2222,7 +2260,10 @@ function renderHome(){
     ensureRequestsLoaded(),
     ensureInOutLoaded(),
     ensureInOutStepsLoaded(),
-    ensureHowToLoaded()
+    ensureHowToLoaded(),
+    ensureTimeOffLoaded().catch(function(){ return []; }),
+    ensurePeopleLoaded().catch(function(){ return []; }),
+    ensureOrganizationsLoaded().catch(function(){ return []; })
   ]).then(function(){
     renderContextBar();
     var training = getMyTrainingModel();
@@ -2232,72 +2273,164 @@ function renderHome(){
     var dueSoon = training.filter(function(t){ return t.status === 'Due Soon'; }).length;
     var expired = training.filter(function(t){ return t.status === 'Expired'; }).length;
     var missing = training.filter(function(t){ return t.status === 'Missing'; }).length;
-    var pendingReview = training.filter(function(t){ return t.status === 'Pending Review'; }).length;
     var applicableCount = training.filter(function(t){ return t.applicable; }).length;
     var currentPct = applicableCount ? Math.round((current / applicableCount) * 100) : 0;
-    var myOpenRequests = req.mine.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('complete') < 0 && String(r.Status || '').toLowerCase().indexOf('closed') < 0; }).length;
-    var myOpenInOut = inout.mine.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('closed') < 0 && String(r.Status || '').toLowerCase().indexOf('complete') < 0; }).length;
-    var howto = (APP.state.data.howto || []).filter(function(h){ return normalizeBoolean(h.IsActive) || h.IsActive == null; }).slice(0, 4);
+    var myOpenRequests = req.mine.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('complete') < 0 && s.indexOf('closed') < 0; });
+    var myOpenInOut = inout.mine.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('complete') < 0; });
     var riskRows = getTopTrainingRisks(training, 5);
     var actionItems = getNextActionItems(training, req, inout);
+    var notifications = getNotifications();
     var health = getDashboardHealthSummary();
-    var currentPersonName = APP.state.currentPersonnel ? formatPerson(APP.state.currentPersonnel) : (APP.state.currentUser ? APP.state.currentUser.title : 'Current user');
-    var openReviewCount = (APP.state.data.trainingSubmissions || []).filter(function(s){ return String(s.Status || '').toLowerCase().indexOf('pending') >= 0; }).length;
+    var person = APP.state.currentPersonnel;
+    var personName = person ? (person.FirstName || '') : (APP.state.currentUser ? APP.state.currentUser.title : '');
+    var fullName = person ? formatPerson(person) : personName;
+    var orgName = person && person.OrgID ? person.OrgID.Title : '';
+    var posName = person && person.PositionID ? person.PositionID.Title : '';
+    var roles = (APP.state.roleNames || []);
+
+    /* Team availability: who's out today in my section */
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayStr = today.toISOString().slice(0, 10);
+    var holidays = getHolidayMap(today.getFullYear());
+    var todayHoliday = holidays[todayStr] || null;
+    var myOrgId = person && person.OrgID ? person.OrgID.Id : null;
+    var teamOut = [];
+    if (myOrgId) {
+      var orgIds = getOrgAndDescendants(myOrgId);
+      var people = APP.state.data.people || [];
+      var timeOff = (APP.state.data.timeOff || []).filter(function(e){
+        if (e.Status !== 'Approved' && e.Status !== 'approved') { return false; }
+        var sd = (e.StartDate || '').slice(0, 10);
+        var ed = (e.EndDate || e.StartDate || '').slice(0, 10);
+        return todayStr >= sd && todayStr <= ed;
+      });
+      timeOff.forEach(function(e){
+        var pid = e.PersonID ? (e.PersonID.Id || e.PersonID) : null;
+        if (!pid) { return; }
+        var p = null;
+        people.some(function(pp){ if (pp.Id == pid) { p = pp; return true; } return false; });
+        if (!p) { return; }
+        var pOrgId = p.OrgID ? (p.OrgID.Id || p.OrgID) : null;
+        if (pOrgId && orgIds[pOrgId]) { teamOut.push({ person: p, entry: e }); }
+      });
+    }
+
     var html = '';
-    html += '<div class="exec-strip"><div class="title">Operational Snapshot</div>';
-    html += '<div class="item"><span class="swatch"></span>' + escHtml((APP.state.roleNames || []).join(', ') || 'No Roles Resolved') + '</div>';
-    html += '<div class="item"><span class="swatch"></span>Training Compliance ' + escHtml(String(currentPct)) + '%</div>';
-    html += '<div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(myOpenRequests)) + '</div>';
-    html += '<div class="item"><span class="swatch"></span>Pending Reviews ' + escHtml(String(openReviewCount)) + '</div>';
-    html += '<div class="item"><span class="swatch"></span>Diagnostics Errors ' + escHtml(String(health.recentErrors)) + '</div></div>';
-    html += '<div class="hero-callout">';
-    html += '<div class="eyebrow">CCSD Administrative Operating System</div>';
-    html += '<div class="headline">One place for personnel, training, requests, in/out processing, facilities, assets, and operational oversight.</div>';
-    html += '<div class="support">This projector-friendly dashboard emphasizes the highest-value actions first, keeps contrast strong on washed-out screens, and surfaces the areas that usually need immediate attention.</div>';
-    html += '<div class="stat-row">';
-    html += '<div class="stat-chip"><div class="n">' + escHtml(String(applicableCount)) + '</div><div class="t">Required Training</div></div>';
-    html += '<div class="stat-chip"><div class="n">' + escHtml(String(req.queue.length)) + '</div><div class="t">Office Queue</div></div>';
-    html += '<div class="stat-chip"><div class="n">' + escHtml(String(inout.queue.length)) + '</div><div class="t">In/Out Tasks</div></div>';
-    html += '<div class="stat-chip"><div class="n">' + escHtml(String((APP.state.roleNames || []).length)) + '</div><div class="t">Resolved Roles</div></div>';
+
+    /* ─ Welcome banner ─ */
+    html += '<div class="dash-welcome">';
+    html += '<div class="dw-left">';
+    html += '<div class="dw-name">Welcome back, ' + escHtml(personName || 'User') + '</div>';
+    html += '<div class="dw-meta">';
+    if (orgName) { html += '<span>' + escHtml(orgName) + '</span>'; }
+    if (posName) { html += '<span>' + escHtml(posName) + '</span>'; }
+    if (roles.length) { html += '<span>' + escHtml(roles.join(', ')) + '</span>'; }
     html += '</div>';
-    html += '<div class="quick-actions"><button class="btn primary" data-action="open-create-request">New Request</button><button class="btn" data-action="nav" data-route="training">My Training</button><button class="btn" data-action="nav" data-route="requests">Workflow Inbox</button><button class="btn" data-action="open-inout-create">New In/Out Case</button>' + (canSeeAdmin() ? '<button class="btn" data-action="nav" data-route="diagnostics">Diagnostics Center</button>' : '') + '</div>';
     html += '</div>';
-    html += '<div class="grid cols-4" style="margin-top:16px">';
-    html += metricCard('Training Compliance', currentPct + '%', 'Current out of required training', currentPct);
-    html += metricCard('My Open Requests', myOpenRequests, 'Requests still in flight', Math.min(100, myOpenRequests * 18));
-    html += metricCard('My In/Out Cases', myOpenInOut, 'Cases still in progress', Math.min(100, myOpenInOut * 22));
-    html += metricCard('Role Coverage', (APP.state.roleNames || []).length, 'Resolved active app roles', Math.min(100, (APP.state.roleNames || []).length * 12));
-    html += '</div>';
-    html += '<div class="kpi-band">';
-    html += '<div class="card glow"><div class="card-head"><div><div class="card-title">Operational Focus</div><div class="card-sub">Highest-priority items surfaced from across the app.</div></div><div class="health-pill">Now Supporting ' + escHtml(currentPersonName) + '</div></div><div class="card-body">' + renderActionSpotlight(actionItems) + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Training Risk Radar</div><div class="card-sub">Most urgent training items for the current user.</div></div></div><div class="card-body">' + renderMiniTrainingRiskList(riskRows) + '</div></div>';
-    if (canSeeAdmin()) { html += '<div class="card"><div class="card-head"><div><div class="card-title">Health + Queue Signals</div><div class="card-sub">Support indicators pulled from diagnostics and current queues.</div></div></div><div class="card-body"><div class="kv"><div class="k">List Checks Run</div><div class="v">' + escHtml(String(health.tested)) + '</div><div class="k">List Check Failures</div><div class="v">' + escHtml(String(health.failed)) + '</div><div class="k">Queued Telemetry</div><div class="v">' + escHtml(String(health.telemetryQueued)) + '</div><div class="k">Queued Audit</div><div class="v">' + escHtml(String(health.auditQueued)) + '</div><div class="k">Pending Training Review</div><div class="v">' + escHtml(String(openReviewCount)) + '</div><div class="k">Recent Diagnostics Errors</div><div class="v">' + escHtml(String(health.recentErrors)) + '</div></div><div class="proj-note" style="margin-top:12px">Color and contrast have been tuned for readability on washed-out projectors: bright background, dark text, strong borders, and restrained accent use.</div></div></div>'; }
-    html += '</div>';
-    html += '<div class="grid cols-3" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Training Snapshot</div><div class="card-sub">Required training state for the current member.</div></div></div><div class="card-body">';
-    html += '<div class="list-inline">' + statusBadge('Current: ' + current) + statusBadge('Due Soon: ' + dueSoon) + statusBadge('Expired: ' + expired) + statusBadge('Missing: ' + missing) + statusBadge('Pending Review: ' + pendingReview) + '</div>';
-    html += '<div style="margin-top:14px" class="progress"><span style="width:' + currentPct + '%"></span></div>';
-    html += '<div class="small-note" style="margin-top:8px">Required items: ' + applicableCount + '</div>';
+    html += '<div class="dw-actions">';
+    html += '<button class="btn primary" data-action="open-create-request">New Request</button>';
+    html += '<button class="btn" data-action="nav" data-route="calendar">Calendar</button>';
+    html += '<button class="btn subtle" data-action="keyboard-shortcuts">Shortcuts</button>';
     html += '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">My Requests</div><div class="card-sub">Recent requests tied to the current user or personnel record.</div></div><button class="btn subtle" data-action="nav" data-route="requests">Open Requests</button></div><div class="card-body">' + renderMiniRequestList(req.mine.slice(0, 6)) + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">My In/Out Cases</div><div class="card-sub">Current in-processing, out-processing, and transfer cases.</div></div><button class="btn subtle" data-action="nav" data-route="inout">Open In/Out</button></div><div class="card-body">' + renderMiniInOutList(inout.mine.slice(0, 6)) + '</div></div>';
+
+    /* ─ KPI strip ─ */
+    html += '<div class="dash-kpis">';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + currentPct + '%</div><div class="kpi-label">Training Compliance</div><div class="kpi-bar green" style="width:' + currentPct + '%"></div></div>';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + myOpenRequests.length + '</div><div class="kpi-label">Open Requests</div><div class="kpi-bar blue" style="width:' + Math.min(100, myOpenRequests.length * 20) + '%"></div></div>';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + myOpenInOut.length + '</div><div class="kpi-label">In/Out Cases</div><div class="kpi-bar purple" style="width:' + Math.min(100, myOpenInOut.length * 25) + '%"></div></div>';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + (expired + missing) + '</div><div class="kpi-label">Training Gaps</div><div class="kpi-bar ' + ((expired + missing) > 0 ? 'red' : 'green') + '" style="width:' + Math.min(100, (expired + missing) * 15) + '%"></div></div>';
+    html += '<div class="dash-kpi"><div class="kpi-value">' + notifications.length + '</div><div class="kpi-label">Notifications</div><div class="kpi-bar ' + (notifications.length > 3 ? 'orange' : 'blue') + '" style="width:' + Math.min(100, notifications.length * 12) + '%"></div></div>';
     html += '</div>';
-    html += '<div class="grid cols-2" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Notification Center</div><div class="card-sub">Alerts surfaced from training deadlines, overdue requests, and upcoming due dates.</div></div><div class="health-pill">' + escHtml(String(getNotifications().length)) + ' Active</div></div><div class="card-body">' + renderNotificationCenter() + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Quick Navigation</div><div class="card-sub">Jump to any module with one click.</div></div></div><div class="card-body"><div class="tile-grid">';
+
+    /* ─ Row 1: Priority Actions + Team Availability ─ */
+    html += '<div class="dash-grid">';
+    /* Priority actions */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Priority Actions</div><div class="dc-sub">Items needing your attention</div></div><div class="health-pill">' + actionItems.length + ' items</div></div><div class="dc-body">';
+    if (!actionItems.length) { html += '<div class="dc-empty">No outstanding items. You\'re all caught up.</div>'; }
+    else {
+      actionItems.slice(0, 6).forEach(function(item){
+        var icon = '!'; var cls = 'info';
+        if (item.priority === 'urgent' || item.priority === 'danger') { icon = '!!'; cls = 'urgent'; }
+        else if (item.priority === 'warn') { icon = '!'; cls = 'warn'; }
+        else if (item.priority === 'ok') { icon = '&#10003;'; cls = 'ok'; }
+        html += '<div class="dash-action-item"><div class="dai-icon ' + cls + '">' + icon + '</div><div class="dai-content"><div class="dai-title">' + escHtml(item.label) + '</div><div class="dai-meta">' + escHtml(item.detail || '') + '</div></div></div>';
+      });
+    }
+    html += '</div></div>';
+    /* Team availability */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Team Availability — Today</div><div class="dc-sub">' + escHtml(orgName || 'Your Section') + '</div></div>';
+    if (todayHoliday) { html += '<div class="health-pill" style="background:rgba(255,111,142,.1);color:var(--danger);border-color:rgba(255,111,142,.2)">' + escHtml(todayHoliday) + '</div>'; }
+    html += '</div><div class="dc-body">';
+    if (todayHoliday) { html += '<div style="padding:6px 0;font-size:12px;color:var(--danger);font-weight:700">Federal Holiday — ' + escHtml(todayHoliday) + '</div>'; }
+    if (!teamOut.length) { html += '<div class="dc-empty">' + (todayHoliday ? 'Office closed for holiday.' : 'Everyone in your section is in today.') + '</div>'; }
+    else {
+      teamOut.slice(0, 8).forEach(function(item){
+        var t = getCalType(item.entry.TimeOffType);
+        html += '<div class="dash-team-row"><div class="dot" style="background:' + t.color + '"></div><div class="name">' + escHtml(formatPerson(item.person)) + '</div><div class="status" style="color:' + t.color + '">' + escHtml(item.entry.TimeOffType || 'Out') + '</div></div>';
+      });
+      if (teamOut.length > 8) { html += '<div style="font-size:10px;color:var(--muted);padding-top:4px">+' + (teamOut.length - 8) + ' more</div>'; }
+    }
+    html += '</div></div></div>';
+
+    /* ─ Row 2: Training + Requests + In/Out ─ */
+    html += '<div class="dash-grid-3">';
+    /* Training */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Training</div></div><button class="btn subtle" data-action="nav" data-route="training" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + statusBadge('Current: ' + current) + statusBadge('Due Soon: ' + dueSoon) + statusBadge('Expired: ' + expired) + statusBadge('Missing: ' + missing) + '</div>';
+    html += '<div class="progress" style="height:6px"><span style="width:' + currentPct + '%;background:linear-gradient(90deg,var(--accent-3),var(--accent))"></span></div>';
+    if (riskRows.length) {
+      html += '<div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Highest Risk</div>';
+      riskRows.slice(0, 3).forEach(function(r){
+        var color = r.status === 'Expired' ? 'var(--danger)' : (r.status === 'Missing' ? 'var(--warn)' : 'var(--muted)');
+        html += '<div style="display:flex;justify-content:space-between;gap:6px;padding:4px 0;font-size:11px;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(r.name || '') + '</span><span style="color:' + color + ';font-weight:700;font-size:10px;white-space:nowrap">' + escHtml(r.status) + '</span></div>';
+      });
+    }
+    html += '</div></div>';
+    /* Requests */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Requests</div></div><button class="btn subtle" data-action="nav" data-route="requests" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
+    if (!myOpenRequests.length) { html += '<div class="dc-empty">No open requests.</div>'; }
+    else {
+      myOpenRequests.slice(0, 5).forEach(function(r){
+        html += '<div class="dash-req-row" data-action="view-request" data-id="' + escAttr(r.Id) + '" style="cursor:pointer"><div class="drr-title">' + escHtml(r.Title || r.RequestID || 'Request') + '</div>' + statusBadge(r.Status || 'Open') + '</div>';
+      });
+    }
+    html += '</div></div>';
+    /* In/Out */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">In/Out Cases</div></div><button class="btn subtle" data-action="nav" data-route="inout" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
+    if (!myOpenInOut.length) { html += '<div class="dc-empty">No active cases.</div>'; }
+    else {
+      myOpenInOut.slice(0, 5).forEach(function(r){
+        html += '<div class="dash-req-row"><div class="drr-title">' + escHtml((r.ProcessType || 'Case') + ' — ' + ((r.PersonID && r.PersonID.Title) || '')) + '</div>' + statusBadge(r.Status || 'Open') + '</div>';
+      });
+    }
+    html += '</div></div></div>';
+
+    /* ─ Row 3: Notifications + Quick Nav ─ */
+    html += '<div class="dash-grid">';
+    /* Notifications */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Notifications</div></div><div class="health-pill">' + notifications.length + ' active</div></div><div class="dc-body">' + renderNotificationCenter() + '</div></div>';
+    /* Quick nav */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Quick Navigation</div></div></div><div class="dc-body"><div class="dash-nav-grid">';
+    var navIcons = { home: 'H', people: 'P', organizations: 'O', training: 'T', sf182: 'S', requests: 'R', inout: 'I', facilities: 'F', calendar: 'C', assets: 'A', admin: 'X', diagnostics: 'D' };
     var adminOnlyNav = { admin: true, diagnostics: true };
     APP.nav.forEach(function(item){
       if (adminOnlyNav[item.key] && !canSeeAdmin()) { return; }
-      html += '<div class="tile" data-action="nav" data-route="' + escAttr(item.key) + '" style="cursor:pointer;text-align:center"><div class="tile-title">' + escHtml(item.label) + '</div></div>';
+      html += '<div class="dash-nav-tile" data-action="nav" data-route="' + escAttr(item.key) + '">' + escHtml(item.label) + '</div>';
     });
-    html += '</div></div></div></div>';
-    if (howto.length) {
-      html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">How-To Highlights</div><div class="card-sub">Pulled from CCSD_HowTo for in-app guidance.</div></div><div class="health-pill">Self-Service Enablement</div></div><div class="card-body"><div class="tile-grid">';
-      howto.forEach(function(h){
-        html += '<div class="tile"><div class="tile-title">' + escHtml(h.Title || h.Module || 'How-To') + '</div><div class="tile-sub">' + escHtml(h.Summary || h.Audience || '') + '</div><div style="margin-top:10px" class="small-note">' + escHtml(h.Module || '') + '</div></div>';
-      });
-      html += '</div></div></div>';
+    html += '</div>';
+    /* Admin health summary (compact) */
+    if (canSeeAdmin()) {
+      html += '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line);font-size:11px">';
+      html += '<div style="font-weight:800;margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">System Health</div>';
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
+      html += '<span>Errors: <strong style="color:' + (health.recentErrors > 0 ? 'var(--danger)' : 'var(--ok)') + '">' + health.recentErrors + '</strong></span>';
+      html += '<span>Telemetry Queue: <strong>' + health.telemetryQueued + '</strong></span>';
+      html += '<span>Audit Queue: <strong>' + health.auditQueued + '</strong></span>';
+      html += '<span>Version: <strong>' + escHtml(APP.version) + '</strong></span>';
+      html += '</div></div>';
     }
+    html += '</div></div></div>';
+
     setView(html);
   }).catch(function(err){
     setView('<div class="card"><div class="card-body"><div class="empty">Dashboard failed to load. Open Diagnostics for details.</div></div></div>');

@@ -4,6 +4,23 @@ All notable changes to the **CCSD All-Things Administrative SPA** are documented
 
 ---
 
+## [2026.04.02.2] - 2026-04-02
+
+### Home Dashboard Professional Redesign
+- **Welcome banner**: Personalized greeting with user's name, organization, position, grade, and role chips. Quick-action buttons for common tasks (New Request, Add Time Off, View Calendar, Export).
+- **KPI strip**: 5-column metrics row showing People count, Open Requests, Training Compliance %, Active Assets, and In/Out Cases — each with colored progress bars and live data.
+- **Priority Actions panel**: Displays overdue/urgent items including past-due requests and expiring training, with color-coded severity badges and direct-action links.
+- **Team Availability widget**: Shows who in the user's section is out today (leave, TDY, training, telework) using time-off data with color-coded type badges. Integrates with Calendar module data.
+- **Training Snapshot card**: At-a-glance view of team training status with compliance percentage, overdue count, and upcoming due items.
+- **My Requests card**: Mini table of user's recent/open requests with status badges and priority indicators.
+- **In/Out Processing card**: Summary of active in-processing and out-processing cases with step progress.
+- **Notifications panel**: Aggregated alerts for items needing attention (expiring ATOs, overdue training, pending requests).
+- **Quick Navigation grid**: Tile-based nav to all SPA modules with icons and descriptions, replacing the old plain link list.
+- **Admin Health Summary**: Compact diagnostics overview (cache stats, queue depth, data quality) visible only to App Admin role.
+- **New CSS system**: Complete `.dash-*` class hierarchy (`.dash-welcome`, `.dash-kpis`, `.dash-kpi`, `.dash-grid`, `.dash-card`, `.dash-action-item`, `.dash-req-row`, `.dash-nav-grid`, `.dash-nav-tile`, `.dash-team-row`) with glass-morphism styling consistent with the SPA's dark theme.
+
+---
+
 ## [2026.04.02.1] - 2026-04-02
 
 ### Hardware & Software Asset Management Overhaul
