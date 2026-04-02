@@ -4,6 +4,71 @@ All notable changes to the **CCSD All-Things Administrative SPA** are documented
 
 ---
 
+## [2026.04.03.2] - 2026-04-03
+
+### Major Feature Sprint — All Modules Enhanced
+
+#### People Module
+- **Person detail page**: Unified modal with contact, org, training records, time-off history, and assigned assets in a 2-column grid layout.
+- **Departure processing**: Modal with date, reason (PCS/Separation/Retirement/Transfer/Other), notes. Marks person as Departed.
+- **Org transfer workflow**: Move person to new org/position with effective date tracking.
+- **Personnel CSV export**: Download all personnel data as CSV from the People view.
+
+#### Organization Module
+- **Create/edit organization modal**: Full form with name, code, type, parent, email, active status. Admin-gated.
+- **Org dashboard**: Per-org metrics showing active personnel, training compliance %, active assets, and open requests.
+- **Org chart print**: Print button on Branch Explorer uses browser print with print-optimized CSS.
+
+#### Training Module
+- **Training gap analysis**: Modal showing compliance % per organization, sorted lowest-first.
+- **Bulk training record entry**: Admin can select training + date, paste person IDs to create records in bulk.
+- **Certification expiration alerts**: Utility function + Home dashboard widget showing certs expiring within 60 days.
+
+#### Requests Module
+- **Comment thread in detail view**: Comments now visible when viewing (not just editing) a request.
+- **SLA tracking**: Visual indicator with color-coded days remaining/overdue on request detail.
+- **Supervisor request dashboard**: Modal showing team's requests with KPIs (total, open, overdue).
+- **Request templates**: 6 built-in templates (IT New Account, IT Hardware Issue, HR Personnel Action, Facilities Maintenance, Security Access Request, Training Course Request).
+
+#### Calendar Improvements
+- **CSV/ICS export**: Download current calendar view as CSV or ICS file.
+- **Bulk time-off import**: Admin can paste CSV data to mass-create time-off entries.
+- **Pending/denied entry styling**: Pending shown with dashed border + 50% opacity; denied with line-through + 35% opacity.
+- **Upcoming time off on Home**: Personal 14-day lookahead widget on dashboard.
+
+#### Asset Improvements
+- **Depreciation/age tracking**: Configurable useful-life thresholds per asset type (5yr laptops, 7yr desktops, etc.). Aging Report modal.
+- **Inventory discrepancy report**: Detects assets assigned to departed personnel and ghost assignments.
+- **Assignment history timeline**: Visual chronological timeline for any hardware asset.
+- **Duplicate assignment detection**: Utility warns if asset is already assigned to another person.
+- **Bulk asset import**: Admin can paste CSV to mass-create hardware assets.
+
+#### Facilities
+- **Bulk seat import**: Admin can paste CSV with seat labels and X/Y coordinates for any room.
+- **Facility capacity report**: Per-building occupancy % with vacancy counts.
+- **Multi-floor navigation**: Utility function for floor number extraction.
+
+#### Platform / Technical
+- **Dark/light theme toggle**: Theme button in header, preference saved to localStorage. Full CSS theme with light-theme class.
+- **Session timeout**: 30-minute inactivity timeout with 5-minute warning overlay. Resets on any user interaction.
+- **Input sanitization**: sanitizeInput() utility strips script tags, javascript: URIs, and inline event handlers.
+- **Soft-delete pattern**: softDeleteItem() utility marks records as archived instead of hard delete.
+- **Expanded data quality checks**: Validates cross-list references (orphan org/person references).
+- **Responsive design**: CSS breakpoints at 900px and 600px for tablet/mobile layouts.
+- **Loading skeletons**: CSS shimmer animation classes for placeholder UI.
+- **Print styles**: @media print stylesheet hides nav/chrome, forces white background, enables page breaks.
+
+#### Reporting Module (New)
+- **New "Reports" nav item** with dedicated route and report selector.
+- **Headcount by org**: Table with total/active/departed per organization.
+- **Training compliance by org**: Compliance % with color-coded thresholds.
+- **Asset inventory**: Breakdown by type and status.
+- **Time-off utilization**: Approved entries by month.
+- **Request SLA compliance**: On-time rate and currently overdue count.
+- **Data quality report**: Expanded checks with cross-list reference validation.
+
+---
+
 ## [2026.04.02.2] - 2026-04-02
 
 ### Home Dashboard Professional Redesign

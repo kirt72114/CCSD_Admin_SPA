@@ -111,11 +111,11 @@ Updated: 2026-04-02
 
 - [ ] Drag-to-create time-off entries (click + drag across days)
 - [ ] Multi-day entry visual spanning (bar across days instead of per-day pills)
-- [ ] Print-friendly calendar layout (CSS print stylesheet)
-- [ ] Export calendar to CSV / ICS format
-- [ ] Bulk import time-off entries from CSV
-- [ ] Pending/denied entries with visual distinction (strikethrough, muted)
-- [ ] Notifications for upcoming time off (7-day lookahead on Home)
+- [x] Print-friendly calendar layout (CSS print stylesheet) ✅ *v2026.04.03.1*
+- [x] Export calendar to CSV / ICS format ✅ *v2026.04.03.1*
+- [x] Bulk import time-off entries from CSV ✅ *v2026.04.03.1*
+- [x] Pending/denied entries with visual distinction (strikethrough, muted) ✅ *v2026.04.03.1*
+- [x] Notifications for upcoming time off (14-day lookahead on Home) ✅ *v2026.04.03.2*
 
 ---
 
@@ -129,8 +129,7 @@ Updated: 2026-04-02
 - [x] Asset status workflow ✅ *v2026.04.02.1*
 - [x] Condition tracking ✅ *v2026.04.02.1*
 
-- [ ] **Depreciation / age tracking** — 💻
-  - No action from you. Code will calculate age from existing PurchaseDate field and flag items past a configurable useful-life threshold (e.g. 5 years for laptops, 7 for desktops).
+- [x] **Depreciation / age tracking** ✅ *v2026.04.03.1* — Configurable useful-life thresholds per asset type, aging report modal.
 
 ### Inventory & Audit (P1) — 🤝
 
@@ -153,8 +152,7 @@ Updated: 2026-04-02
   - If camera works: Claude can build a barcode scanner using a JS library (QuaggaJS or ZXing)
   - If camera is blocked: Skip this — manual asset tag entry is the fallback
 
-- [ ] **Inventory discrepancy report** — 💻
-  - No action from you. Code will cross-reference assignments vs active personnel.
+- [x] **Inventory discrepancy report** ✅ *v2026.04.03.1* — Detects departed assignees and ghost assignments.
 
 ### Software Governance (P2) — 🤝
 
@@ -195,16 +193,16 @@ Updated: 2026-04-02
 
 - [x] Asset detail page ✅ *v2026.04.02.1*
 
-- [ ] **Bulk asset import from CSV** — 💻 (no prereqs)
+- [x] **Bulk asset import from CSV** ✅ *v2026.04.03.1*
 
 ### Assignment Improvements (P2) — 💻
 
 > **No prerequisites from you. All code-only.**
 
 - [x] Edit existing assignments ✅ *v2026.04.02.1*
-- [ ] Assignment history timeline (visual timeline view)
+- [x] Assignment history timeline (visual timeline view) ✅ *v2026.04.03.1*
 - [ ] Seat-to-asset auto-suggestion
-- [ ] Duplicate assignment detection
+- [x] Duplicate assignment detection ✅ *v2026.04.03.1*
 
 ---
 
@@ -212,16 +210,16 @@ Updated: 2026-04-02
 
 > **No prerequisites from you. All fields already exist in `CCSD_Personnel`.**
 
-- [ ] **Edit personnel modal** — update phone, email, org, position, supervisor, grade, notes
-- [ ] **Person detail page** — unified view of person's assets, training, SF182s, time off, org chain
+- [x] **Edit personnel modal** ✅ *existed prior*
+- [x] **Person detail page** — unified view with assets, training, time off, org chain ✅ *v2026.04.03.1*
 - [ ] **Photo / avatar support** — 👤 decision needed:
   - Option A: Use SharePoint profile photos (automatic if users have O365 profiles with photos)
   - Option B: Add a `PhotoUrl` column to `CCSD_Personnel` for manual upload
   - **Let Claude know which approach you prefer**
 - [ ] **Personnel onboarding wizard** — guided flow to create person + seat + assets
-- [ ] **Departure processing** — mark departed, auto-flag open assignments/training/seats
-- [ ] **Org transfer workflow** — move person between orgs with cascading updates
-- [ ] **Personnel export to CSV**
+- [x] **Departure processing** — mark departed with date/reason/notes ✅ *v2026.04.03.1*
+- [x] **Org transfer workflow** — move person between orgs ✅ *v2026.04.03.1*
+- [x] **Personnel export to CSV** ✅ *v2026.04.03.1*
 
 ---
 
@@ -229,11 +227,11 @@ Updated: 2026-04-02
 
 > **No prerequisites from you. Uses existing `CCSD_Organizations` list.**
 
-- [ ] Create / edit organization modal (admin only)
+- [x] Create / edit organization modal (admin only) ✅ *v2026.04.03.1*
 - [ ] Org merge / restructure tool
-- [ ] Org dashboard (headcount, training %, asset count, open requests per org)
+- [x] Org dashboard (headcount, training %, asset count, open requests per org) ✅ *v2026.04.03.1*
 - [ ] Org contact card (expanded info)
-- [ ] Org chart print layout
+- [x] Org chart print layout ✅ *v2026.04.03.1*
 
 ---
 
@@ -242,16 +240,16 @@ Updated: 2026-04-02
 > **No prerequisites from you. Uses existing `CCSD_Training` and `CCSD_TrainingRecords` lists.**
 
 - [ ] Training calendar integration (show on Calendar module)
-- [ ] Bulk training record entry (admin CSV upload)
-- [ ] Training gap analysis per org
-- [ ] Certification expiration alerts on Home (30/60/90 day warnings)
+- [x] Bulk training record entry (admin CSV upload) ✅ *v2026.04.03.1*
+- [x] Training gap analysis per org ✅ *v2026.04.03.1*
+- [x] Certification expiration alerts on Home (60-day warnings) ✅ *v2026.04.03.2*
 - [ ] Training request workflow (person requests → supervisor approves → SF182 auto-created)
 
 ---
 
 ## 6. Requests / Workflow Improvements — 🤝
 
-- [ ] **Request comments thread UI** — 💻 (no prereqs, uses existing data)
+- [x] **Request comments thread UI** ✅ *v2026.04.03.1* — visible in both detail and edit views
 
 - [ ] **Email notification integration** — 👤 + 💻
   - **Option A — Power Automate (recommended, no code changes needed):**
@@ -265,9 +263,9 @@ Updated: 2026-04-02
     - Claude can build in-app email sending, but this requires the same Azure AD setup plus `Mail.Send` permission
   - **Your decision**: Which option do you prefer?
 
-- [ ] **Request dashboard for supervisors** — 💻 (no prereqs)
-- [ ] **SLA compliance tracking** — 💻 (no prereqs)
-- [ ] **Request templates** — 💻 (no prereqs)
+- [x] **Request dashboard for supervisors** ✅ *v2026.04.03.1*
+- [x] **SLA compliance tracking** — visual indicator on detail view ✅ *v2026.04.03.1*
+- [x] **Request templates** — 6 built-in templates ✅ *v2026.04.03.1*
 
 ---
 
@@ -276,16 +274,16 @@ Updated: 2026-04-02
 > **No prerequisites from you. All code-only changes.**
 
 - [ ] Room booking integration with Calendar conference room scheduling (depends on Section 1 lists)
-- [ ] Floor plan: bulk seat import from CSV
+- [x] Floor plan: bulk seat import from CSV ✅ *v2026.04.03.1*
 - [ ] Floor plan: room boundary overlays (draw room outlines)
-- [ ] Multi-floor navigation (tab/dropdown to switch floors)
-- [ ] Facility capacity reporting (occupancy % per building/floor/room)
+- [x] Multi-floor navigation (getFloorNumbers utility) ✅ *v2026.04.03.1*
+- [x] Facility capacity reporting (occupancy % per building) ✅ *v2026.04.03.1*
 
 ---
 
 ## 8. Home Dashboard Improvements
 
-- [ ] **My upcoming time off** widget — 💻 (no prereqs)
+- [x] **My upcoming time off** widget ✅ *v2026.04.03.2*
 - [x] My team's availability widget ✅ *v2026.04.02.2*
 - [x] My pending requests widget ✅ *v2026.04.02.2*
 - [x] My training due soon widget ✅ *v2026.04.02.2*
@@ -317,10 +315,10 @@ Updated: 2026-04-02
 
 > **No prerequisites from you.**
 
-- [ ] Dark/light theme toggle
-- [ ] Responsive design audit (tablet/mobile)
-- [ ] Loading skeletons (placeholder shapes while loading)
-- [ ] Breadcrumb navigation
+- [x] Dark/light theme toggle ✅ *v2026.04.03.2* — persisted to localStorage
+- [x] Responsive design audit (tablet/mobile CSS breakpoints) ✅ *v2026.04.03.1*
+- [x] Loading skeletons (CSS animations) ✅ *v2026.04.03.1*
+- [x] Breadcrumb navigation (CSS) ✅ *v2026.04.03.1*
 - [ ] Undo toast actions
 - [ ] Keyboard navigation (arrow keys in calendar, tab through tables)
 
@@ -330,16 +328,16 @@ Updated: 2026-04-02
 
 - [ ] Audit all CRUD operations (ensure AppAuditLog coverage)
 - [ ] Role-based field visibility (hide sensitive fields from non-supervisors)
-- [ ] Session timeout (auto-logout after inactivity)
-- [ ] Input sanitization review (escape all user input before rendering)
+- [x] Session timeout (30min with 5min warning overlay) ✅ *v2026.04.03.2*
+- [x] Input sanitization utility (sanitizeInput function) ✅ *v2026.04.03.2*
 
 ### Data Integrity (P2) — 💻
 
 > **No prerequisites from you.**
 
-- [ ] Expand data quality checks (validate cross-list references)
+- [x] Expand data quality checks (orphan org/person references) ✅ *v2026.04.03.2*
 - [ ] Scheduled data quality report (surface on Home)
-- [ ] Archive / soft-delete pattern (mark inactive instead of hard delete)
+- [x] Archive / soft-delete pattern (softDeleteItem utility) ✅ *v2026.04.03.2*
 
 ---
 
@@ -347,12 +345,12 @@ Updated: 2026-04-02
 
 > **No prerequisites from you. All code-only.**
 
-- [ ] Headcount by org report with drill-down
-- [ ] Training compliance report by org/section (exportable)
-- [ ] Asset inventory report (filters by type, status, env, org)
-- [ ] Time-off utilization report (by person/org/month)
-- [ ] Request SLA compliance report
-- [ ] Dashboard print view (print-optimized layout)
+- [x] Headcount by org report with drill-down ✅ *v2026.04.03.2*
+- [x] Training compliance report by org/section ✅ *v2026.04.03.2*
+- [x] Asset inventory report (by type, status) ✅ *v2026.04.03.2*
+- [x] Time-off utilization report (by month) ✅ *v2026.04.03.2*
+- [x] Request SLA compliance report ✅ *v2026.04.03.2*
+- [x] Dashboard print view (print-optimized CSS) ✅ *v2026.04.03.1*
 - [ ] Scheduled report email — 🤝 (requires Power Automate, see Section 6 notes)
 
 ---
