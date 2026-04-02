@@ -4,6 +4,24 @@ All notable changes to the **CCSD All-Things Administrative SPA** are documented
 
 ---
 
+## [2026.04.02.1] - 2026-04-02
+
+### Hardware & Software Asset Management Overhaul
+- **Hardware asset detail modal**: Full asset view with all properties (name, type, manufacturer, model, serial, environment, portable, purchase date/cost, notes) plus complete assignment history table showing every person who has had the asset, when, and current status.
+- **Software asset detail modal**: (accessible from hardware detail's software references)
+- **Edit hardware assets** (admin): Modify device name, type, manufacturer, model, serial number, network environment, status, portable flag, purchase date/cost, and notes.
+- **Edit software assets** (admin): Modify title, vendor, version, approved version, license type, total licenses, approval status, annual cost, ATO number/expiration, requires ATO, requires admin install, and notes.
+- **Edit existing assignments** (admin): Modify environment, status, and notes on both hardware and software assignments without recreating them.
+- **Unassign / return hardware**: Full return flow with return date, condition assessment (Good/Fair/Poor/Damaged/Missing), ticket reference, and return notes. Sets status to "Returned" with condition recorded.
+- **Unassign software**: Revoke software assignment with date, ticket reference, and notes.
+- **Transfer hardware**: One-step transfer from current person to new person. Automatically closes the old assignment (status: "Transferred") and creates a new active assignment for the recipient, preserving chain of custody with condition tracking and transfer notes.
+- **Transfer software**: Same one-step transfer flow for software assignments.
+- **Assignment detail modals**: Click "View" on any hardware or software assignment row to see full details with all fields, plus action buttons for Edit, Return/Unassign, and Transfer.
+- **View buttons on all tables**: Hardware assignment table, software assignment table, and unassigned hardware table all now have View/Detail action buttons per row.
+- **Asset status lifecycle**: Assignments now support statuses: Active, Assigned, In Service, Returned, Surplus, Transferred, Revoked.
+
+---
+
 ## [2026.04.01.3] - 2026-04-01
 
 ### Calendar Module — Time Off, Federal Holidays, Senior Leaders

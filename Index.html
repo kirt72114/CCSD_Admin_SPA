@@ -658,7 +658,7 @@ body:not(.embedded) .fullscreen-badge{display:inline-block}
 'use strict';
 
 var APP = {
-  version: '2026.04.01.3',
+  version: '2026.04.02.1',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -4211,8 +4211,8 @@ function renderAssetWatchlist(idx){
   var unassigned = idx.hardwareAssets.filter(function(a){ return !activeAssetIds[a.Id]; });
   if (!unassigned.length) { html += '<div class="empty">No unassigned hardware was found.</div>'; }
   else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Hardware</th><th>Type</th><th>Environment</th><th>Status</th><th>Purchase</th></tr></thead><tbody>';
-    unassigned.slice(0, 20).forEach(function(a){ var rowSearch = [getHardwareDisplayName(a), a.AssetType || '', a.SerialNumber || '', a.PrimaryNetworkEnvironment || '', a.Status || ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getHardwareDisplayName(a)) + '</strong><div class="mini muted">' + escHtml(a.SerialNumber || '') + '</div></td><td>' + escHtml(a.AssetType || '') + '</td><td>' + escHtml(envDisplayLabel(a.PrimaryNetworkEnvironment)) + '</td><td>' + statusBadge(a.Status || 'Available') + '</td><td>' + escHtml(formatDate(a.PurchaseDate)) + '</td></tr>'; });
+    html += '<div class="table-wrap"><table><thead><tr><th>Hardware</th><th>Type</th><th>Environment</th><th>Status</th><th>Purchase</th><th></th></tr></thead><tbody>';
+    unassigned.slice(0, 20).forEach(function(a){ var rowSearch = [getHardwareDisplayName(a), a.AssetType || '', a.SerialNumber || '', a.PrimaryNetworkEnvironment || '', a.Status || ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getHardwareDisplayName(a)) + '</strong><div class="mini muted">' + escHtml(a.SerialNumber || '') + '</div></td><td>' + escHtml(a.AssetType || '') + '</td><td>' + escHtml(envDisplayLabel(a.PrimaryNetworkEnvironment)) + '</td><td>' + statusBadge(a.Status || 'Available') + '</td><td>' + escHtml(formatDate(a.PurchaseDate)) + '</td><td><button class="btn subtle" data-action="view-hw-detail" data-id="' + escAttr(a.Id) + '" style="padding:4px 8px;font-size:10px">Detail</button></td></tr>'; });
     html += '</tbody></table></div>';
   }
   html += '</div></div>';
@@ -4233,22 +4233,485 @@ function renderAssetAssignmentTables(idx, search){
   html += '<div class="card"><div class="card-head"><div><div class="asset-table-title">Hardware Assignment Snapshot</div><div class="card-sub">Current hardware assignments by person, seat, and network environment.</div></div></div><div class="card-body">';
   if (!hardwareRows.length) { html += '<div class="empty">No hardware assignments matched.</div>'; }
   else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Hardware</th><th>Assigned To</th><th>Seat</th><th>Environment</th><th>Status</th></tr></thead><tbody>';
-    hardwareRows.slice(0, 120).forEach(function(r){ var rowSearch = [getHardwareDisplayName(r._asset), r._person ? formatPerson(r._person) : '', r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '', r._effectiveEnv || '', r.Status || ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getHardwareDisplayName(r._asset)) + '</strong><div class="mini muted">' + escHtml((r._asset && r._asset.AssetType) || '') + '</div></td><td>' + escHtml(r._person ? formatPerson(r._person) : '') + '</td><td>' + escHtml(r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '') + '</td><td>' + escHtml(r._effectiveEnv || '') + '</td><td>' + statusBadge(r.Status || 'Active') + '</td></tr>'; });
+    html += '<div class="table-wrap"><table><thead><tr><th>Hardware</th><th>Assigned To</th><th>Seat</th><th>Environment</th><th>Status</th><th></th></tr></thead><tbody>';
+    hardwareRows.slice(0, 120).forEach(function(r){ var rowSearch = [getHardwareDisplayName(r._asset), r._person ? formatPerson(r._person) : '', r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '', r._effectiveEnv || '', r.Status || ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getHardwareDisplayName(r._asset)) + '</strong><div class="mini muted">' + escHtml((r._asset && r._asset.AssetType) || '') + '</div></td><td>' + escHtml(r._person ? formatPerson(r._person) : '') + '</td><td>' + escHtml(r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '') + '</td><td>' + escHtml(r._effectiveEnv || '') + '</td><td>' + statusBadge(r.Status || 'Active') + '</td><td><button class="btn subtle" data-action="view-hw-assignment" data-id="' + escAttr(r.Id) + '" style="padding:4px 8px;font-size:10px">View</button></td></tr>'; });
     html += '</tbody></table></div>';
   }
   html += '</div></div>';
   html += '<div class="card"><div class="card-head"><div><div class="asset-table-title">Software Assignment Snapshot</div><div class="card-sub">Approved software visibility by person, seat, and authorizing system.</div></div></div><div class="card-body">';
   if (!softwareRows.length) { html += '<div class="empty">No software assignments matched.</div>'; }
   else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Software</th><th>Assigned To</th><th>Environment</th><th>Approval</th><th>System</th></tr></thead><tbody>';
-    softwareRows.slice(0, 120).forEach(function(r){ var rowSearch = [getSoftwareDisplayName(r._software), r._person ? formatPerson(r._person) : '', r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '', r._effectiveEnv || '', r.Status || '', r._system ? (r._system.SystemName || r._system.Title) : ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getSoftwareDisplayName(r._software)) + '</strong><div class="mini muted">' + escHtml((r._software && (r._software.ApprovedVersion || r._software.SoftwareVersion)) || '') + '</div></td><td>' + escHtml(r._person ? formatPerson(r._person) : (r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '')) + '</td><td>' + escHtml(r._effectiveEnv || '') + '</td><td>' + escHtml((r._software && r._software.ApprovalStatus) || r.Status || '') + '</td><td>' + escHtml((r._system && (r._system.SystemName || r._system.Title)) || '') + '</td></tr>'; });
+    html += '<div class="table-wrap"><table><thead><tr><th>Software</th><th>Assigned To</th><th>Environment</th><th>Approval</th><th>System</th><th></th></tr></thead><tbody>';
+    softwareRows.slice(0, 120).forEach(function(r){ var rowSearch = [getSoftwareDisplayName(r._software), r._person ? formatPerson(r._person) : '', r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '', r._effectiveEnv || '', r.Status || '', r._system ? (r._system.SystemName || r._system.Title) : ''].join(' ').toLowerCase(); html += '<tr data-asset-search-card="' + escAttr(rowSearch) + '"><td><strong>' + escHtml(getSoftwareDisplayName(r._software)) + '</strong><div class="mini muted">' + escHtml((r._software && (r._software.ApprovedVersion || r._software.SoftwareVersion)) || '') + '</div></td><td>' + escHtml(r._person ? formatPerson(r._person) : (r._seat ? getSeatDisplay(r._seat, r._seatRoom) : '')) + '</td><td>' + escHtml(r._effectiveEnv || '') + '</td><td>' + escHtml((r._software && r._software.ApprovalStatus) || r.Status || '') + '</td><td>' + escHtml((r._system && (r._system.SystemName || r._system.Title)) || '') + '</td><td><button class="btn subtle" data-action="view-sw-assignment" data-id="' + escAttr(r.Id) + '" style="padding:4px 8px;font-size:10px">View</button></td></tr>'; });
     html += '</tbody></table></div>';
   }
   html += '</div></div>';
   html += '</div>';
   return html;
 }
+/* ═══════════════════════════════════════════════════════════════════════
+ *  ASSET MANAGEMENT – Detail, Edit, Unassign, Transfer
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Hardware Assignment Detail Modal ─── */
+function openHwAssignmentDetail(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.hardwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  var asset = row._asset || {};
+  var person = row._person;
+  var isActive = isActiveHardwareAssignment(row);
+  var body = '<div class="kv">';
+  body += '<div class="k">Hardware</div><div class="v"><strong>' + escHtml(getHardwareDisplayName(asset)) + '</strong></div>';
+  body += '<div class="k">Asset Type</div><div class="v">' + escHtml(asset.AssetType || '—') + '</div>';
+  body += '<div class="k">Serial Number</div><div class="v">' + escHtml(asset.SerialNumber || '—') + '</div>';
+  body += '<div class="k">Model</div><div class="v">' + escHtml((asset.Manufacturer || '') + ' ' + (asset.Model || '') || '—') + '</div>';
+  body += '<div class="k">Environment</div><div class="v">' + escHtml(row._effectiveEnv || '—') + '</div>';
+  body += '<div class="k">Status</div><div class="v">' + statusBadge(row.Status || 'Active') + '</div>';
+  body += '<div class="k">Assigned To</div><div class="v">' + escHtml(person ? formatPerson(person) : '—') + '</div>';
+  if (row._seat) { body += '<div class="k">Seat</div><div class="v">' + escHtml(getSeatDisplay(row._seat, row._seatRoom)) + '</div>'; }
+  body += '<div class="k">Assigned On</div><div class="v">' + escHtml(formatDate(row.AssignedOn) || '—') + '</div>';
+  if (row._assignedByDisplay) { body += '<div class="k">Assigned By</div><div class="v">' + escHtml(row._assignedByDisplay) + '</div>'; }
+  if (row.UnassignedOn) { body += '<div class="k">Returned On</div><div class="v">' + escHtml(formatDate(row.UnassignedOn)) + '</div>'; }
+  if (row._returnedByDisplay) { body += '<div class="k">Returned By</div><div class="v">' + escHtml(row._returnedByDisplay) + '</div>'; }
+  if (row.TicketReason) { body += '<div class="k">Ticket / Reason</div><div class="v">' + escHtml(row.TicketReason) + '</div>'; }
+  if (row.Notes) { body += '<div class="k">Notes</div><div class="v">' + escHtml(row.Notes) + '</div>'; }
+  if (normalizeBoolean(asset.Portable)) { body += '<div class="k">Portable</div><div class="v"><span class="badge warn">Yes</span></div>'; }
+  body += '</div>';
+  var footer = '<div>';
+  if (canSeeAdmin() && isActive) {
+    footer += '<button class="btn danger" data-action="unassign-hw" data-id="' + escAttr(assignmentId) + '">Return / Unassign</button> ';
+    footer += '<button class="btn warn" data-action="transfer-hw" data-id="' + escAttr(assignmentId) + '">Transfer</button>';
+  }
+  footer += '</div><div>';
+  if (canSeeAdmin() && isActive) { footer += '<button class="btn subtle" data-action="edit-hw-assignment" data-id="' + escAttr(assignmentId) + '">Edit</button> '; }
+  footer += '<button class="btn" data-action="close-modal">Close</button>';
+  if (canSeeAdmin()) { footer += ' <button class="btn subtle" data-action="view-hw-detail" data-id="' + escAttr(asset.Id) + '">Asset Detail</button>'; }
+  footer += '</div>';
+  openModal('Hardware Assignment', body, footer, getHardwareDisplayName(asset));
+}
+
+/* ─── Software Assignment Detail Modal ─── */
+function openSwAssignmentDetail(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  var sw = row._software || {};
+  var sys = row._system || {};
+  var person = row._person;
+  var isActive = isActiveSoftwareAssignment(row);
+  var body = '<div class="kv">';
+  body += '<div class="k">Software</div><div class="v"><strong>' + escHtml(getSoftwareDisplayName(sw)) + '</strong></div>';
+  body += '<div class="k">Vendor</div><div class="v">' + escHtml(sw.Vendor || '—') + '</div>';
+  body += '<div class="k">Version</div><div class="v">' + escHtml(sw.ApprovedVersion || sw.SoftwareVersion || '—') + '</div>';
+  body += '<div class="k">Approval</div><div class="v">' + escHtml(sw.ApprovalStatus || '—') + '</div>';
+  body += '<div class="k">Environment</div><div class="v">' + escHtml(row._effectiveEnv || '—') + '</div>';
+  body += '<div class="k">Status</div><div class="v">' + statusBadge(row.Status || 'Active') + '</div>';
+  body += '<div class="k">Assigned To</div><div class="v">' + escHtml(person ? formatPerson(person) : '—') + '</div>';
+  body += '<div class="k">Assigned On</div><div class="v">' + escHtml(formatDate(row.AssignedOn) || '—') + '</div>';
+  if (row._assignedByDisplay) { body += '<div class="k">Assigned By</div><div class="v">' + escHtml(row._assignedByDisplay) + '</div>'; }
+  if (sys.SystemName || sys.Title) { body += '<div class="k">System</div><div class="v">' + escHtml(sys.SystemName || sys.Title) + '</div>'; }
+  if (sw.AtoNumber) { body += '<div class="k">ATO</div><div class="v">' + escHtml(sw.AtoNumber) + (sw.AtoExpiration ? ' (expires ' + formatDate(sw.AtoExpiration) + ')' : '') + '</div>'; }
+  if (normalizeBoolean(row.ExceptionApproved)) { body += '<div class="k">Exception</div><div class="v"><span class="badge warn">Approved</span> ' + escHtml(row.ExceptionReason || '') + '</div>'; }
+  if (row.TicketReason) { body += '<div class="k">Ticket / Reason</div><div class="v">' + escHtml(row.TicketReason) + '</div>'; }
+  if (row.Notes) { body += '<div class="k">Notes</div><div class="v">' + escHtml(row.Notes) + '</div>'; }
+  body += '</div>';
+  var footer = '<div>';
+  if (canSeeAdmin() && isActive) {
+    footer += '<button class="btn danger" data-action="unassign-sw" data-id="' + escAttr(assignmentId) + '">Unassign</button> ';
+    footer += '<button class="btn warn" data-action="transfer-sw" data-id="' + escAttr(assignmentId) + '">Transfer</button>';
+  }
+  footer += '</div><div>';
+  if (canSeeAdmin() && isActive) { footer += '<button class="btn subtle" data-action="edit-sw-assignment" data-id="' + escAttr(assignmentId) + '">Edit</button> '; }
+  footer += '<button class="btn" data-action="close-modal">Close</button></div>';
+  openModal('Software Assignment', body, footer, getSoftwareDisplayName(sw));
+}
+
+/* ─── Hardware Asset Detail Modal ─── */
+function openHwAssetDetail(assetId){
+  var idx = buildAssetIndex();
+  var asset = idx.hardwareById[assetId];
+  if (!asset) { toast('Asset not found.', 'danger'); return; }
+  var allAssignments = idx.hardwareAssignments.filter(function(a){ return a._asset && String(a._asset.Id) === String(assetId); });
+  allAssignments.sort(function(a, b){ return (b.AssignedOn || '').localeCompare(a.AssignedOn || ''); });
+  var activeAssignments = allAssignments.filter(isActiveHardwareAssignment);
+  var body = '<div class="kv">';
+  body += '<div class="k">Name</div><div class="v"><strong>' + escHtml(getHardwareDisplayName(asset)) + '</strong></div>';
+  body += '<div class="k">Asset ID</div><div class="v">' + escHtml(asset.AssetID || '—') + '</div>';
+  body += '<div class="k">Type</div><div class="v">' + escHtml(asset.AssetType || '—') + '</div>';
+  body += '<div class="k">Manufacturer</div><div class="v">' + escHtml(asset.Manufacturer || '—') + '</div>';
+  body += '<div class="k">Model</div><div class="v">' + escHtml(asset.Model || '—') + '</div>';
+  body += '<div class="k">Serial Number</div><div class="v">' + escHtml(asset.SerialNumber || '—') + '</div>';
+  body += '<div class="k">Network Env</div><div class="v">' + escHtml(envDisplayLabel(asset.PrimaryNetworkEnvironment)) + '</div>';
+  body += '<div class="k">Portable</div><div class="v">' + escHtml(assetBoolText(asset.Portable)) + '</div>';
+  body += '<div class="k">Status</div><div class="v">' + statusBadge(asset.Status || 'Available') + '</div>';
+  body += '<div class="k">Purchase Date</div><div class="v">' + escHtml(formatDate(asset.PurchaseDate) || '—') + '</div>';
+  if (asset.PurchaseCost) { body += '<div class="k">Cost</div><div class="v">' + escHtml(formatCurrencySafe(asset.PurchaseCost)) + '</div>'; }
+  if (asset.Notes) { body += '<div class="k">Notes</div><div class="v">' + escHtml(asset.Notes) + '</div>'; }
+  body += '</div>';
+  /* Assignment history */
+  body += '<div style="margin-top:16px;font-weight:800;font-size:14px;padding-bottom:6px;border-bottom:1px solid var(--line)">Assignment History (' + allAssignments.length + ')</div>';
+  if (!allAssignments.length) { body += '<div class="empty" style="margin-top:8px">No assignments recorded.</div>'; }
+  else {
+    body += '<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>Person</th><th>Assigned</th><th>Returned</th><th>Status</th><th>Environment</th></tr></thead><tbody>';
+    allAssignments.forEach(function(a){
+      body += '<tr><td>' + escHtml(a._person ? formatPerson(a._person) : '—') + '</td><td>' + escHtml(formatDate(a.AssignedOn) || '—') + '</td><td>' + escHtml(formatDate(a.UnassignedOn) || '—') + '</td><td>' + statusBadge(a.Status || 'Active') + '</td><td>' + escHtml(a._effectiveEnv || '') + '</td></tr>';
+    });
+    body += '</tbody></table></div>';
+  }
+  var footer = '<div>';
+  if (canSeeAdmin()) { footer += '<button class="btn primary" data-action="edit-hw-asset" data-id="' + escAttr(assetId) + '">Edit Asset</button>'; }
+  footer += '</div><div><button class="btn" data-action="close-modal">Close</button></div>';
+  openModal('Hardware Asset Detail', body, footer, getHardwareDisplayName(asset));
+}
+
+/* ─── Edit Hardware Asset Modal ─── */
+function openEditHwAssetModal(assetId){
+  var idx = buildAssetIndex();
+  var asset = idx.hardwareById[assetId];
+  if (!asset) { toast('Asset not found.', 'danger'); return; }
+  APP.modalState.editHwAssetId = assetId;
+  var statusOpts = ['Available','Assigned','In Service','Surplus','Disposed','Maintenance','Lost'].map(function(s){
+    return '<option value="' + s + '"' + (asset.Status === s ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+  var envOpts = ['','Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){
+    return '<option value="' + escAttr(e) + '"' + ((asset.PrimaryNetworkEnvironment || '') === e ? ' selected' : '') + '>' + escHtml(e || '— Not Set —') + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Device Name / Host Name', '<input id="ehwName" class="input" value="' + escAttr(asset.DeviceName || '') + '" />')
+    + formField('Asset Type', '<input id="ehwType" class="input" value="' + escAttr(asset.AssetType || '') + '" />')
+    + formField('Manufacturer', '<input id="ehwMfg" class="input" value="' + escAttr(asset.Manufacturer || '') + '" />')
+    + formField('Model', '<input id="ehwModel" class="input" value="' + escAttr(asset.Model || '') + '" />')
+    + formField('Serial Number', '<input id="ehwSerial" class="input" value="' + escAttr(asset.SerialNumber || '') + '" />')
+    + formField('Network Environment', '<select id="ehwEnv" class="select">' + envOpts + '</select>')
+    + formField('Status', '<select id="ehwStatus" class="select">' + statusOpts + '</select>')
+    + formField('Portable', '<select id="ehwPortable" class="select"><option value="Yes"' + (normalizeBoolean(asset.Portable) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(asset.Portable) ? ' selected' : '') + '>No</option></select>')
+    + formField('Purchase Date', '<input id="ehwPurchDate" type="date" class="input" value="' + escAttr((asset.PurchaseDate || '').slice(0, 10)) + '" />')
+    + formField('Purchase Cost', '<input id="ehwCost" type="number" class="input" value="' + escAttr(asset.PurchaseCost || '') + '" />')
+    + '<div class="full">' + formField('Notes', '<textarea id="ehwNotes" class="textarea" style="min-height:60px">' + escHtml(asset.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Hardware Asset', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-hw-asset-edit">Save Changes</button></div>', getHardwareDisplayName(asset));
+}
+function saveHwAssetEdit(){
+  var id = APP.modalState.editHwAssetId;
+  if (!id) { return; }
+  var values = {
+    DeviceNameHostName: document.getElementById('ehwName').value,
+    'Asset Type': document.getElementById('ehwType').value,
+    Manufacturer: document.getElementById('ehwMfg').value,
+    Model: document.getElementById('ehwModel').value,
+    'Serial Number': document.getElementById('ehwSerial').value,
+    PrimaryNetworkEnvironment: document.getElementById('ehwEnv').value,
+    Status: document.getElementById('ehwStatus').value,
+    Portable: document.getElementById('ehwPortable').value === 'Yes',
+    'Purchase Date': document.getElementById('ehwPurchDate').value || null,
+    'Purchase Cost': document.getElementById('ehwCost').value ? parseFloat(document.getElementById('ehwCost').value) : null,
+    Notes: document.getElementById('ehwNotes').value
+  };
+  updateListItem(APP.lists.HardwareAssets, id, values, { entityType: 'HardwareAsset', reason: 'Asset edit' }).then(function(){
+    toast('Hardware asset updated.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Update failed.', 'danger'); });
+}
+
+/* ─── Edit Software Asset Modal ─── */
+function openEditSwAssetModal(assetId){
+  var idx = buildAssetIndex();
+  var sw = idx.softwareById[assetId];
+  if (!sw) { toast('Software not found.', 'danger'); return; }
+  APP.modalState.editSwAssetId = assetId;
+  var approvalOpts = ['','Approved','Pending','Denied','Revoked'].map(function(s){
+    return '<option value="' + s + '"' + ((sw.ApprovalStatus || '') === s ? ' selected' : '') + '>' + escHtml(s || '— Not Set —') + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Title', '<input id="eswTitle" class="input" value="' + escAttr(sw.Title || '') + '" />')
+    + formField('Vendor', '<input id="eswVendor" class="input" value="' + escAttr(sw.Vendor || '') + '" />')
+    + formField('Version', '<input id="eswVersion" class="input" value="' + escAttr(sw.SoftwareVersion || '') + '" />')
+    + formField('Approved Version', '<input id="eswApprVer" class="input" value="' + escAttr(sw.ApprovedVersion || '') + '" />')
+    + formField('License Type', '<input id="eswLicType" class="input" value="' + escAttr(sw.LicenseType || '') + '" />')
+    + formField('Total Licenses', '<input id="eswLicCount" type="number" class="input" value="' + escAttr(sw.TotalLicenses || '') + '" />')
+    + formField('Approval Status', '<select id="eswApproval" class="select">' + approvalOpts + '</select>')
+    + formField('Annual Cost', '<input id="eswCost" type="number" class="input" value="' + escAttr(sw.AnnualCost || '') + '" />')
+    + formField('ATO Number', '<input id="eswAto" class="input" value="' + escAttr(sw.AtoNumber || '') + '" />')
+    + formField('ATO Expiration', '<input id="eswAtoExp" type="date" class="input" value="' + escAttr((sw.AtoExpiration || '').slice(0, 10)) + '" />')
+    + formField('Requires ATO', '<select id="eswReqAto" class="select"><option value="Yes"' + (normalizeBoolean(sw.RequiresATO) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(sw.RequiresATO) ? ' selected' : '') + '>No</option></select>')
+    + formField('Requires Admin Install', '<select id="eswReqAdmin" class="select"><option value="Yes"' + (normalizeBoolean(sw.RequiresAdministratorInstall) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(sw.RequiresAdministratorInstall) ? ' selected' : '') + '>No</option></select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="eswNotes" class="textarea" style="min-height:60px">' + escHtml(sw.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Software Asset', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-sw-asset-edit">Save Changes</button></div>', getSoftwareDisplayName(sw));
+}
+function saveSwAssetEdit(){
+  var id = APP.modalState.editSwAssetId;
+  if (!id) { return; }
+  var values = {
+    Title: document.getElementById('eswTitle').value,
+    Vendor: document.getElementById('eswVendor').value,
+    'Software Version': document.getElementById('eswVersion').value,
+    'Approved Version': document.getElementById('eswApprVer').value,
+    'License Type': document.getElementById('eswLicType').value,
+    'Total Licenses': document.getElementById('eswLicCount').value ? parseInt(document.getElementById('eswLicCount').value, 10) : null,
+    ApprovalStatus: document.getElementById('eswApproval').value,
+    'Annual Cost': document.getElementById('eswCost').value ? parseFloat(document.getElementById('eswCost').value) : null,
+    ATONumber: document.getElementById('eswAto').value,
+    ATOExpiration: document.getElementById('eswAtoExp').value || null,
+    RequiresATO: document.getElementById('eswReqAto').value === 'Yes',
+    RequiresAdministratorInstall: document.getElementById('eswReqAdmin').value === 'Yes',
+    Notes: document.getElementById('eswNotes').value
+  };
+  updateListItem(APP.lists.SoftwareAssets, id, values, { entityType: 'SoftwareAsset', reason: 'Software edit' }).then(function(){
+    toast('Software asset updated.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Update failed.', 'danger'); });
+}
+
+/* ─── Edit Assignment Modals ─── */
+function openEditHwAssignmentModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.hardwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.editHwAssignId = assignmentId;
+  var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){
+    return '<option value="' + escAttr(e) + '"' + (row._effectiveEnv === e ? ' selected' : '') + '>' + escHtml(e) + '</option>';
+  }).join('');
+  var statusOpts = ['Active','Assigned','In Service','Returned','Surplus'].map(function(s){
+    return '<option value="' + s + '"' + ((row.Status || 'Active') === s ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Hardware', '<input class="input" value="' + escAttr(getHardwareDisplayName(row._asset)) + '" disabled />')
+    + formField('Assigned To', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Environment', '<select id="ehwaEnv" class="select">' + envOpts + '</select>')
+    + formField('Status', '<select id="ehwaStatus" class="select">' + statusOpts + '</select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="ehwaNotes" class="textarea" style="min-height:60px">' + escHtml(row.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Assignment', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-edit-hw-assign">Save</button></div>', 'Hardware Assignment');
+}
+function saveEditHwAssignment(){
+  var id = APP.modalState.editHwAssignId;
+  if (!id) { return; }
+  var values = {
+    NetworkEnvironment: document.getElementById('ehwaEnv').value,
+    Status: document.getElementById('ehwaStatus').value,
+    Notes: document.getElementById('ehwaNotes').value
+  };
+  updateListItem(APP.lists.HardwareAssignments, id, values, { entityType: 'HardwareAssignment', reason: 'Assignment edit' }).then(function(){
+    toast('Assignment updated.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Update failed.', 'danger'); });
+}
+
+function openEditSwAssignmentModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.editSwAssignId = assignmentId;
+  var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){
+    return '<option value="' + escAttr(e) + '"' + (row._effectiveEnv === e ? ' selected' : '') + '>' + escHtml(e) + '</option>';
+  }).join('');
+  var statusOpts = ['Active','Pending','Revoked','Returned'].map(function(s){
+    return '<option value="' + s + '"' + ((row.Status || 'Active') === s ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Software', '<input class="input" value="' + escAttr(getSoftwareDisplayName(row._software)) + '" disabled />')
+    + formField('Assigned To', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Environment', '<select id="eswaEnv" class="select">' + envOpts + '</select>')
+    + formField('Status', '<select id="eswaStatus" class="select">' + statusOpts + '</select>')
+    + '<div class="full">' + formField('Notes', '<textarea id="eswaNotes" class="textarea" style="min-height:60px">' + escHtml(row.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+  openModal('Edit Assignment', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-edit-sw-assign">Save</button></div>', 'Software Assignment');
+}
+function saveEditSwAssignment(){
+  var id = APP.modalState.editSwAssignId;
+  if (!id) { return; }
+  var values = {
+    NetworkEnvironment: document.getElementById('eswaEnv').value,
+    Status: document.getElementById('eswaStatus').value,
+    Notes: document.getElementById('eswaNotes').value
+  };
+  updateListItem(APP.lists.SoftwareAssignments, id, values, { entityType: 'SoftwareAssignment', reason: 'Assignment edit' }).then(function(){
+    toast('Assignment updated.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Update failed.', 'danger'); });
+}
+
+/* ─── Unassign / Return Flow ─── */
+function openUnassignHwModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.hardwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.unassignHwId = assignmentId;
+  var today = new Date().toISOString().slice(0, 10);
+  var condOpts = ['Good','Fair','Poor','Damaged','Missing'].map(function(c){ return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  var body = '<div class="form-grid">'
+    + formField('Hardware', '<input class="input" value="' + escAttr(getHardwareDisplayName(row._asset)) + '" disabled />')
+    + formField('Returning From', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Return Date', '<input id="uhwDate" type="date" class="input" value="' + today + '" />')
+    + formField('Condition on Return', '<select id="uhwCondition" class="select">' + condOpts + '</select>')
+    + formField('Ticket / Reference', '<input id="uhwTicket" class="input" placeholder="Optional ticket or reference number" />')
+    + '<div class="full">' + formField('Return Notes', '<textarea id="uhwNotes" class="textarea" style="min-height:60px" placeholder="Reason for return, condition details, etc."></textarea>') + '</div>'
+    + '</div>';
+  openModal('Return / Unassign Hardware', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn danger" data-action="confirm-unassign-hw">Confirm Return</button></div>', 'Mark this assignment as returned');
+}
+function confirmUnassignHw(){
+  var id = APP.modalState.unassignHwId;
+  if (!id) { return; }
+  var values = {
+    Status: 'Returned',
+    'Unassigned On': document.getElementById('uhwDate').value,
+    'Ticket / Reason': (document.getElementById('uhwTicket').value || '') + (document.getElementById('uhwCondition').value ? ' [Condition: ' + document.getElementById('uhwCondition').value + ']' : ''),
+    Notes: (document.getElementById('uhwNotes').value || '')
+  };
+  updateListItem(APP.lists.HardwareAssignments, id, values, { entityType: 'HardwareAssignment', reason: 'Hardware return/unassign' }).then(function(){
+    toast('Hardware returned successfully.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Return failed.', 'danger'); });
+}
+
+function openUnassignSwModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.unassignSwId = assignmentId;
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + formField('Software', '<input class="input" value="' + escAttr(getSoftwareDisplayName(row._software)) + '" disabled />')
+    + formField('Removing From', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Unassign Date', '<input id="uswDate" type="date" class="input" value="' + today + '" />')
+    + formField('Ticket / Reference', '<input id="uswTicket" class="input" placeholder="Optional ticket or reference number" />')
+    + '<div class="full">' + formField('Notes', '<textarea id="uswNotes" class="textarea" style="min-height:60px" placeholder="Reason for removal"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Unassign Software', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn danger" data-action="confirm-unassign-sw">Confirm Unassign</button></div>', 'Remove software assignment');
+}
+function confirmUnassignSw(){
+  var id = APP.modalState.unassignSwId;
+  if (!id) { return; }
+  var values = {
+    Status: 'Revoked',
+    'Unassigned On': document.getElementById('uswDate').value,
+    'Ticket / Reason': document.getElementById('uswTicket').value,
+    Notes: document.getElementById('uswNotes').value
+  };
+  updateListItem(APP.lists.SoftwareAssignments, id, values, { entityType: 'SoftwareAssignment', reason: 'Software unassign' }).then(function(){
+    toast('Software unassigned.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Unassign failed.', 'danger'); });
+}
+
+/* ─── Transfer Assignment Flow ─── */
+function openTransferHwModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.hardwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.transferHwId = assignmentId;
+  APP.modalState.transferHwAsset = row._asset;
+  var personOpts = (APP.state.data.people || []).filter(function(p){ return p.Status === 'Active'; }).map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + formField('Hardware', '<input class="input" value="' + escAttr(getHardwareDisplayName(row._asset)) + '" disabled />')
+    + formField('Currently Assigned To', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Transfer To', '<select id="thwPerson" class="select"><option value="">-- Select New Person --</option>' + personOpts + '</select>')
+    + formField('Transfer Date', '<input id="thwDate" type="date" class="input" value="' + today + '" />')
+    + formField('Condition', '<select id="thwCondition" class="select"><option value="Good">Good</option><option value="Fair">Fair</option><option value="Poor">Poor</option></select>')
+    + '<div class="full">' + formField('Transfer Notes', '<textarea id="thwNotes" class="textarea" style="min-height:60px" placeholder="Reason for transfer, authorization, ticket number"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Transfer Hardware', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn warn" data-action="confirm-transfer-hw">Confirm Transfer</button></div>', 'Transfer to a new person (closes current assignment, creates new one)');
+}
+function confirmTransferHw(){
+  var oldId = APP.modalState.transferHwId;
+  var asset = APP.modalState.transferHwAsset;
+  if (!oldId || !asset) { return; }
+  var newPersonId = document.getElementById('thwPerson').value;
+  var errors = runValidation([function(){ return validateRequired(newPersonId, 'Transfer To'); }]);
+  if (showValidationErrors(errors)) { return; }
+  var today = document.getElementById('thwDate').value;
+  var notes = document.getElementById('thwNotes').value;
+  var condition = document.getElementById('thwCondition').value;
+  /* Step 1: Close old assignment */
+  updateListItem(APP.lists.HardwareAssignments, oldId, {
+    Status: 'Transferred',
+    'Unassigned On': today,
+    'Ticket / Reason': 'Transferred [Condition: ' + condition + ']',
+    Notes: (notes ? notes + ' | ' : '') + 'Transferred out'
+  }, { entityType: 'HardwareAssignment', reason: 'Transfer out' }).then(function(){
+    /* Step 2: Create new assignment */
+    return createListItem(APP.lists.HardwareAssignments, {
+      Title: 'Transfer - ' + today,
+      HardwareAssetID: parseInt(asset.Id, 10),
+      PersonID: parseInt(newPersonId, 10),
+      'Assigned On': today,
+      Status: 'Active',
+      Notes: (notes ? notes + ' | ' : '') + 'Transferred in [Condition: ' + condition + ']'
+    }, { entityType: 'HardwareAssignment', reason: 'Transfer in' });
+  }).then(function(){
+    toast('Hardware transferred successfully.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Transfer failed.', 'danger'); });
+}
+
+function openTransferSwModal(assignmentId){
+  var idx = buildAssetIndex();
+  var row = null;
+  idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
+  if (!row) { toast('Assignment not found.', 'danger'); return; }
+  APP.modalState.transferSwId = assignmentId;
+  APP.modalState.transferSwSoftware = row._software;
+  var personOpts = (APP.state.data.people || []).filter(function(p){ return p.Status === 'Active'; }).map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + formField('Software', '<input class="input" value="' + escAttr(getSoftwareDisplayName(row._software)) + '" disabled />')
+    + formField('Currently Assigned To', '<input class="input" value="' + escAttr(row._person ? formatPerson(row._person) : '—') + '" disabled />')
+    + formField('Transfer To', '<select id="tswPerson" class="select"><option value="">-- Select New Person --</option>' + personOpts + '</select>')
+    + formField('Transfer Date', '<input id="tswDate" type="date" class="input" value="' + today + '" />')
+    + '<div class="full">' + formField('Transfer Notes', '<textarea id="tswNotes" class="textarea" style="min-height:60px" placeholder="Reason for transfer"></textarea>') + '</div>'
+    + '</div>';
+  openModal('Transfer Software', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn warn" data-action="confirm-transfer-sw">Confirm Transfer</button></div>', 'Transfer to a new person');
+}
+function confirmTransferSw(){
+  var oldId = APP.modalState.transferSwId;
+  var sw = APP.modalState.transferSwSoftware;
+  if (!oldId || !sw) { return; }
+  var newPersonId = document.getElementById('tswPerson').value;
+  var errors = runValidation([function(){ return validateRequired(newPersonId, 'Transfer To'); }]);
+  if (showValidationErrors(errors)) { return; }
+  var today = document.getElementById('tswDate').value;
+  var notes = document.getElementById('tswNotes').value;
+  updateListItem(APP.lists.SoftwareAssignments, oldId, {
+    Status: 'Transferred',
+    'Unassigned On': today,
+    Notes: (notes ? notes + ' | ' : '') + 'Transferred out'
+  }, { entityType: 'SoftwareAssignment', reason: 'Transfer out' }).then(function(){
+    return createListItem(APP.lists.SoftwareAssignments, {
+      Title: 'Transfer - ' + today,
+      SoftwareAssetID: parseInt(sw.Id, 10),
+      PersonID: parseInt(newPersonId, 10),
+      'Assigned On': today,
+      Status: 'Active',
+      Notes: (notes ? notes + ' | ' : '') + 'Transferred in'
+    }, { entityType: 'SoftwareAssignment', reason: 'Transfer in' });
+  }).then(function(){
+    toast('Software transferred successfully.', 'ok');
+    closeModal();
+    return ensureAssetsLoaded(true).then(function(){ if (APP.state.route === 'assets') { renderAssets(); } });
+  }).catch(function(){ toast('Transfer failed.', 'danger'); });
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
  *  CALENDAR MODULE – Time Off, Federal Holidays, Senior Leaders
  * ═══════════════════════════════════════════════════════════════════════ */
@@ -5526,6 +5989,26 @@ function handleClick(e){
   if (action === 'save-hw-assignment') { saveHardwareAssignment(); return; }
   if (action === 'create-sw-assignment') { openCreateSoftwareAssignmentModal(); return; }
   if (action === 'save-sw-assignment') { saveSoftwareAssignment(); return; }
+  /* Asset detail / edit / unassign / transfer actions */
+  if (action === 'view-hw-assignment') { openHwAssignmentDetail(el.getAttribute('data-id')); return; }
+  if (action === 'view-sw-assignment') { openSwAssignmentDetail(el.getAttribute('data-id')); return; }
+  if (action === 'view-hw-detail') { openHwAssetDetail(el.getAttribute('data-id')); return; }
+  if (action === 'edit-hw-asset') { openEditHwAssetModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-hw-asset-edit') { saveHwAssetEdit(); return; }
+  if (action === 'edit-sw-asset') { openEditSwAssetModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-sw-asset-edit') { saveSwAssetEdit(); return; }
+  if (action === 'edit-hw-assignment') { openEditHwAssignmentModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-edit-hw-assign') { saveEditHwAssignment(); return; }
+  if (action === 'edit-sw-assignment') { openEditSwAssignmentModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-edit-sw-assign') { saveEditSwAssignment(); return; }
+  if (action === 'unassign-hw') { openUnassignHwModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-unassign-hw') { confirmUnassignHw(); return; }
+  if (action === 'unassign-sw') { openUnassignSwModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-unassign-sw') { confirmUnassignSw(); return; }
+  if (action === 'transfer-hw') { openTransferHwModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-transfer-hw') { confirmTransferHw(); return; }
+  if (action === 'transfer-sw') { openTransferSwModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-transfer-sw') { confirmTransferSw(); return; }
   if (action === 'popout-fullscreen') { popoutFullscreen(); return; }
   if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
