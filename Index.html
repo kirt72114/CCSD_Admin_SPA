@@ -769,6 +769,7 @@ body.light-theme .skeleton{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,
         <button class="btn subtle" data-action="refresh-route">Refresh</button>
         <button id="btnDiagHeader" class="btn subtle" data-action="open-diagnostics" style="display:none">Diagnostics</button>
         <button class="btn primary" data-action="open-create-request">New Request</button>
+        <button class="btn subtle" data-action="toggle-theme" style="padding:6px 8px;font-size:11px" title="Toggle light/dark theme">Theme</button>
         <button class="btn-popout" data-action="popout-fullscreen" title="Open in full screen">&#x26F6; Full Screen</button>
         <span class="fullscreen-badge">Full Screen</span>
       </div>
@@ -6878,6 +6879,235 @@ function renderRoute(){
   if (route === 'diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderDiagnostics(); }
   return renderHome();
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ *  PLATFORM FEATURES
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Theme Toggle ─── */
+function toggleTheme(){
+  var isLight = document.body.classList.toggle('light-theme');
+  try { localStorage.setItem('ccsd-theme', isLight ? 'light' : 'dark'); } catch(e) {}
+  toast('Theme switched to ' + (isLight ? 'light' : 'dark') + ' mode.', 'ok');
+}
+function loadThemePreference(){
+  try {
+    var saved = localStorage.getItem('ccsd-theme');
+    if (saved === 'light') { document.body.classList.add('light-theme'); }
+  } catch(e) {}
+}
+
+/* ─── Session Timeout ─── */
+var SESSION_TIMEOUT_MS = 30 * 60 * 1000; /* 30 minutes */
+var SESSION_WARNING_MS = 5 * 60 * 1000; /* warn 5 min before */
+var sessionTimer = null;
+var sessionWarningTimer = null;
+function resetSessionTimer(){
+  if (sessionTimer) { clearTimeout(sessionTimer); }
+  if (sessionWarningTimer) { clearTimeout(sessionWarningTimer); }
+  var overlay = document.getElementById('sessionTimeoutOverlay');
+  if (overlay) { overlay.remove(); }
+  sessionWarningTimer = setTimeout(function(){
+    var overlay = document.createElement('div');
+    overlay.id = 'sessionTimeoutOverlay';
+    overlay.className = 'session-timeout-overlay';
+    overlay.innerHTML = '<div class="session-timeout-box"><div class="sto-title">Session Expiring</div><div class="sto-sub">Your session will expire in 5 minutes due to inactivity. Click anywhere to continue.</div><button class="btn primary" onclick="resetSessionTimer()">Continue Session</button></div>';
+    document.body.appendChild(overlay);
+  }, SESSION_TIMEOUT_MS - SESSION_WARNING_MS);
+  sessionTimer = setTimeout(function(){
+    window.location.reload();
+  }, SESSION_TIMEOUT_MS);
+}
+function initSessionTimeout(){
+  ['click','keydown','mousemove','touchstart'].forEach(function(evt){
+    document.addEventListener(evt, function(){ resetSessionTimer(); }, { passive: true });
+  });
+  resetSessionTimer();
+}
+
+/* ─── Input Sanitization ─── */
+function sanitizeInput(value){
+  if (typeof value !== 'string') { return value; }
+  return value.replace(/<script[\s>]/gi, '').replace(/javascript:/gi, '').replace(/on\w+\s*=/gi, '');
+}
+
+/* ─── Soft Delete Pattern ─── */
+function softDeleteItem(listTitle, itemId, entityType){
+  return updateListItem(listTitle, itemId, { IsDeleted: true, DeletedOn: new Date().toISOString() }, { entityType: entityType, reason: 'Soft delete' }).then(function(){
+    toast(entityType + ' archived.', 'ok');
+  });
+}
+
+/* ─── Expanded Data Quality Checks ─── */
+function runExpandedDataQualityChecks(){
+  var issues = runDataQualityChecks();
+  var people = APP.state.data.people || [];
+  var orgs = APP.state.data.organizations || [];
+  var orgIds = {};
+  orgs.forEach(function(o){ orgIds[o.Id] = true; });
+  /* People referencing non-existent orgs */
+  people.forEach(function(p){
+    var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null;
+    if (oid && !orgIds[oid]) { issues.push({ severity: 'warn', message: 'Person ' + formatPerson(p) + ' references non-existent org ID ' + oid }); }
+  });
+  /* Orgs referencing non-existent parent orgs */
+  orgs.forEach(function(o){
+    var pid = o.ParentOrgID ? (o.ParentOrgID.Id || o.ParentOrgID) : null;
+    if (pid && !orgIds[pid]) { issues.push({ severity: 'warn', message: 'Org ' + getOrgDisplayName(o) + ' references non-existent parent org ID ' + pid }); }
+  });
+  return issues;
+}
+
+/* ─── Reporting Module ─── */
+function renderReporting(){
+  renderLoading('Loading reports...');
+  return Promise.all([
+    ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureTrainingCatalogLoaded(),
+    ensureTrainingRecordsLoaded(), ensureAssetsLoaded(), ensureRequestsLoaded(),
+    ensureTimeOffLoaded().catch(function(){ return []; })
+  ]).then(function(){
+    var html = '<div class="card"><div class="card-head"><div><div class="card-title">Reports</div><div class="card-sub">Generate and view organizational reports. Use Print button for print-friendly output.</div></div><div class="filter-row"><button class="btn subtle" data-action="print-view">Print</button></div></div><div class="card-body">';
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">';
+    html += '<button class="btn" data-action="report-headcount" style="padding:16px;text-align:left"><strong>Headcount by Org</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Personnel distribution with drill-down</div></button>';
+    html += '<button class="btn" data-action="report-training" style="padding:16px;text-align:left"><strong>Training Compliance</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Compliance rates by organization</div></button>';
+    html += '<button class="btn" data-action="report-assets" style="padding:16px;text-align:left"><strong>Asset Inventory</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Assets by type, status, environment</div></button>';
+    html += '<button class="btn" data-action="report-timeoff" style="padding:16px;text-align:left"><strong>Time-Off Utilization</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Usage by person, org, and month</div></button>';
+    html += '<button class="btn" data-action="report-sla" style="padding:16px;text-align:left"><strong>Request SLA</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">On-time completion and overdue rates</div></button>';
+    html += '<button class="btn" data-action="report-data-quality" style="padding:16px;text-align:left"><strong>Data Quality</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Cross-list reference integrity</div></button>';
+    html += '</div></div></div>';
+    html += '<div id="reportOutput" style="margin-top:16px"></div>';
+    setView(html);
+  });
+}
+
+function renderHeadcountReport(){
+  var orgs = APP.state.data.organizations || [];
+  var people = APP.state.data.people || [];
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Headcount by Organization</div></div><div class="card-body">';
+  body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th data-sort="org">Organization</th><th data-sort="total">Total</th><th data-sort="active">Active</th><th data-sort="departed">Departed</th></tr></thead><tbody>';
+  orgs.forEach(function(o){
+    var orgPeople = people.filter(function(p){ var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null; return String(oid) === String(o.Id); });
+    var active = orgPeople.filter(function(p){ return String(p.Status || '').toLowerCase().indexOf('depart') < 0; }).length;
+    body += '<tr><td>' + escHtml(getOrgDisplayName(o)) + '</td><td>' + orgPeople.length + '</td><td>' + active + '</td><td>' + (orgPeople.length - active) + '</td></tr>';
+  });
+  body += '</tbody></table></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; initSortableHeaders(); }
+}
+
+function renderTrainingComplianceReport(){
+  var orgs = APP.state.data.organizations || [];
+  var people = APP.state.data.people || [];
+  var catalog = APP.state.data.trainingCatalog || [];
+  var records = APP.state.data.trainingRecords || [];
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Training Compliance by Organization</div></div><div class="card-body">';
+  body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Organization</th><th>Personnel</th><th>Applicable</th><th>Current</th><th>Compliance</th></tr></thead><tbody>';
+  orgs.forEach(function(o){
+    var orgPeople = people.filter(function(p){ var oid = p.OrgID ? (p.OrgID.Id || p.OrgID) : null; return String(oid) === String(o.Id) && String(p.Status || '').toLowerCase().indexOf('depart') < 0; });
+    if (!orgPeople.length) { return; }
+    var totalApplicable = 0; var totalCurrent = 0;
+    orgPeople.forEach(function(p){
+      catalog.forEach(function(t){
+        if (!trainingAppliesToPerson(t, p)) { return; }
+        totalApplicable++;
+        var rec = null;
+        records.some(function(r){ if (r.TrainingID && String(r.TrainingID.Id || r.TrainingID) === String(t.Id) && r.PersonID && String(r.PersonID.Id || r.PersonID) === String(p.Id)) { rec = r; return true; } return false; });
+        if (rec && rec.ExpirationDate && new Date(rec.ExpirationDate) > new Date()) { totalCurrent++; }
+        else if (rec && !rec.ExpirationDate && rec.CompletionDate) { totalCurrent++; }
+      });
+    });
+    var pct = totalApplicable ? Math.round((totalCurrent / totalApplicable) * 100) : 100;
+    var color = pct >= 80 ? 'var(--ok)' : pct >= 60 ? 'var(--warn)' : 'var(--danger)';
+    body += '<tr><td>' + escHtml(getOrgDisplayName(o)) + '</td><td>' + orgPeople.length + '</td><td>' + totalApplicable + '</td><td>' + totalCurrent + '</td><td style="color:' + color + ';font-weight:700">' + pct + '%</td></tr>';
+  });
+  body += '</tbody></table></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; initSortableHeaders(); }
+}
+
+function renderAssetInventoryReport(){
+  var idx = buildAssetIndex();
+  var typeCounts = {};
+  var statusCounts = {};
+  (idx.hwAssets || []).forEach(function(a){
+    var t = a.AssetType || a.HardwareType || 'Unknown';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+    var s = a.Status || 'Unknown';
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Asset Inventory Report</div></div><div class="card-body">';
+  body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+  body += '<div><div style="font-weight:700;margin-bottom:8px">By Type</div><table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>';
+  Object.keys(typeCounts).sort().forEach(function(k){ body += '<tr><td>' + escHtml(k) + '</td><td>' + typeCounts[k] + '</td></tr>'; });
+  body += '</tbody></table></div>';
+  body += '<div><div style="font-weight:700;margin-bottom:8px">By Status</div><table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>';
+  Object.keys(statusCounts).sort().forEach(function(k){ body += '<tr><td>' + statusBadge(k) + '</td><td>' + statusCounts[k] + '</td></tr>'; });
+  body += '</tbody></table></div></div></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; }
+}
+
+function renderTimeOffReport(){
+  var entries = APP.state.data.timeOff || [];
+  var people = APP.state.data.people || [];
+  var personMap = {};
+  people.forEach(function(p){ personMap[p.Id] = p; });
+  var monthCounts = {};
+  entries.forEach(function(e){
+    if (e.Status !== 'Approved' && e.Status !== 'approved') { return; }
+    var m = (e.StartDate || '').slice(0, 7);
+    if (!m) { return; }
+    monthCounts[m] = (monthCounts[m] || 0) + 1;
+  });
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Time-Off Utilization</div></div><div class="card-body">';
+  body += '<div style="font-weight:700;margin-bottom:8px">Approved Entries by Month</div>';
+  body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Month</th><th>Entries</th></tr></thead><tbody>';
+  Object.keys(monthCounts).sort().forEach(function(m){ body += '<tr><td>' + escHtml(m) + '</td><td>' + monthCounts[m] + '</td></tr>'; });
+  body += '</tbody></table></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; }
+}
+
+function renderSlaReport(){
+  var requests = APP.state.data.requests || [];
+  var total = requests.length;
+  var closed = requests.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') >= 0 || s.indexOf('complete') >= 0; });
+  var onTime = closed.filter(function(r){
+    if (!r.DueDate || !r.ClosedOn) { return true; }
+    return new Date(r.ClosedOn) <= new Date(r.DueDate);
+  }).length;
+  var overdue = requests.filter(function(r){
+    var s = String(r.Status || '').toLowerCase();
+    if (s.indexOf('closed') >= 0 || s.indexOf('complete') >= 0) { return false; }
+    var d = daysUntil(r.DueDate);
+    return d != null && d < 0;
+  }).length;
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Request SLA Compliance</div></div><div class="card-body">';
+  body += '<div style="display:flex;gap:16px;margin-bottom:16px">';
+  body += '<div class="dash-kpi"><div class="kpi-value">' + total + '</div><div class="kpi-label">Total Requests</div></div>';
+  body += '<div class="dash-kpi"><div class="kpi-value">' + closed.length + '</div><div class="kpi-label">Closed</div></div>';
+  body += '<div class="dash-kpi"><div class="kpi-value">' + (closed.length ? Math.round((onTime / closed.length) * 100) : 0) + '%</div><div class="kpi-label">On-Time Rate</div></div>';
+  body += '<div class="dash-kpi"><div class="kpi-value" style="color:' + (overdue ? 'var(--danger)' : 'var(--ok)') + '">' + overdue + '</div><div class="kpi-label">Currently Overdue</div></div>';
+  body += '</div></div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; }
+}
+
+function renderDataQualityReport(){
+  var issues = runExpandedDataQualityChecks();
+  var body = '<div class="card"><div class="card-head"><div class="card-title">Data Quality Report</div></div><div class="card-body">';
+  body += '<div style="margin-bottom:10px"><strong>' + issues.length + '</strong> issues found.</div>';
+  if (!issues.length) { body += '<div class="empty">All data quality checks passed.</div>'; }
+  else {
+    body += '<table class="table-wrap" style="width:100%;font-size:11px"><thead><tr><th>Severity</th><th>Issue</th></tr></thead><tbody>';
+    issues.forEach(function(i){ body += '<tr><td>' + statusBadge(i.severity || 'info') + '</td><td>' + escHtml(i.message || '') + '</td></tr>'; });
+    body += '</tbody></table>';
+  }
+  body += '</div></div>';
+  var out = document.getElementById('reportOutput');
+  if (out) { out.innerHTML = body; initSortableHeaders(); }
+}
+
 function filterCards(selector, term){
   var host = document.querySelector(selector);
   if (!host) { return; }
@@ -7059,6 +7289,13 @@ function handleClick(e){
   if (action === 'bulk-asset-import') { openBulkAssetImportModal(); return; }
   if (action === 'save-bulk-assets') { saveBulkAssets(); return; }
   if (action === 'popout-fullscreen') { popoutFullscreen(); return; }
+  if (action === 'toggle-theme') { toggleTheme(); return; }
+  if (action === 'report-headcount') { renderHeadcountReport(); return; }
+  if (action === 'report-training') { renderTrainingComplianceReport(); return; }
+  if (action === 'report-assets') { renderAssetInventoryReport(); return; }
+  if (action === 'report-timeoff') { renderTimeOffReport(); return; }
+  if (action === 'report-sla') { renderSlaReport(); return; }
+  if (action === 'report-data-quality') { renderDataQualityReport(); return; }
   if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
 }
 function detectEmbeddedMode(){
@@ -7080,6 +7317,8 @@ function popoutFullscreen(){
 
 function bootstrap(){
   detectEmbeddedMode();
+  loadThemePreference();
+  initSessionTimeout();
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
   initSortableHeaders();
