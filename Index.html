@@ -2507,6 +2507,31 @@ function renderHome(){
     }
     html += '</div></div></div>';
 
+    /* ─ Row 2.5: Upcoming Time Off + Quick Links ─ */
+    var myUpcoming = getUpcomingTimeOff(14);
+    var certAlerts = getCertExpirationAlerts(60);
+    html += '<div class="dash-grid">';
+    /* Upcoming time off */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Upcoming Time Off</div><div class="dc-sub">Next 14 days</div></div><button class="btn subtle" data-action="nav" data-route="calendar" style="padding:4px 8px;font-size:10px">Calendar</button></div><div class="dc-body">';
+    if (!myUpcoming.length) { html += '<div class="dc-empty">No upcoming time off scheduled.</div>'; }
+    else {
+      myUpcoming.slice(0, 5).forEach(function(e){
+        var t = getCalType(e.TimeOffType);
+        html += '<div class="dash-team-row"><div class="dot" style="background:' + t.color + '"></div><div class="name">' + escHtml((e.StartDate || '').slice(0,10)) + (e.EndDate && e.EndDate !== e.StartDate ? ' to ' + escHtml((e.EndDate || '').slice(0,10)) : '') + '</div><div class="status" style="color:' + t.color + '">' + escHtml(e.TimeOffType || '') + '</div></div>';
+      });
+    }
+    html += '</div></div>';
+    /* Cert expiration alerts */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Expiring Certifications</div><div class="dc-sub">Within 60 days</div></div></div><div class="dc-body">';
+    if (!certAlerts.length) { html += '<div class="dc-empty">No certifications expiring soon.</div>'; }
+    else {
+      certAlerts.slice(0, 5).forEach(function(a){
+        var color = a.daysLeft <= 14 ? 'var(--danger)' : a.daysLeft <= 30 ? 'var(--warn)' : 'var(--muted)';
+        html += '<div class="dash-action-item"><div class="dai-icon warn">!</div><div class="dai-content"><div class="dai-title">' + escHtml(a.training ? (a.training.TrainingName || a.training.Title || '') : 'Certification') + '</div><div class="dai-meta" style="color:' + color + '">' + a.daysLeft + ' days left — expires ' + escHtml(formatDate(a.expirationDate)) + '</div></div></div>';
+      });
+    }
+    html += '</div></div></div>';
+
     /* ─ Row 3: Notifications + Quick Nav ─ */
     html += '<div class="dash-grid">';
     /* Notifications */
