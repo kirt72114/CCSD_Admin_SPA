@@ -3556,8 +3556,90 @@ function openOrgDashboard(orgId){
 
 /* ─── Org Chart Print ─── */
 function printOrgChart(){
-  window.print();
-  toast('Print dialog opened.', 'ok');
+  var orgs = APP.state.data.orgs || [];
+  var people = APP.state.data.people || [];
+  var activePeople = people.filter(function(p){ return String(p.Status || '').toLowerCase() !== 'departed'; });
+  var orgMap = {};
+  orgs.forEach(function(o){ orgMap[o.Id] = o; });
+
+  function getOrgPeople(orgId){
+    return activePeople.filter(function(p){ return p.OrgID && p.OrgID.Id === orgId; });
+  }
+  function getChildOrgs(parentId){
+    return orgs.filter(function(o){ return o.ParentOrgID && o.ParentOrgID.Id === parentId; }).sort(function(a,b){ return String(a.Title||'').localeCompare(String(b.Title||'')); });
+  }
+  function findRootOrg(){
+    var roots = orgs.filter(function(o){ return !o.ParentOrgID || !orgMap[o.ParentOrgID.Id]; });
+    return roots.length ? roots[0] : orgs[0];
+  }
+  function getLeader(org){
+    if (!org) return null;
+    var ppl = getOrgPeople(org.Id);
+    var ldr = null;
+    ppl.some(function(p){
+      var pos = p.PositionID ? String(p.PositionID.Title || '').toLowerCase() : '';
+      if (pos.indexOf('director') >= 0 || pos.indexOf('chief') >= 0 || pos.indexOf('commander') >= 0 || pos.indexOf('superintendent') >= 0 || pos.indexOf('lead') >= 0) { ldr = p; return true; }
+      return false;
+    });
+    return ldr || (ppl.length ? ppl[0] : null);
+  }
+
+  function renderPrintOrg(org, depth){
+    if (!org) return '';
+    var indent = depth * 24;
+    var ppl = getOrgPeople(org.Id);
+    var ldr = getLeader(org);
+    var children = getChildOrgs(org.Id);
+    var html = '<div class="print-org-node" style="margin-left:' + indent + 'px">';
+    html += '<div class="print-org-box' + (depth === 0 ? ' root' : '') + '">';
+    html += '<div class="print-org-header">';
+    html += '<div class="print-org-name">' + escHtml(org.Title || org.OrgCode || '') + '</div>';
+    if (org.OrgCode) html += '<div class="print-org-code">' + escHtml(org.OrgCode) + '</div>';
+    html += '</div>';
+    if (ldr) {
+      html += '<div class="print-org-leader">' + escHtml(ldr.Title || '') + (ldr.PositionID ? ' — ' + escHtml(ldr.PositionID.Title || '') : '') + '</div>';
+    }
+    html += '<div class="print-org-stats">' + ppl.length + ' personnel' + (children.length ? ' | ' + children.length + ' sub-orgs' : '') + '</div>';
+    html += '</div>';
+    children.forEach(function(c){ html += renderPrintOrg(c, depth + 1); });
+    html += '</div>';
+    return html;
+  }
+
+  var root = findRootOrg();
+  var printHtml = '<!DOCTYPE html><html><head><title>Organization Chart</title><style>'
+    + 'body{font-family:Segoe UI,Arial,sans-serif;margin:0;padding:20px 30px;color:#1a1a2e;font-size:11px;line-height:1.4}'
+    + '.print-header{text-align:center;margin-bottom:20px;padding-bottom:14px;border-bottom:3px solid #0d4f9b}'
+    + '.print-header h1{font-size:18px;color:#0d4f9b;margin:0 0 4px;font-weight:800;letter-spacing:.02em}'
+    + '.print-header .sub{font-size:11px;color:#5c7086}'
+    + '.print-org-node{margin-bottom:2px;position:relative}'
+    + '.print-org-node:before{content:"";position:absolute;left:-12px;top:0;bottom:0;width:2px;background:#d0dbe8}'
+    + '.print-org-node:first-child:before{top:14px}'
+    + '.print-org-box{border:1px solid #c8d6e5;border-radius:6px;padding:6px 10px;margin-bottom:4px;background:#fff;page-break-inside:avoid}'
+    + '.print-org-box.root{border:2px solid #0d4f9b;background:linear-gradient(180deg,#f0f6ff,#fff);padding:10px 14px}'
+    + '.print-org-header{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}'
+    + '.print-org-name{font-weight:800;font-size:12px;color:#0a2948}'
+    + '.root .print-org-name{font-size:15px;color:#0d4f9b}'
+    + '.print-org-code{font-size:9px;color:#5c7086;font-weight:700;background:#edf4fb;padding:1px 6px;border-radius:4px}'
+    + '.print-org-leader{font-size:10px;color:#2c5f8a;margin-top:2px;font-weight:600}'
+    + '.print-org-stats{font-size:9px;color:#8899aa;margin-top:1px}'
+    + '.print-footer{margin-top:20px;padding-top:10px;border-top:1px solid #d0dbe8;font-size:9px;color:#8899aa;display:flex;justify-content:space-between}'
+    + '@media print{@page{margin:0.4in;size:letter portrait}body{padding:0}}'
+    + '</style></head><body>';
+  printHtml += '<div class="print-header"><h1>' + escHtml(root ? root.Title || 'Organization' : 'Organization Chart') + '</h1>';
+  printHtml += '<div class="sub">USAF AETC-LAK CPSG — Organizational Structure — ' + escHtml(new Date().toLocaleDateString()) + '</div></div>';
+  printHtml += renderPrintOrg(root, 0);
+  printHtml += '<div class="print-footer"><span>Total: ' + activePeople.length + ' active personnel across ' + orgs.length + ' organizations</span><span>Generated ' + new Date().toLocaleString() + '</span></div>';
+  printHtml += '</body></html>';
+
+  var printWin = window.open('', '_blank');
+  if (printWin) {
+    printWin.document.write(printHtml);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(function(){ printWin.print(); }, 400);
+  }
+  toast('Print view opened in new window.', 'ok');
 }
 
 function renderTraining(){
