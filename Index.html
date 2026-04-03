@@ -1512,6 +1512,31 @@ function createListItem(listTitle, values, meta){
   });
 }
 
+function attachFileToListItem(listTitle, itemId, file){
+  return getFormDigest().then(function(digest){
+    var fileName = file.name.replace(/[#%&{}\\<>*?/$!'":@+`|=]/g, '_');
+    var url = apiUrl("/web/lists/GetByTitle('" + escOData(listTitle) + "')/items(" + itemId + ")/AttachmentFiles/add(FileName='" + encodeURIComponent(fileName) + "')");
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
+        xhr.setRequestHeader('X-RequestDigest', digest);
+        xhr.onreadystatechange = function(){
+          if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) { resolve(xhr.responseText); }
+            else { reject({ status: xhr.status, text: xhr.responseText }); }
+          }
+        };
+        xhr.send(new Uint8Array(e.target.result));
+      };
+      reader.onerror = function(){ reject({ text: 'File read failed' }); };
+      reader.readAsArrayBuffer(file);
+    });
+  });
+}
+
 function updateListItem(listTitle, itemId, values, meta){
   meta = meta || {};
   return Promise.all([buildWritePayload(listTitle, values), getListEntityType(listTitle)]).then(function(all){
@@ -3587,6 +3612,7 @@ function openTrainingSubmissionModal(id){
     + formField('Training', '<input class="input" value="' + escAttr(t.TrainingName || t.Title || '') + '" disabled />')
     + formField('Completion Date', '<input id="trainingCompletionDate" type="date" class="input" value="' + escAttr(formatDate(new Date())) + '" />')
     + formField('Proof Attached', '<select id="trainingProofAttached" class="select"><option value="Yes">Yes</option><option value="No">No</option></select>')
+    + formField('Certificate/Proof Upload', '<input id="trainingCertFile" type="file" class="input" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" /><div class="small-note" style="margin-top:4px">PDF, image, or Word doc (max 10 MB)</div>')
     + '<div class="full">' + formField('Notes', '<textarea id="trainingSubmissionNotes" class="textarea" placeholder="Certificate details, location, comments, or proof references."></textarea>') + '</div>'
     + '</div>';
   openModal('Submit Training Completion', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-training-submission">Submit</button></div>', t.TrainingCode || '');
@@ -3618,8 +3644,20 @@ function saveTrainingSubmission(){
     Status: 'Pending Review',
     Notes: document.getElementById('trainingSubmissionNotes').value
   };
-  createListItem(APP.lists.TrainingSubmissions, values, { entityType: 'Training Submission', reason: 'Member submitted completion' }).then(function(){
-    toast('Training submission created.', 'ok');
+  var fileInput = document.getElementById('trainingCertFile');
+  var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+  if (file && file.size > 10 * 1024 * 1024) { toast('File exceeds 10 MB limit.', 'danger'); return; }
+  createListItem(APP.lists.TrainingSubmissions, values, { entityType: 'Training Submission', reason: 'Member submitted completion' }).then(function(result){
+    if (file && result && result.d && result.d.Id) {
+      return attachFileToListItem(APP.lists.TrainingSubmissions, result.d.Id, file).then(function(){
+        toast('Training submission created with certificate.', 'ok');
+      }).catch(function(){
+        toast('Submission created but file upload failed. Please attach manually.', 'warn');
+      });
+    } else {
+      toast('Training submission created.', 'ok');
+    }
+  }).then(function(){
     closeModal();
     return ensureTrainingSubmissionsLoaded(true).then(function(){ renderTraining(); });
   }).catch(function(){ toast('Training submission failed.', 'danger'); });
