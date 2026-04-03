@@ -3974,6 +3974,45 @@ function saveRequest(){
   }).catch(function(){ toast('Request creation failed.', 'danger'); });
 }
 
+function saveTemplateRequest(){
+  var type = document.getElementById('requestType').value;
+  var title = document.getElementById('requestTitle').value || (type + ' Request');
+  var fields = APP.modalState.templateFields || [];
+  var fieldDetails = assembleTemplateDetails(fields);
+  var additionalNotes = document.getElementById('requestDetails') ? document.getElementById('requestDetails').value : '';
+  var details = fieldDetails + (additionalNotes ? '\n\nAdditional Notes:\n' + additionalNotes : '');
+  var errors = runValidation([
+    function(){ return validateRequired(title, 'Title'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var corr = guid();
+  ensureWorkflowsLoaded().then(function(){
+    var wf = null;
+    (APP.state.data.workflows || []).some(function(w){ if (normalizeBoolean(w.IsActive) && String(w.RequestType || '').toLowerCase() === String(type || '').toLowerCase()) { wf = w; return true; } return false; });
+    return createListItem(APP.lists.AppRequests, {
+      Title: title,
+      RequestID: corr,
+      RequestType: type,
+      Status: 'Submitted',
+      Priority: document.getElementById('requestPriority').value,
+      Requester: APP.state.currentUser ? APP.state.currentUser.id : null,
+      RequestingOrgID: getCurrentOrgId(),
+      PersonID: APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null,
+      AssignedOrgID: wf && wf.DefaultAssignedOrgID && wf.DefaultAssignedOrgID.Id ? wf.DefaultAssignedOrgID.Id : getCurrentOrgId(),
+      SubmittedOn: new Date().toISOString(),
+      DueDate: document.getElementById('requestDueDate').value || wSla(wf ? wf.SlaDays : 0),
+      Details: details,
+      WorkflowStep: 'Submitted',
+      WorkflowJson: wf && wf.StepsJson ? wf.StepsJson : '',
+      CorrelationID: corr
+    }, { entityType: 'App Request', reason: 'SPA template request', correlationId: corr });
+  }).then(function(){
+    toast('Request created.', 'ok');
+    closeModal();
+    return ensureRequestsLoaded(true).then(function(){ renderRequests(); });
+  }).catch(function(){ toast('Request creation failed.', 'danger'); });
+}
+
 /* ─── Supervisor Request Dashboard ─── */
 function openSupervisorRequestDashboard(){
   Promise.all([ensureRequestsLoaded(), ensurePeopleLoaded()]).then(function(){
@@ -4017,24 +4056,85 @@ function openSupervisorRequestDashboard(){
 
 /* ─── Request Templates ─── */
 var REQUEST_TEMPLATES = {
-  'IT - New Account': { type: 'IT', priority: 'Routine', details: 'Request new user account for: [Name]\nSystem(s): [System names]\nJustification: [Reason]\nSponsor: [Supervisor name]' },
-  'IT - Hardware Issue': { type: 'IT', priority: 'High', details: 'Hardware issue:\nAsset Tag: [Tag #]\nDescription: [What is wrong]\nLocation: [Building/Room]\nImpact: [Who is affected]' },
-  'HR - Personnel Action': { type: 'HR', priority: 'Routine', details: 'Personnel action requested:\nAction type: [Award/Promotion/Reassignment/Other]\nEmployee: [Name]\nEffective date: [Date]\nJustification: [Reason]' },
-  'Facilities - Maintenance': { type: 'Facilities', priority: 'Routine', details: 'Maintenance request:\nBuilding: [Building name]\nRoom/Area: [Location]\nIssue: [Description]\nUrgency: [Routine/Urgent/Emergency]' },
-  'Security - Access Request': { type: 'Security', priority: 'Routine', details: 'Access request:\nPerson: [Name]\nArea/System: [What access is needed]\nJustification: [Reason]\nDuration: [Permanent/Temporary - end date]' },
-  'Training - Course Request': { type: 'Training', priority: 'Routine', details: 'Training request:\nCourse: [Course name]\nProvider: [Training provider]\nDates: [Start - End]\nCost: [$Amount]\nJustification: [Why this training is needed]' }
+  'IT - New Account': { type: 'IT', priority: 'Routine', fields: [
+    { key: 'Name', label: 'Person Name', placeholder: 'Full name of person needing account' },
+    { key: 'Systems', label: 'System(s)', placeholder: 'e.g. NIPR email, DTS, SharePoint' },
+    { key: 'Justification', label: 'Justification', placeholder: 'Why is this account needed?' },
+    { key: 'Sponsor', label: 'Sponsor/Supervisor', placeholder: 'Supervisor or sponsor name' }
+  ]},
+  'IT - Hardware Issue': { type: 'IT', priority: 'High', fields: [
+    { key: 'AssetTag', label: 'Asset Tag', placeholder: 'Tag # of affected hardware' },
+    { key: 'Description', label: 'Issue Description', placeholder: 'What is wrong?', textarea: true },
+    { key: 'Location', label: 'Location', placeholder: 'Building / Room' },
+    { key: 'Impact', label: 'Impact', placeholder: 'Who is affected?' }
+  ]},
+  'HR - Personnel Action': { type: 'HR', priority: 'Routine', fields: [
+    { key: 'ActionType', label: 'Action Type', placeholder: '', select: ['Award','Promotion','Reassignment','Step Increase','Other'] },
+    { key: 'Employee', label: 'Employee Name', placeholder: 'Full name' },
+    { key: 'EffectiveDate', label: 'Effective Date', placeholder: '', date: true },
+    { key: 'Justification', label: 'Justification', placeholder: 'Reason for this action', textarea: true }
+  ]},
+  'Facilities - Maintenance': { type: 'Facilities', priority: 'Routine', fields: [
+    { key: 'Building', label: 'Building', placeholder: 'Building name or number' },
+    { key: 'RoomArea', label: 'Room/Area', placeholder: 'Specific location' },
+    { key: 'Issue', label: 'Issue Description', placeholder: 'What needs maintenance?', textarea: true },
+    { key: 'Urgency', label: 'Urgency', placeholder: '', select: ['Routine','Urgent','Emergency'] }
+  ]},
+  'Security - Access Request': { type: 'Security', priority: 'Routine', fields: [
+    { key: 'Person', label: 'Person', placeholder: 'Who needs access?' },
+    { key: 'AreaSystem', label: 'Area/System', placeholder: 'What access is needed?' },
+    { key: 'Justification', label: 'Justification', placeholder: 'Why is access needed?', textarea: true },
+    { key: 'Duration', label: 'Duration', placeholder: '', select: ['Permanent','Temporary - 30 days','Temporary - 90 days','Temporary - 1 year'] }
+  ]},
+  'Training - Course Request': { type: 'Training', priority: 'Routine', fields: [
+    { key: 'Course', label: 'Course Name', placeholder: 'Name of training course' },
+    { key: 'Provider', label: 'Training Provider', placeholder: 'Organization or platform' },
+    { key: 'StartDate', label: 'Start Date', placeholder: '', date: true },
+    { key: 'EndDate', label: 'End Date', placeholder: '', date: true },
+    { key: 'Cost', label: 'Cost ($)', placeholder: 'Estimated cost' },
+    { key: 'Justification', label: 'Justification', placeholder: 'Why is this training needed?', textarea: true }
+  ]}
 };
+function renderTemplateFields(fields){
+  return fields.map(function(f){
+    var id = 'tmplField_' + f.key;
+    if (f.select) {
+      var opts = f.select.map(function(o){ return '<option value="' + escAttr(o) + '">' + escHtml(o) + '</option>'; }).join('');
+      return formField(f.label, '<select id="' + id + '" class="select"><option value="">-- Select --</option>' + opts + '</select>');
+    }
+    if (f.date) {
+      return formField(f.label, '<input id="' + id + '" type="date" class="input" />');
+    }
+    if (f.textarea) {
+      return '<div class="full">' + formField(f.label, '<textarea id="' + id + '" class="textarea" placeholder="' + escAttr(f.placeholder || '') + '"></textarea>') + '</div>';
+    }
+    return formField(f.label, '<input id="' + id + '" class="input" placeholder="' + escAttr(f.placeholder || '') + '" />');
+  }).join('');
+}
+function assembleTemplateDetails(fields){
+  return fields.map(function(f){
+    var el = document.getElementById('tmplField_' + f.key);
+    var val = el ? el.value : '';
+    return f.label + ': ' + (val || 'N/A');
+  }).join('\n');
+}
 function openCreateRequestFromTemplate(templateName){
   var tmpl = REQUEST_TEMPLATES[templateName];
   if (!tmpl) { openCreateRequestModal(); return; }
+  APP.modalState.templateFields = tmpl.fields;
+  var typeOptions = ['Administrative','Training','SF182','Facilities','IT','Security','HR','Hardware','Software'];
+  var typeSelect = typeOptions.map(function(t){ return '<option value="' + t + '"' + (tmpl.type === t ? ' selected' : '') + '>' + t + '</option>'; }).join('');
   var body = '<div class="form-grid">'
     + formField('Title', '<input id="requestTitle" class="input" value="' + escAttr(templateName) + '" />')
-    + formField('Type', '<select id="requestType" class="select"><option value="Administrative"' + (tmpl.type === 'Administrative' ? ' selected' : '') + '>Administrative</option><option value="Training"' + (tmpl.type === 'Training' ? ' selected' : '') + '>Training</option><option value="SF182"' + (tmpl.type === 'SF182' ? ' selected' : '') + '>SF182</option><option value="Facilities"' + (tmpl.type === 'Facilities' ? ' selected' : '') + '>Facilities</option><option value="IT"' + (tmpl.type === 'IT' ? ' selected' : '') + '>IT</option><option value="Security"' + (tmpl.type === 'Security' ? ' selected' : '') + '>Security</option><option value="HR"' + (tmpl.type === 'HR' ? ' selected' : '') + '>HR</option><option value="Hardware"' + (tmpl.type === 'Hardware' ? ' selected' : '') + '>Hardware</option><option value="Software"' + (tmpl.type === 'Software' ? ' selected' : '') + '>Software</option></select>')
+    + formField('Type', '<select id="requestType" class="select">' + typeSelect + '</select>')
     + formField('Priority', '<select id="requestPriority" class="select"><option value="Routine"' + (tmpl.priority === 'Routine' ? ' selected' : '') + '>Routine</option><option value="High"' + (tmpl.priority === 'High' ? ' selected' : '') + '>High</option><option value="Urgent"' + (tmpl.priority === 'Urgent' ? ' selected' : '') + '>Urgent</option></select>')
     + formField('Due Date', '<input id="requestDueDate" type="date" class="input" />')
-    + '<div class="full">' + formField('Details', '<textarea id="requestDetails" class="textarea" style="min-height:120px">' + escHtml(tmpl.details || '') + '</textarea>') + '</div>'
-    + '</div>';
-  openModal('New Request — ' + escHtml(templateName), body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-request">Create Request</button></div>');
+    + '</div>'
+    + '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><div class="small-note" style="margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">' + escHtml(templateName) + ' Details</div><div class="form-grid">'
+    + renderTemplateFields(tmpl.fields)
+    + '</div></div>'
+    + '<div class="form-grid" style="margin-top:8px"><div class="full">' + formField('Additional Notes', '<textarea id="requestDetails" class="textarea" placeholder="Any additional information"></textarea>') + '</div></div>';
+  openModal('New Request — ' + escHtml(templateName), body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-template-request">Create Request</button></div>');
 }
 
 function renderInOut(){
@@ -7307,6 +7407,7 @@ function handleClick(e){
   if (action === 'use-request-template') { closeModal(); openCreateRequestFromTemplate(el.getAttribute('data-template')); return; }
   if (action === 'supervisor-request-dashboard') { openSupervisorRequestDashboard(); return; }
   if (action === 'save-request') { saveRequest(); return; }
+  if (action === 'save-template-request') { saveTemplateRequest(); return; }
   if (action === 'open-inout-create') { openCreateInOutModal(); return; }
   if (action === 'save-inout') { saveInOut(); return; }
   if (action === 'run-self-test') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } runSelfTest().then(function(){ if (APP.state.route === 'diagnostics' || APP.state.route === 'admin') { renderRoute(); } }); return; }
