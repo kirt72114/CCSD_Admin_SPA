@@ -393,9 +393,240 @@ Updated: 2026-04-03
 
 ---
 
-## 12. SharePoint Lists to Create — 👤
+## 12. Security Module (P1) — 🤝
 
-> *Renumbered from 11*
+> **New major feature. Adds a full Security section to the SPA covering personnel security status, incident management, notifications, and compliance tracking. Requires new SharePoint lists, new roles, and a monthly data ingestion workflow.**
+
+### Known Requirements
+
+> **These are confirmed by the project owner and can be implemented without further discovery.**
+
+#### 12a. Access, Visibility & Privacy Controls — 💻
+
+- [ ] **New "Security" nav tab** — Add to main navigation between existing modules. Visible to all authenticated users but content is scoped by role.
+- [ ] **Self-view default** — When a non-privileged user navigates to Security, they see ONLY their own security record. No list of other members is visible.
+- [ ] **Obscured-by-default display** — Sensitive fields (clearance level, investigation dates, eligibility status, incident history) are masked on initial load (e.g., `●●●●●●` or `[Click to reveal]`). User must explicitly click to reveal their own data.
+- [ ] **Security role access** — Users with the `Security` role (via `CCSD_AppRoles`) can view and edit security records for anyone in the organization. They see the full member roster with search/filter.
+- [ ] **App Admin role access** — Users with `App Admin` role have the same access as the Security role.
+- [ ] **Supervisor limited view** — Supervisors can see a summary security status (clearance level + current/expired/suspended) for their direct reports only. They CANNOT see investigation details, incident records, or SF-86 dates.
+- [ ] **No cross-org visibility** — Security role holders scoped to an org (via `ScopeOrgID` on `CCSD_AppRoles`) can only see members within that org and its descendants.
+- [ ] **Audit logging for all access** — Every view, reveal, edit, and export of security data must be logged to `CCSD_AppAuditLog` with the viewer's identity, timestamp, and which record was accessed.
+
+#### 12b. Member Self-Service Security View — 💻
+
+- [ ] **Personal security status card** — Dashboard-style card showing the member's own:
+  - Current clearance level and status (Active, Interim, Expired, Suspended, None)
+  - Investigation type (T1/T3/T5) and date of last investigation
+  - Continuous Vetting enrollment status
+  - SF-86 last submission date and next due date (calculated: last submission + 5 years)
+  - Access determinations (NIPR/SIPR/JWICS/SCI access granted)
+  - SF-312 (NDA) signed date
+  - Security training compliance (Initial briefing, Annual refresher, Derivative classification — dates and current/expired status)
+- [ ] **Reveal interaction** — Each sensitive field group has a "Show" toggle. Clicking it reveals the data and logs the reveal event to the audit log.
+- [ ] **Read-only for members** — Non-Security, non-Admin users cannot edit any security data. All fields are display-only.
+- [ ] **Incident summary (own only)** — Member can see their own incident records (case number, status, date opened, date closed). They CANNOT see the detailed description or investigation notes — only the obscured case number and current status.
+- [ ] **No export for members** — Members cannot export or print their security data from the self-service view.
+
+#### 12c. Security Admin Management View — 💻
+
+- [ ] **Full roster view** — Security role users see a searchable, filterable, sortable table of all personnel with key security columns (name, org, clearance level, status, investigation type, PR due date, days until due).
+- [ ] **Inline status indicators** — Color-coded: Green = current, Yellow = PR due within 90 days, Red = expired/overdue/suspended.
+- [ ] **Edit security record modal** — Full form to create or update a member's security record. All fields editable. Changes logged to audit log with before/after snapshots.
+- [ ] **Bulk status view** — Summary statistics: total cleared, by level (Confidential/Secret/TS/SCI), expired count, interim count, PR overdue count.
+- [ ] **Security compliance dashboard** — Per-org breakdown of clearance currency, training compliance, and incident counts. Drillable to individual records.
+- [ ] **Export capability** — Security role users can export security roster to CSV (with audit log entry for the export event).
+
+#### 12d. Monthly Excel Import / Data Ingestion — 🤝
+
+> **Security data originates from DISS and is provided as a monthly Excel spreadsheet. The app must ingest this data to keep records current.**
+
+- [ ] **Upload interface** — Security role users can upload an Excel file (.xlsx) via a file input in the Security admin view.
+- [ ] **👤 Define Excel column mapping** — You (the admin) need to provide a sample Excel file so that column headers can be mapped to SharePoint fields. Claude will build the parser once the format is known.
+- [ ] **Column mapping configuration** — Admin-configurable mapping between Excel column headers and `CCSD_SecurityRecords` fields. Stored in `CCSD_Config` so it survives code updates.
+- [ ] **Preview before commit** — After upload, show a preview table of parsed rows with a diff indicator (new records, changed records, unchanged records). Admin confirms before writing to SharePoint.
+- [ ] **Upsert logic** — Match incoming rows to existing records by a unique key (likely PersonID or SSN-last-4 + name). Update existing records; create new ones; flag records in SharePoint that are NOT in the upload (possible departures).
+- [ ] **Upload history** — Log each upload event (date, uploaded by, row count, records created/updated/unchanged) to the audit log.
+- [ ] **Excel parsing** — Use client-side JavaScript Excel parsing (SheetJS/xlsx library via CDN or inline). No server-side processing.
+  - **⚠️ Dependency:** Verify that the SheetJS CDN is accessible from the production network (`usaf.dps.mil`). If blocked, the library must be inlined into Index.html.
+
+#### 12e. Incident & Case Management — 💻
+
+- [ ] **New incident form** — Security role users can create a new security incident record with:
+  - Subject member (lookup to `CCSD_Personnel`)
+  - Incident category (choices TBD — see "Needs Research" below)
+  - Date of incident / date reported
+  - Description (rich text, visible only to Security role)
+  - Severity / priority
+  - Reporting source (self-report, supervisor, automated/CV alert, external)
+  - Initial status: `Reported`
+- [ ] **Case number generation** — Each incident gets a unique, obscured case number that does NOT reveal the subject's identity or the nature of the incident. Format: `SEC-[YEAR]-[SEQUENTIAL]` (e.g., `SEC-2026-0042`). This case number is what appears in notifications.
+- [ ] **Incident lifecycle / status tracker** — Visual step-by-step progress indicator showing the current phase. States:
+  - `Reported` → `Under Review` → `Investigation Initiated` → `Investigation Complete` → `Command Review` → `Adjudication` → `Resolved` → `Closed`
+  - Additional terminal states: `No Action Required`, `Referred to External Agency`
+  - Each state transition is logged with who changed it, when, and any notes.
+- [ ] **Incident detail view** — Full detail modal for Security role users showing all fields, status history timeline, attached documents, and notification log.
+- [ ] **Member-facing incident view** — The subject member sees ONLY: case number, current status, date opened, date closed (if applicable). No description, no investigation notes, no category. Displayed on their self-service security card.
+- [ ] **Status change notifications** — When an incident's status changes, the subject member receives an in-app notification referencing only the case number and new status (e.g., "Case SEC-2026-0042 status updated to: Under Review").
+- [ ] **Incident attachment support** — Ability to attach documents (PDFs, images) to an incident record using the existing `attachFileToListItem()` API pattern from training submissions.
+- [ ] **Incident resolution** — When an incident reaches `Resolved` or `Closed`, capture: resolution date, resolution summary, outcome (e.g., No Action, Corrective Action, Access Suspended, Access Revoked, Referred).
+
+#### 12f. Notifications & Recurring Reminders — 🤝
+
+> **The app needs a notification framework that supports scheduled, recurring, and ad-hoc notifications to individuals, branches, or the entire organization.**
+
+##### SF-86 Due Date Tracking
+
+- [ ] **SF-86 due date calculation** — For each member with a security record, calculate: `LastSF86SubmissionDate + 5 years = NextSF86DueDate`. Display on the security card and in the admin roster.
+- [ ] **SF-86 reminder notifications** — Generate in-app notifications at configurable intervals before the due date:
+  - 365 days before (1 year warning)
+  - 180 days before (6 month warning)
+  - 90 days before (3 month warning)
+  - 30 days before (1 month warning — urgent)
+  - On the due date (overdue)
+  - Weekly after overdue
+- [ ] **SF-86 reminder recipients** — Notifications go to: the member, their supervisor, and the Security role holders for that org.
+
+##### Security Representative → Member Notifications
+
+- [ ] **Daily notification capability** — Security role users can send a notification to a specific member that appears in their in-app notification panel. The notification text is authored by the security representative.
+- [ ] **Incident-linked notifications** — When sending a notification related to an incident, the security rep selects the case number. The notification text references only the case number, not incident details.
+- [ ] **Notification templates** — Pre-built notification templates for common scenarios:
+  - "Action required: Please contact the security office regarding case [CASE_NUMBER]"
+  - "Reminder: Your periodic reinvestigation is due in [N] days"
+  - "Your security training [TRAINING_NAME] expires on [DATE]"
+  - Custom free-text (with character limit)
+
+##### Organization / Branch / Individual Framework
+
+- [ ] **Send to individual** — Select a specific person from the roster and send a notification.
+- [ ] **Send to branch/org** — Select an organization from `CCSD_Organizations` and send to all active members in that org and its descendants.
+- [ ] **Send to all** — Broadcast to the entire organization (requires Security role or App Admin).
+- [ ] **Notification delivery** — All notifications appear in the existing in-app notification panel on the Home dashboard. Each notification has:
+  - Title, body text, timestamp, read/unread status, sender name
+  - Optional link to the relevant security record or incident
+- [ ] **Notification log** — All sent notifications are logged to a new `CCSD_Notifications` list (see SharePoint list requirements below) for audit purposes.
+
+#### 12g. Permissions, Privacy & Audit Logging — 💻
+
+- [ ] **Role enforcement in API calls** — Every REST API call for security data must check the caller's role before returning results. Enforce at the query level (filter by PersonID for members, unfiltered for Security/Admin roles).
+- [ ] **No client-side-only gating** — Security visibility rules must be enforced at the data query level, not just by hiding UI elements. If a non-privileged user inspects network traffic, they must not see other members' security data.
+- [ ] **Audit log coverage** — The following events must be logged to `CCSD_AppAuditLog`:
+  - Security record viewed (who viewed whose record)
+  - Security record field revealed (obscured → visible)
+  - Security record created or edited (before/after snapshot)
+  - Security data exported (who, when, row count)
+  - Excel upload performed (who, when, file name, row count, records affected)
+  - Incident created, status changed, or closed
+  - Notification sent (sender, recipient(s), notification text, case number if applicable)
+- [ ] **Data retention** — Incident records and notification logs should not be hard-deletable. Use the existing `softDeleteItem()` pattern for archival.
+- [ ] **Session security** — Security module inherits the existing 30-minute session timeout with 5-minute warning overlay.
+
+#### 12h. Reporting & Dashboards — 💻
+
+- [ ] **Security compliance report** — Org-level breakdown: total personnel, cleared count by level, PR current/due/overdue, training compliance %, active incident count.
+- [ ] **SF-86 due date report** — List of all members with upcoming PR due dates, sortable by date, filterable by org.
+- [ ] **Incident summary report** — Count of incidents by status, category, org, and time period. No PII in the summary view.
+- [ ] **Security training compliance matrix** — Grid showing each team member vs. required security trainings (Initial briefing, Annual refresher, Derivative classification, CI awareness, Insider threat, CUI training) with current/expired/due status.
+- [ ] **Add to Reports module** — Integrate security reports into the existing Reports nav section (Section 10).
+
+### Needs Research / Validation
+
+> **These items require further discovery — either from the project owner providing details, from reviewing governing regulations (SEAD 3, SEAD 4, DoDM 5200.02, AFI 16-1406), or from inspecting sample DISS Excel exports.**
+
+- [ ] **🔬 DISS Excel export format** — Need a sample monthly Excel file to determine: exact column headers, data types, unique key field, and how to map to SharePoint columns. This blocks the Excel import feature.
+- [ ] **🔬 Incident categories** — The specific list of incident categories (SEAD 3 reportable events, security violations, spillages, unauthorized disclosures, etc.) needs to be defined. Placeholder choices will be used until confirmed.
+- [ ] **🔬 Incident resolution steps** — The exact step-by-step lifecycle may vary depending on incident type. The current linear status model (`Reported` → `Closed`) may need branching paths (e.g., some incidents go directly to external referral, some require SOR/appeal). Needs validation against SEAD 3/4 processes.
+- [ ] **🔬 Notification delivery method** — Currently planned as in-app only. Determine whether email notifications via Power Automate are required in addition. If so, this depends on the Power Automate integration in Section 13.
+- [ ] **🔬 Continuous Vetting (CV) tracking** — Under Trusted Workforce 2.0, periodic reinvestigations are being replaced by continuous vetting. Determine whether the 5-year SF-86 cycle still applies to the CPSG population or if CV enrollment changes the tracking model.
+- [ ] **🔬 SCI/SAP access tracking** — Determine whether SCI and SAP access eligibility need separate tracking from collateral clearances, and whether the Security module should track these.
+- [ ] **🔬 Physical security features** — Determine whether key control, security container (SF-700/702) tracking, or visitor control should be part of this module or a separate future module.
+- [ ] **🔬 Information security features** — Determine whether classification management, CUI handling, or spillage tracking should be part of this module.
+- [ ] **🔬 OPSEC integration** — Determine whether OPSEC program compliance (Critical Information List, OPSEC assessments) should be tracked here.
+- [ ] **🔬 Industrial security / contractor tracking** — Determine whether DD-254 tracking or contractor clearance management is in scope.
+
+### SharePoint Lists Required — 👤
+
+> **These lists must be created before the Security module can be built.**
+
+#### `CCSD_SecurityRecords` — NEW
+
+| Column Name | Type | Notes |
+|-------------|------|-------|
+| Title | Single line (default) | Auto-populated, e.g., "Smith, John - TS/SCI" |
+| PersonID | Lookup → CCSD_Personnel | The member this record belongs to |
+| ClearanceLevel | Choice | `None`, `Confidential`, `Secret`, `Top Secret`, `TS/SCI` |
+| ClearanceStatus | Choice | `Active`, `Interim`, `Expired`, `Suspended`, `Revoked`, `Denied`, `Not Cleared` |
+| InvestigationType | Choice | `T1`, `T2`, `T3`, `T4`, `T5`, `T5R`, `CE/CV` |
+| InvestigationDate | Date | Date of most recent investigation completion |
+| LastSF86Date | Date | Date of most recent SF-86 submission |
+| NextSF86DueDate | Date | Calculated: LastSF86Date + 5 years (can be manually overridden) |
+| CVEnrolled | Yes/No | Enrolled in Continuous Vetting |
+| NIPRAccess | Yes/No | Has NIPR access determination |
+| SIPRAccess | Yes/No | Has SIPR access determination |
+| JWICSAccess | Yes/No | Has JWICS access determination |
+| SCIAccess | Yes/No | Has SCI access |
+| NDASignedDate | Date | SF-312 NDA signed date |
+| InitialBriefingDate | Date | Date of initial security briefing |
+| AnnualRefresherDate | Date | Date of most recent annual refresher |
+| DerivedClassDate | Date | Date of most recent derivative classification training |
+| SourceFile | Single line of text | Name of the Excel file this record was last updated from |
+| LastImportDate | Date | When this record was last updated via Excel import |
+| Notes | Multiple lines of text | |
+
+#### `CCSD_SecurityIncidents` — NEW
+
+| Column Name | Type | Notes |
+|-------------|------|-------|
+| Title | Single line (default) | Auto-populated with case number |
+| CaseNumber | Single line of text | Generated: `SEC-[YYYY]-[NNNN]` |
+| PersonID | Lookup → CCSD_Personnel | Subject of the incident |
+| ReportedBy | Lookup → CCSD_Personnel | Who reported it |
+| IncidentCategory | Choice | Placeholder choices — see "Needs Research" above |
+| IncidentDate | Date | Date the incident occurred |
+| ReportedDate | Date | Date the incident was reported |
+| Severity | Choice | `Low`, `Medium`, `High`, `Critical` |
+| ReportingSource | Choice | `Self-Report`, `Supervisor`, `Automated/CV`, `External Agency`, `Anonymous` |
+| Status | Choice | `Reported`, `Under Review`, `Investigation Initiated`, `Investigation Complete`, `Command Review`, `Adjudication`, `Resolved`, `Closed`, `No Action Required`, `Referred to External Agency` |
+| Description | Multiple lines of text | Visible only to Security role |
+| InvestigationNotes | Multiple lines of text | Visible only to Security role |
+| ResolutionDate | Date | |
+| ResolutionSummary | Multiple lines of text | Visible only to Security role |
+| Outcome | Choice | `No Action`, `Corrective Action Taken`, `Access Suspended`, `Access Revoked`, `Clearance Denied`, `Referred`, `Other` |
+| StatusHistoryJSON | Multiple lines of text | JSON array of status transitions with timestamps and actors |
+| OrgID | Lookup → CCSD_Organizations | Member's org at time of incident |
+| Notes | Multiple lines of text | |
+
+#### `CCSD_Notifications` — NEW
+
+| Column Name | Type | Notes |
+|-------------|------|-------|
+| Title | Single line (default) | Notification title/subject line |
+| NotificationType | Choice | `Security`, `SF86 Reminder`, `Incident Update`, `Training Reminder`, `General`, `Broadcast` |
+| Body | Multiple lines of text | Notification body text |
+| SentBy | Lookup → CCSD_Personnel | Who sent it |
+| RecipientType | Choice | `Individual`, `Organization`, `All` |
+| RecipientPersonID | Lookup → CCSD_Personnel | If individual (nullable) |
+| RecipientOrgID | Lookup → CCSD_Organizations | If organization-scoped (nullable) |
+| RelatedCaseNumber | Single line of text | If linked to a security incident (nullable) |
+| SentDate | Date and Time | |
+| IsRead | Yes/No | Per-recipient read tracking (see note below) |
+| Notes | Multiple lines of text | |
+
+> **Note:** `IsRead` tracking for broadcast/org notifications requires either a separate `CCSD_NotificationReceipts` list (one row per recipient per notification) or a JSON field. Detailed design TBD during implementation.
+
+### Columns to Add to Existing Lists — 👤
+
+| List | Column | Type | Needed For |
+|------|--------|------|------------|
+| `CCSD_AppRoles` | (no changes) | — | Existing `Role` field supports adding `Security` as a new role value |
+
+> **Note:** The `Security` role is added as a data entry in `CCSD_AppRoles`, not as a schema change. No new columns are needed on that list.
+
+---
+
+## 13. SharePoint Lists to Create — 👤
+
+> *Renumbered from 12*
 
 > **These are all manual steps you perform in SharePoint.**
 
@@ -446,7 +677,7 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ---
 
-## 13. External Integrations (Future) — 🤝
+## 14. External Integrations (Future) — 🤝
 
 > **Each of these requires setup on your end before code can be built.**
 
@@ -480,7 +711,7 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ---
 
-## 14. Column Additions to Existing Lists — 👤
+## 15. Column Additions to Existing Lists — 👤
 
 > **Summary of all new columns needed on existing lists (referenced throughout this document).**
 
@@ -524,12 +755,15 @@ See Section 1 above for full column definitions. Create when ready to build that
 1. **Create `CCSD_TimeOff` list** — The Calendar module is built but has no data source yet
 
 ### 🟡 Do When Ready (enables new features)
-2. **Create `CCSD_ConferenceRooms` + `CCSD_RoomReservations`** — Enables conference room scheduling
-3. **Add audit columns** to `CCSD_HardwareAssets` — Enables inventory audit mode
-4. **Azure AD App Registration** — Enables Outlook calendar integration (longest lead time)
+2. **Create `CCSD_SecurityRecords` + `CCSD_SecurityIncidents` + `CCSD_Notifications`** — Enables Security module (Section 12)
+3. **Add `Security` role entries to `CCSD_AppRoles`** — Required for Security module role-based access
+4. **Obtain sample DISS Excel export** — Blocks the Excel import feature for Security module
+5. **Create `CCSD_ConferenceRooms` + `CCSD_RoomReservations`** — Enables conference room scheduling
+6. **Add audit columns** to `CCSD_HardwareAssets` — Enables inventory audit mode
+7. **Azure AD App Registration** — Enables Outlook calendar integration (longest lead time)
 
 ### 🟢 Low Urgency (nice-to-have prerequisites)
-5. **Add `TotalLicenses`** to software assets — Enables license dashboard
-6. **Add `WarrantyExpiration`** to hardware assets — Enables warranty alerts
-7. **Create `CCSD_Announcements`** — Enables Home dashboard news banner
-8. **Set up Teams Incoming Webhook** — Enables Teams notifications
+8. **Add `TotalLicenses`** to software assets — Enables license dashboard
+9. **Add `WarrantyExpiration`** to hardware assets — Enables warranty alerts
+10. **Create `CCSD_Announcements`** — Enables Home dashboard news banner
+11. **Set up Teams Incoming Webhook** — Enables Teams notifications
