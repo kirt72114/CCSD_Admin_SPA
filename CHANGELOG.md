@@ -4,6 +4,21 @@ All notable changes to the **CCSD All-Things Administrative SPA** are documented
 
 ---
 
+## [2026.04.03.3] - 2026-04-03
+
+### Bug Fixes & UI Overhaul
+
+- **Dark mode contrast** — Significantly boosted: darker backgrounds (#020810), brighter text (#f4f8ff), stronger borders (14-18% opacity), more vivid accent colors
+- **App layout condensed** — Reduced all padding, margins, font sizes, gaps, and border-radius to fit at 100% browser zoom without scrollbar
+- **Fullscreen API** — "Full Screen" button now uses browser `requestFullscreen()` / `exitFullscreen()` instead of opening a new tab; toggles in/out, always visible
+- **Facilities POC fix** — Fixed `[object Object]` display by properly handling Person/Group lookup fields; supports multiple POCs per building; each POC is clickable with a contact card modal
+- **Certificate upload** — Training submission form now includes a file upload (PDF, images, Word, max 10MB) using SharePoint REST attachment API
+- **In/Out Processing improvements** — Category and Owning Office converted to dropdowns; added From/To location fields; added Losing/Gaining Org dropdowns for transfers
+- **Request templates** — Converted from pre-filled text blobs to structured labeled fields (text, select, date, textarea) per template type
+- **Organizations print view** — Redesigned to open a dedicated print window with professional hierarchical layout, leader names, personnel counts, and AETC-LAK CPSG branding
+
+---
+
 ## [2026.04.03.2] - 2026-04-03
 
 ### Major Feature Sprint — All Modules Enhanced
