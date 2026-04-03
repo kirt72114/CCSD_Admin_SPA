@@ -643,11 +643,9 @@ tr:hover td{background:#eef5ff}
 .embedded .card{padding:14px 16px;border-radius:12px}
 .embedded .card-title{font-size:15px}
 .embedded .modal .modal{max-width:90vw;max-height:85vh}
-.btn-popout{background:linear-gradient(135deg,var(--accent-3),var(--accent));border:none;color:#06101f;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:11px;display:none;align-items:center;gap:4px;transition:.2s transform}
+.btn-popout{background:linear-gradient(135deg,var(--accent-3),var(--accent));border:none;color:#06101f;font-weight:700;padding:5px 9px;border-radius:8px;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:4px;transition:.2s transform}
 .btn-popout:hover{transform:translateY(-1px)}
-.embedded .btn-popout{display:inline-flex}
 .fullscreen-badge{display:none;font-size:9px;color:var(--accent-3);padding:2px 6px;border:1px solid rgba(37,244,199,.2);border-radius:6px;background:rgba(37,244,199,.06);margin-left:6px}
-body:not(.embedded) .fullscreen-badge{display:inline-block}
 
 /* ─── Person Detail Page ─── */
 .person-detail{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -7310,9 +7308,21 @@ function detectEmbeddedMode(){
   APP.state.embedded = isEmbedded;
 }
 function popoutFullscreen(){
-  var url = window.location.href.split('?')[0].split('#')[0];
-  var hash = window.location.hash || '';
-  window.open(url + '?fullscreen=1' + hash, '_blank');
+  var doc = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    if (document.exitFullscreen) { document.exitFullscreen(); }
+    else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+  } else {
+    if (doc.requestFullscreen) { doc.requestFullscreen(); }
+    else if (doc.webkitRequestFullscreen) { doc.webkitRequestFullscreen(); }
+  }
+}
+function updateFullscreenUI(){
+  var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  var btn = document.querySelector('.btn-popout');
+  var badge = document.querySelector('.fullscreen-badge');
+  if (btn) { btn.innerHTML = isFs ? '&#x2716; Exit Full Screen' : '&#x26F6; Full Screen'; }
+  if (badge) { badge.style.display = isFs ? 'inline-block' : 'none'; }
 }
 
 function bootstrap(){
@@ -7321,6 +7331,8 @@ function bootstrap(){
   initSessionTimeout();
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
+  document.addEventListener('fullscreenchange', updateFullscreenUI);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
   initSortableHeaders();
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') { closeModal(); return; }
