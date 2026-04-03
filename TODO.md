@@ -1,7 +1,7 @@
 # CCSD All-Things Administrative SPA — TODO
 
 Master task list for pending features, improvements, and technical debt.
-Updated: 2026-04-02
+Updated: 2026-04-03
 
 ---
 
@@ -231,7 +231,7 @@ Updated: 2026-04-02
 - [ ] Org merge / restructure tool
 - [x] Org dashboard (headcount, training %, asset count, open requests per org) ✅ *v2026.04.03.1*
 - [ ] Org contact card (expanded info)
-- [x] Org chart print layout ✅ *v2026.04.03.1*
+- [x] Org chart print layout ✅ *v2026.04.03.1* — redesigned with professional print window *v2026.04.03.3*
 
 ---
 
@@ -265,7 +265,7 @@ Updated: 2026-04-02
 
 - [x] **Request dashboard for supervisors** ✅ *v2026.04.03.1*
 - [x] **SLA compliance tracking** — visual indicator on detail view ✅ *v2026.04.03.1*
-- [x] **Request templates** — 6 built-in templates ✅ *v2026.04.03.1*
+- [x] **Request templates** — 6 built-in templates with structured input fields ✅ *v2026.04.03.1, enhanced v2026.04.03.3*
 
 ---
 
@@ -355,7 +355,37 @@ Updated: 2026-04-02
 
 ---
 
-## 11. SharePoint Lists to Create — 👤
+## 11. UI/UX & Bug Fixes (v2026.04.03.3) — 💻
+
+> **Completed in this session. All code-only changes.**
+
+- [x] **Dark mode contrast boost** ✅ *v2026.04.03.3* — Significantly darker backgrounds, brighter text, stronger borders
+- [x] **App layout condensed** ✅ *v2026.04.03.3* — Reduced padding/margins/fonts to fit at 100% zoom without scrollbar
+- [x] **True browser Fullscreen API** ✅ *v2026.04.03.3* — Button uses requestFullscreen/exitFullscreen, always visible
+- [x] **Facilities POC [object Object] fix** ✅ *v2026.04.03.3* — Handles Person/Group lookup fields, contact card on click, multiple POCs
+- [x] **Certificate upload on training submissions** ✅ *v2026.04.03.3* — File input (PDF/image/Word, 10MB max), SharePoint attachment API
+- [x] **In/Out Processing dropdowns** ✅ *v2026.04.03.3* — Category and Owning Office are now dropdowns, added From/To locations and Losing/Gaining Org for transfers
+- [x] **Request template structured fields** ✅ *v2026.04.03.3* — Each template type has dedicated labeled input fields instead of text blobs
+- [x] **Organizations print view redesign** ✅ *v2026.04.03.3* — Professional print layout in new window with hierarchy, leaders, and personnel counts
+
+### SharePoint Column Recommendations (Optional)
+
+> **These are optional columns to persist the new In/Out Processing fields natively. Currently stored in the Notes field.**
+
+| List | Column | Type | Notes |
+|------|--------|------|-------|
+| `CCSD_InOutProcessing` | `FromLocation` | Single line of text | Prior base/unit/location |
+| `CCSD_InOutProcessing` | `ToLocation` | Single line of text | Gaining base/unit/location |
+| `CCSD_InOutProcessing` | `LosingOrgID` | Lookup → CCSD_Organizations | Org member is leaving |
+| `CCSD_InOutProcessing` | `GainingOrgID` | Lookup → CCSD_Organizations | Org member is joining |
+
+**How to add**: Site Contents → open `CCSD_InOutProcessing` → Add column. Once created, let Claude know and the code will be updated to write to these columns directly instead of the Notes field.
+
+---
+
+## 12. SharePoint Lists to Create — 👤
+
+> *Renumbered from 11*
 
 > **These are all manual steps you perform in SharePoint.**
 
