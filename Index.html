@@ -956,6 +956,27 @@ function escHtml(value){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function escAttr(value){ return escHtml(value); }
+function extractPocNames(val){
+  if (!val) return [];
+  if (typeof val === 'string') return [val];
+  if (val.results && Array.isArray(val.results)) {
+    return val.results.map(function(p){ return p.Title || p.Name || String(p); });
+  }
+  if (Array.isArray(val)) {
+    return val.map(function(p){ return (typeof p === 'object' && p !== null) ? (p.Title || p.Name || String(p)) : String(p); });
+  }
+  if (typeof val === 'object' && val !== null) {
+    return [val.Title || val.Name || String(val)];
+  }
+  return [String(val)];
+}
+function renderPocPills(val, facilityId){
+  var names = extractPocNames(val);
+  if (!names.length) return '';
+  return names.map(function(name){
+    return '<span class="org-stat-pill" style="cursor:pointer" data-action="show-poc-card" data-name="' + escAttr(name) + '" data-facility="' + escAttr(facilityId || '') + '" title="Click for contact info">POC: ' + escHtml(name) + '</span>';
+  }).join('');
+}
 function safeJson(value){
   try { return JSON.stringify(value); }
   catch (e) { return String(value == null ? '' : value); }
@@ -4643,7 +4664,7 @@ function renderFacilities(){
       var isSelected = ui.selectedFacilityId === f.Id;
       html += '<div class="org-card' + (isSelected ? ' selected' : '') + '" data-search-card="' + escAttr(search) + '" style="margin-bottom:10px">';
       html += '<div class="org-card-top"><div><div class="org-card-title">' + escHtml(f.BuildingNumber || f.Title || f.FacilityID || 'Facility') + '</div><div class="org-card-sub">' + escHtml(f.Base || '') + (f.Address ? ' • ' + escHtml(f.Address) : '') + '</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">' + (networks.trim() ? networks.trim().split(' ').map(function(n){ return statusBadge(n); }).join('') : statusBadge('No Networks')) + '</div></div>';
-      html += '<div class="org-stats"><span class="org-stat-pill">Rooms ' + escHtml(String(fRooms.length)) + '</span><span class="org-stat-pill">Seats ' + escHtml(String(fSeats.length)) + '</span><span class="org-stat-pill">Occupied ' + escHtml(String(fOccupied)) + '</span>' + (f.FacilityPOC ? '<span class="org-stat-pill">POC: ' + escHtml(f.FacilityPOC) + '</span>' : '') + '</div>';
+      html += '<div class="org-stats"><span class="org-stat-pill">Rooms ' + escHtml(String(fRooms.length)) + '</span><span class="org-stat-pill">Seats ' + escHtml(String(fSeats.length)) + '</span><span class="org-stat-pill">Occupied ' + escHtml(String(fOccupied)) + '</span>' + renderPocPills(f.FacilityPOC, f.Id) + '</div>';
       if (isSelected && fRooms.length) {
         html += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">';
         fRooms.sort(function(a,b){ return String(a.RoomNumber || a.Title || '').localeCompare(String(b.RoomNumber || b.Title || '')); });
@@ -4729,6 +4750,26 @@ function getFloorNumbers(facilityId){
 }
 
 /* ─── Facility Capacity Reporting ─── */
+function showPocContactCard(name, facilityId){
+  if (!name) return;
+  var people = APP.state.data.people || [];
+  var match = people.filter(function(p){ return (p.Title || '').toLowerCase() === name.toLowerCase() || (p.FullName || '').toLowerCase() === name.toLowerCase(); });
+  var body = '<div style="font-size:13px;font-weight:700;margin-bottom:10px">' + escHtml(name) + '</div>';
+  if (match.length) {
+    match.forEach(function(p){
+      body += '<div class="kv" style="margin-bottom:12px">';
+      body += '<div class="k">Email</div><div class="v">' + (p.Email ? '<a href="mailto:' + escAttr(p.Email) + '">' + escHtml(p.Email) + '</a>' : 'N/A') + '</div>';
+      body += '<div class="k">Phone</div><div class="v">' + escHtml(p.Phone || p.WorkPhone || 'N/A') + '</div>';
+      body += '<div class="k">Organization</div><div class="v">' + escHtml(p.OrgID ? (p.OrgID.Title || '') : 'N/A') + '</div>';
+      body += '<div class="k">Position</div><div class="v">' + escHtml(p.PositionID ? (p.PositionID.Title || '') : 'N/A') + '</div>';
+      body += '<div class="k">Status</div><div class="v">' + escHtml(p.Status || 'Active') + '</div>';
+      body += '</div>';
+    });
+  } else {
+    body += '<div class="empty">No matching personnel record found for this POC. The name may be stored as free text in the Facility list.</div>';
+  }
+  openModal('Facility POC Contact', body, '<button class="btn" data-action="close-modal">Close</button>', 'Contact information for ' + escHtml(name));
+}
 function openFacilityCapacityReport(){
   var facilities = APP.state.data.facilities || [];
   var rooms = APP.state.data.rooms || [];
@@ -7225,6 +7266,7 @@ function handleClick(e){
   if (action === 'bulk-seat-import') { openBulkSeatImportModal(); return; }
   if (action === 'save-bulk-seats') { saveBulkSeats(); return; }
   if (action === 'facility-capacity-report') { openFacilityCapacityReport(); return; }
+  if (action === 'show-poc-card') { showPocContactCard(el.getAttribute('data-name'), el.getAttribute('data-facility')); return; }
   if (action === 'floorplan-zoom-in') { floorPlanZoom('in'); return; }
   if (action === 'floorplan-zoom-out') { floorPlanZoom('out'); return; }
   if (action === 'floorplan-zoom-reset') { floorPlanZoom('reset'); return; }
