@@ -4067,11 +4067,20 @@ function renderStepQueue(rows){
   return html;
 }
 function openCreateInOutModal(){
+  var orgs = APP.state.data.orgs || [];
+  var orgOptions = orgs.map(function(o){ return '<option value="' + escAttr(o.Id) + '">' + escHtml(o.Title || o.OrgCode || '') + '</option>'; }).join('');
+  var currentOrgId = getCurrentOrgId();
   var body = '<div class="form-grid">'
-    + formField('Process Type', '<select id="inoutProcessType" class="select"><option value="In-Processing">In-Processing</option><option value="Out-Processing">Out-Processing</option><option value="Transfer">Transfer</option></select>')
-    + formField('Category', '<input id="inoutCategory" class="input" placeholder="Military, Civilian, Contractor, etc." />')
+    + formField('Process Type', '<select id="inoutProcessType" class="select" onchange="document.getElementById(\'inoutLocationFields\').style.display=this.value===\'Transfer\'?\'contents\':\'block\'"><option value="In-Processing">In-Processing</option><option value="Out-Processing">Out-Processing</option><option value="Transfer">Transfer</option></select>')
+    + formField('Category', '<select id="inoutCategory" class="select"><option value="">-- Select --</option><option value="Military">Military</option><option value="Civilian">Civilian</option><option value="Contractor">Contractor</option><option value="NAF">NAF</option><option value="Intern">Intern</option><option value="Volunteer">Volunteer</option></select>')
     + formField('Priority', '<select id="inoutPriority" class="select"><option value="Routine">Routine</option><option value="High">High</option><option value="Urgent">Urgent</option></select>')
-    + formField('Owning Office', '<input id="inoutOwningOffice" class="input" placeholder="Optional org override; otherwise current org is used." />')
+    + formField('Owning Office', '<select id="inoutOwningOffice" class="select"><option value="">-- Use Current Org --</option>' + orgOptions + '</select>')
+    + formField('In-Processing From / Prior Location', '<input id="inoutFromLocation" class="input" placeholder="Base, unit, or location arriving from" />')
+    + formField('Out-Processing To / Gaining Location', '<input id="inoutToLocation" class="input" placeholder="Base, unit, or location departing to" />')
+    + '<div id="inoutLocationFields" style="display:contents">'
+    + formField('Losing Organization', '<select id="inoutLosingOrg" class="select"><option value="">-- Select --</option>' + orgOptions + '</select>')
+    + formField('Gaining Organization', '<select id="inoutGainingOrg" class="select"><option value="">-- Select --</option>' + orgOptions + '</select>')
+    + '</div>'
     + '<div class="full">' + formField('Notes', '<textarea id="inoutNotes" class="textarea" placeholder="Notes, context, or special handling instructions."></textarea>') + '</div>'
     + '</div>';
   openModal('New In/Out Case', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-inout">Create Case</button></div>', 'Creates header and workflow-linked case');
@@ -4083,19 +4092,32 @@ function saveInOut(){
   ]);
   if (showValidationErrors(errors)) { return; }
   var corr = guid();
-  var title = (APP.state.currentPersonnel ? formatPerson(APP.state.currentPersonnel) : 'Member') + ' - ' + document.getElementById('inoutProcessType').value;
+  var processType = document.getElementById('inoutProcessType').value;
+  var title = (APP.state.currentPersonnel ? formatPerson(APP.state.currentPersonnel) : 'Member') + ' - ' + processType;
+  var owningOfficeId = document.getElementById('inoutOwningOffice').value;
+  var fromLoc = document.getElementById('inoutFromLocation') ? document.getElementById('inoutFromLocation').value : '';
+  var toLoc = document.getElementById('inoutToLocation') ? document.getElementById('inoutToLocation').value : '';
+  var losingOrgId = document.getElementById('inoutLosingOrg') ? document.getElementById('inoutLosingOrg').value : '';
+  var gainingOrgId = document.getElementById('inoutGainingOrg') ? document.getElementById('inoutGainingOrg').value : '';
+  var notesArr = [];
+  if (fromLoc) notesArr.push('From: ' + fromLoc);
+  if (toLoc) notesArr.push('To: ' + toLoc);
+  if (losingOrgId) { var lo = (APP.state.data.orgs || []).filter(function(o){ return String(o.Id) === losingOrgId; })[0]; if (lo) notesArr.push('Losing Org: ' + (lo.Title || lo.OrgCode)); }
+  if (gainingOrgId) { var go = (APP.state.data.orgs || []).filter(function(o){ return String(o.Id) === gainingOrgId; })[0]; if (go) notesArr.push('Gaining Org: ' + (go.Title || go.OrgCode)); }
+  var userNotes = document.getElementById('inoutNotes').value;
+  if (userNotes) notesArr.push(userNotes);
   createListItem(APP.lists.InOut, {
     Title: title,
     InOutID: corr,
     PersonID: APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null,
-    ProcessType: document.getElementById('inoutProcessType').value,
+    ProcessType: processType,
     Status: 'Open',
-    Category: document.getElementById('inoutCategory').value,
+    Category: category,
     OpenedOn: new Date().toISOString(),
-    OwningOrgID: getCurrentOrgId(),
+    OwningOrgID: owningOfficeId ? Number(owningOfficeId) : getCurrentOrgId(),
     CurrentStep: 'Case Opened',
     Priority: document.getElementById('inoutPriority').value,
-    Notes: document.getElementById('inoutNotes').value,
+    Notes: notesArr.join('\n'),
     CorrelationID: corr
   }, { entityType: 'In/Out Case', reason: 'SPA new case', correlationId: corr }).then(function(){
     toast('In/Out case created.', 'ok');
