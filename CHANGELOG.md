@@ -10,9 +10,22 @@ All notable changes to the **CCSD All-Things Administrative SPA** are documented
 
 - **SPFx Script Editor web part** — Created a SharePoint Framework (SPFx 1.18.2) web part (`spfx-script-editor/`) that loads the CCSD SPA on modern SharePoint pages. Supports configurable Script URL and app height via the property pane.
 - **AJAX + srcdoc rendering** — Web part fetches HTML via XHR and renders using `iframe.srcdoc` to bypass SharePoint Online's `Content-Disposition: attachment` headers on `.html` files.
-- **Reverted ASP.NET page directives** — Removed `<%@ Page %>` and `<%@ Register %>` directives from Index.html since the SPFx approach replaces direct `.aspx` deployment.
 - **Multi-site deployment verified** — App successfully deployed at replica site (`patriavirtus.sharepoint.com`) with auto-detection of hostname working correctly.
 - **App Catalog setup** — Documented tenant App Catalog creation and `.sppkg` deployment workflow.
+
+### .aspx Deployment Approach Removed
+
+- **Reverted ASP.NET page directives** — Removed `<%@ Page %>` and `<%@ Register %>` directives from Index.html. The .aspx deployment strategy (uploading to SitePages as Index.aspx) was abandoned after SharePoint Online continued to force-download the file regardless of directives.
+- **Cleaned Azure AD redirect URIs** — Updated redirect URI references in Index.html comments and TODO.md from `SitePages/Index.aspx` to `SiteAssets/Scripts/Index.html` to reflect the actual deployment path.
+- **Removed ASP.NET directive stripping from SPFx web part** — Deleted the `<%@ %>` regex in `ScriptEditorWebPart.ts` that was added defensively for .aspx content. No longer needed since only `.html` files are served.
+- **Deleted `Loader.aspx`** — Removed the iframe-wrapper .aspx page that was created as an intermediate approach before SPFx.
+
+### Environment Review & Schema Gap Analysis
+
+- **SharePoint environment verification** — Cross-referenced app code (`Index.html` list registry, lines 830-859), verification script (`verify-sharepoint-env.js`), provisioning script (`Add-MissingColumns.ps1`), and checklist (`SHAREPOINT_VERIFICATION_CHECKLIST.md`) to produce a full gap inventory.
+- **Identified 32 missing columns across 5 lists** — Columns referenced by app code but not yet created in either production or replica SharePoint environments. The `Add-MissingColumns.ps1` script was previously created to address these in the replica; production requires manual creation or a separate provisioning approach.
+- **Identified 2 missing lists** — `CCSD_TimeOff` (confirmed missing from both environments; required for Calendar module) and one additional list (not conclusively identified; requires re-running the verification script to confirm).
+- **Catalogued 12 optional future columns** — Documented in TODO.md Section 14: columns for planned features (inventory audit, warranty tracking, cost center reporting, In/Out Processing location fields) that are not yet needed by current app code.
 
 ---
 
