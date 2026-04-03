@@ -85,9 +85,6 @@ export default class ScriptEditorWebPart extends BaseClientSideWebPart<IScriptEd
       if (xhr.status >= 200 && xhr.status < 300) {
         let html = xhr.responseText;
 
-        // Strip any ASP.NET page directives that might be at the top
-        html = html.replace(/<%@[^%]*%>\s*/g, '');
-
         // Use srcdoc iframe — this renders the HTML directly without needing a URL
         // No download headers involved since the content is inline
         const iframe = document.createElement('iframe');

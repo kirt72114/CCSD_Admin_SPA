@@ -79,7 +79,7 @@ Updated: 2026-04-03
      - **Name**: `CCSD Administrative SPA`
      - **Supported account types**: "Accounts in this organizational directory only"
      - **Redirect URI**: Select **Single-page application (SPA)** and enter:
-       - `https://usaf.dps.mil/teams/aetc-lak-cpsg/Database/SitePages/Index.aspx`
+       - `https://usaf.dps.mil/teams/aetc-lak-cpsg/Database/SiteAssets/Scripts/Index.html`
      - Click **Register**
   4. On the app's overview page, add a second redirect URI if needed:
      - Go to **Authentication** > **Add URI** > add your dev/test site URL
@@ -368,6 +368,16 @@ Updated: 2026-04-03
 - [x] **Request template structured fields** ✅ *v2026.04.03.3* — Each template type has dedicated labeled input fields instead of text blobs
 - [x] **Organizations print view redesign** ✅ *v2026.04.03.3* — Professional print layout in new window with hierarchy, leaders, and personnel counts
 
+### SPFx Script Editor Web Part (v2026.04.03.4)
+
+> **Completed in this session.**
+
+- [x] **SPFx web part created** ✅ *v2026.04.03.4* — `spfx-script-editor/` project scaffolded with SPFx 1.18.2
+- [x] **AJAX + srcdoc rendering** ✅ *v2026.04.03.4* — Fetches HTML via XHR, renders with `iframe.srcdoc` to bypass SharePoint download headers
+- [x] **ASP.NET directives reverted** ✅ *v2026.04.03.4* — Removed `<%@ Page %>` directives from Index.html
+- [x] **Tenant App Catalog deployed** ✅ *v2026.04.03.4* — `.sppkg` uploaded and published
+- [x] **Replica site verified** ✅ *v2026.04.03.4* — App loads at patriavirtus.sharepoint.com with hostname auto-detection
+
 ### SharePoint Column Recommendations (Optional)
 
 > **These are optional columns to persist the new In/Out Processing fields natively. Currently stored in the Notes field.**
@@ -436,7 +446,7 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ---
 
-## 12. External Integrations (Future) — 🤝
+## 13. External Integrations (Future) — 🤝
 
 > **Each of these requires setup on your end before code can be built.**
 
@@ -470,7 +480,7 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ---
 
-## 13. Column Additions to Existing Lists — 👤
+## 14. Column Additions to Existing Lists — 👤
 
 > **Summary of all new columns needed on existing lists (referenced throughout this document).**
 

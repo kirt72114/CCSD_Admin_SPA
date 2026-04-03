@@ -4,6 +4,18 @@ All notable changes to the **CCSD All-Things Administrative SPA** are documented
 
 ---
 
+## [2026.04.03.4] - 2026-04-03
+
+### SPFx Script Editor Web Part & Deployment
+
+- **SPFx Script Editor web part** — Created a SharePoint Framework (SPFx 1.18.2) web part (`spfx-script-editor/`) that loads the CCSD SPA on modern SharePoint pages. Supports configurable Script URL and app height via the property pane.
+- **AJAX + srcdoc rendering** — Web part fetches HTML via XHR and renders using `iframe.srcdoc` to bypass SharePoint Online's `Content-Disposition: attachment` headers on `.html` files.
+- **Reverted ASP.NET page directives** — Removed `<%@ Page %>` and `<%@ Register %>` directives from Index.html since the SPFx approach replaces direct `.aspx` deployment.
+- **Multi-site deployment verified** — App successfully deployed at replica site (`patriavirtus.sharepoint.com`) with auto-detection of hostname working correctly.
+- **App Catalog setup** — Documented tenant App Catalog creation and `.sppkg` deployment workflow.
+
+---
+
 ## [2026.04.03.3] - 2026-04-03
 
 ### Bug Fixes & UI Overhaul
