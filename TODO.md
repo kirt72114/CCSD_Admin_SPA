@@ -111,25 +111,10 @@ Updated: 2026-04-03
 
 - [ ] Drag-to-create time-off entries (click + drag across days)
 - [ ] Multi-day entry visual spanning (bar across days instead of per-day pills)
-- [x] Print-friendly calendar layout (CSS print stylesheet) ✅ *v2026.04.03.1*
-- [x] Export calendar to CSV / ICS format ✅ *v2026.04.03.1*
-- [x] Bulk import time-off entries from CSV ✅ *v2026.04.03.1*
-- [x] Pending/denied entries with visual distinction (strikethrough, muted) ✅ *v2026.04.03.1*
-- [x] Notifications for upcoming time off (14-day lookahead on Home) ✅ *v2026.04.03.2*
 
 ---
 
 ## 2. Hardware / Software Asset Improvements
-
-### Asset Lifecycle Management (P1)
-- [x] Edit hardware asset modal ✅ *v2026.04.02.1*
-- [x] Edit software asset modal ✅ *v2026.04.02.1*
-- [x] Unassign / return flow with condition check ✅ *v2026.04.02.1*
-- [x] Transfer assignment ✅ *v2026.04.02.1*
-- [x] Asset status workflow ✅ *v2026.04.02.1*
-- [x] Condition tracking ✅ *v2026.04.02.1*
-
-- [x] **Depreciation / age tracking** ✅ *v2026.04.03.1* — Configurable useful-life thresholds per asset type, aging report modal.
 
 ### Inventory & Audit (P1) — 🤝
 
@@ -151,8 +136,6 @@ Updated: 2026-04-03
   - **Your decision needed**: This requires camera access via the browser. SharePoint Online pages *can* use `getUserMedia()` but your network security policy may block it. Test by visiting any website that requests camera access from a work machine.
   - If camera works: Claude can build a barcode scanner using a JS library (QuaggaJS or ZXing)
   - If camera is blocked: Skip this — manual asset tag entry is the fallback
-
-- [x] **Inventory discrepancy report** ✅ *v2026.04.03.1* — Detects departed assignees and ghost assignments.
 
 ### Software Governance (P2) — 🤝
 
@@ -191,18 +174,11 @@ Updated: 2026-04-03
 
 - [ ] **Check-out / check-in for portable devices** — 💻 (after column exists)
 
-- [x] Asset detail page ✅ *v2026.04.02.1*
-
-- [x] **Bulk asset import from CSV** ✅ *v2026.04.03.1*
-
 ### Assignment Improvements (P2) — 💻
 
 > **No prerequisites from you. All code-only.**
 
-- [x] Edit existing assignments ✅ *v2026.04.02.1*
-- [x] Assignment history timeline (visual timeline view) ✅ *v2026.04.03.1*
 - [ ] Seat-to-asset auto-suggestion
-- [x] Duplicate assignment detection ✅ *v2026.04.03.1*
 
 ---
 
@@ -210,16 +186,11 @@ Updated: 2026-04-03
 
 > **No prerequisites from you. All fields already exist in `CCSD_Personnel`.**
 
-- [x] **Edit personnel modal** ✅ *existed prior*
-- [x] **Person detail page** — unified view with assets, training, time off, org chain ✅ *v2026.04.03.1*
 - [ ] **Photo / avatar support** — 👤 decision needed:
   - Option A: Use SharePoint profile photos (automatic if users have O365 profiles with photos)
   - Option B: Add a `PhotoUrl` column to `CCSD_Personnel` for manual upload
   - **Let Claude know which approach you prefer**
 - [ ] **Personnel onboarding wizard** — guided flow to create person + seat + assets
-- [x] **Departure processing** — mark departed with date/reason/notes ✅ *v2026.04.03.1*
-- [x] **Org transfer workflow** — move person between orgs ✅ *v2026.04.03.1*
-- [x] **Personnel export to CSV** ✅ *v2026.04.03.1*
 
 ---
 
@@ -227,11 +198,8 @@ Updated: 2026-04-03
 
 > **No prerequisites from you. Uses existing `CCSD_Organizations` list.**
 
-- [x] Create / edit organization modal (admin only) ✅ *v2026.04.03.1*
 - [ ] Org merge / restructure tool
-- [x] Org dashboard (headcount, training %, asset count, open requests per org) ✅ *v2026.04.03.1*
 - [ ] Org contact card (expanded info)
-- [x] Org chart print layout ✅ *v2026.04.03.1* — redesigned with professional print window *v2026.04.03.3*
 
 ---
 
@@ -240,16 +208,11 @@ Updated: 2026-04-03
 > **No prerequisites from you. Uses existing `CCSD_Training` and `CCSD_TrainingRecords` lists.**
 
 - [ ] Training calendar integration (show on Calendar module)
-- [x] Bulk training record entry (admin CSV upload) ✅ *v2026.04.03.1*
-- [x] Training gap analysis per org ✅ *v2026.04.03.1*
-- [x] Certification expiration alerts on Home (60-day warnings) ✅ *v2026.04.03.2*
 - [ ] Training request workflow (person requests → supervisor approves → SF182 auto-created)
 
 ---
 
 ## 6. Requests / Workflow Improvements — 🤝
-
-- [x] **Request comments thread UI** ✅ *v2026.04.03.1* — visible in both detail and edit views
 
 - [ ] **Email notification integration** — 👤 + 💻
   - **Option A — Power Automate (recommended, no code changes needed):**
@@ -263,10 +226,6 @@ Updated: 2026-04-03
     - Claude can build in-app email sending, but this requires the same Azure AD setup plus `Mail.Send` permission
   - **Your decision**: Which option do you prefer?
 
-- [x] **Request dashboard for supervisors** ✅ *v2026.04.03.1*
-- [x] **SLA compliance tracking** — visual indicator on detail view ✅ *v2026.04.03.1*
-- [x] **Request templates** — 6 built-in templates with structured input fields ✅ *v2026.04.03.1, enhanced v2026.04.03.3*
-
 ---
 
 ## 7. Facilities Module Improvements — 💻
@@ -274,27 +233,14 @@ Updated: 2026-04-03
 > **No prerequisites from you. All code-only changes.**
 
 - [ ] Room booking integration with Calendar conference room scheduling (depends on Section 1 lists)
-- [x] Floor plan: bulk seat import from CSV ✅ *v2026.04.03.1*
 - [ ] Floor plan: room boundary overlays (draw room outlines)
-- [x] Multi-floor navigation (getFloorNumbers utility) ✅ *v2026.04.03.1*
-- [x] Facility capacity reporting (occupancy % per building) ✅ *v2026.04.03.1*
 
 ---
 
 ## 8. Home Dashboard Improvements
 
-- [x] **My upcoming time off** widget ✅ *v2026.04.03.2*
-- [x] My team's availability widget ✅ *v2026.04.02.2*
-- [x] My pending requests widget ✅ *v2026.04.02.2*
-- [x] My training due soon widget ✅ *v2026.04.02.2*
-- [x] Priority Actions panel ✅ *v2026.04.02.2*
-- [x] KPI strip ✅ *v2026.04.02.2*
-- [x] Quick Navigation tile grid ✅ *v2026.04.02.2*
-- [x] Notifications panel ✅ *v2026.04.02.2*
-- [x] Admin Health Summary ✅ *v2026.04.02.2*
-
 - [ ] **Announcements / news banner** — 🤝
-  1. 👤 Create `CCSD_Announcements` list (see Section 11 below for columns)
+  1. 👤 Create `CCSD_Announcements` list (see Section 13 below for columns)
   2. 💻 Build the banner component after list exists
 
 - [ ] **Quick links section** — 💻 (no prereqs, can use hardcoded links initially)
@@ -315,10 +261,6 @@ Updated: 2026-04-03
 
 > **No prerequisites from you.**
 
-- [x] Dark/light theme toggle ✅ *v2026.04.03.2* — persisted to localStorage
-- [x] Responsive design audit (tablet/mobile CSS breakpoints) ✅ *v2026.04.03.1*
-- [x] Loading skeletons (CSS animations) ✅ *v2026.04.03.1*
-- [x] Breadcrumb navigation (CSS) ✅ *v2026.04.03.1*
 - [ ] Undo toast actions
 - [ ] Keyboard navigation (arrow keys in calendar, tab through tables)
 
@@ -328,16 +270,12 @@ Updated: 2026-04-03
 
 - [ ] Audit all CRUD operations (ensure AppAuditLog coverage)
 - [ ] Role-based field visibility (hide sensitive fields from non-supervisors)
-- [x] Session timeout (30min with 5min warning overlay) ✅ *v2026.04.03.2*
-- [x] Input sanitization utility (sanitizeInput function) ✅ *v2026.04.03.2*
 
 ### Data Integrity (P2) — 💻
 
 > **No prerequisites from you.**
 
-- [x] Expand data quality checks (orphan org/person references) ✅ *v2026.04.03.2*
 - [ ] Scheduled data quality report (surface on Home)
-- [x] Archive / soft-delete pattern (softDeleteItem utility) ✅ *v2026.04.03.2*
 
 ---
 
@@ -345,42 +283,13 @@ Updated: 2026-04-03
 
 > **No prerequisites from you. All code-only.**
 
-- [x] Headcount by org report with drill-down ✅ *v2026.04.03.2*
-- [x] Training compliance report by org/section ✅ *v2026.04.03.2*
-- [x] Asset inventory report (by type, status) ✅ *v2026.04.03.2*
-- [x] Time-off utilization report (by month) ✅ *v2026.04.03.2*
-- [x] Request SLA compliance report ✅ *v2026.04.03.2*
-- [x] Dashboard print view (print-optimized CSS) ✅ *v2026.04.03.1*
 - [ ] Scheduled report email — 🤝 (requires Power Automate, see Section 6 notes)
 
 ---
 
-## 11. UI/UX & Bug Fixes (v2026.04.03.3) — 💻
+### In/Out Processing Column Recommendations (Optional) — 👤
 
-> **Completed in this session. All code-only changes.**
-
-- [x] **Dark mode contrast boost** ✅ *v2026.04.03.3* — Significantly darker backgrounds, brighter text, stronger borders
-- [x] **App layout condensed** ✅ *v2026.04.03.3* — Reduced padding/margins/fonts to fit at 100% zoom without scrollbar
-- [x] **True browser Fullscreen API** ✅ *v2026.04.03.3* — Button uses requestFullscreen/exitFullscreen, always visible
-- [x] **Facilities POC [object Object] fix** ✅ *v2026.04.03.3* — Handles Person/Group lookup fields, contact card on click, multiple POCs
-- [x] **Certificate upload on training submissions** ✅ *v2026.04.03.3* — File input (PDF/image/Word, 10MB max), SharePoint attachment API
-- [x] **In/Out Processing dropdowns** ✅ *v2026.04.03.3* — Category and Owning Office are now dropdowns, added From/To locations and Losing/Gaining Org for transfers
-- [x] **Request template structured fields** ✅ *v2026.04.03.3* — Each template type has dedicated labeled input fields instead of text blobs
-- [x] **Organizations print view redesign** ✅ *v2026.04.03.3* — Professional print layout in new window with hierarchy, leaders, and personnel counts
-
-### SPFx Script Editor Web Part (v2026.04.03.4)
-
-> **Completed in this session.**
-
-- [x] **SPFx web part created** ✅ *v2026.04.03.4* — `spfx-script-editor/` project scaffolded with SPFx 1.18.2
-- [x] **AJAX + srcdoc rendering** ✅ *v2026.04.03.4* — Fetches HTML via XHR, renders with `iframe.srcdoc` to bypass SharePoint download headers
-- [x] **ASP.NET directives reverted** ✅ *v2026.04.03.4* — Removed `<%@ Page %>` directives from Index.html
-- [x] **Tenant App Catalog deployed** ✅ *v2026.04.03.4* — `.sppkg` uploaded and published
-- [x] **Replica site verified** ✅ *v2026.04.03.4* — App loads at patriavirtus.sharepoint.com with hostname auto-detection
-
-### SharePoint Column Recommendations (Optional)
-
-> **These are optional columns to persist the new In/Out Processing fields natively. Currently stored in the Notes field.**
+> **Optional columns to persist In/Out Processing fields natively. Currently stored in the Notes field.**
 
 | List | Column | Type | Notes |
 |------|--------|------|-------|
@@ -393,7 +302,7 @@ Updated: 2026-04-03
 
 ---
 
-## 12. Security Module (P1) — 🤝
+## 11. Security Module (P1) — 🤝
 
 > **New major feature. Adds a full Security section to the SPA covering personnel security status, incident management, notifications, and compliance tracking. Requires new SharePoint lists, new roles, and a monthly data ingestion workflow.**
 
@@ -401,7 +310,7 @@ Updated: 2026-04-03
 
 > **These are confirmed by the project owner and can be implemented without further discovery.**
 
-#### 12a. Access, Visibility & Privacy Controls — 💻
+#### 11a. Access, Visibility & Privacy Controls — 💻
 
 - [ ] **New "Security" nav tab** — Add to main navigation between existing modules. Visible to all authenticated users but content is scoped by role.
 - [ ] **Self-view default** — When a non-privileged user navigates to Security, they see ONLY their own security record. No list of other members is visible.
@@ -412,7 +321,7 @@ Updated: 2026-04-03
 - [ ] **No cross-org visibility** — Security role holders scoped to an org (via `ScopeOrgID` on `CCSD_AppRoles`) can only see members within that org and its descendants.
 - [ ] **Audit logging for all access** — Every view, reveal, edit, and export of security data must be logged to `CCSD_AppAuditLog` with the viewer's identity, timestamp, and which record was accessed.
 
-#### 12b. Member Self-Service Security View — 💻
+#### 11b. Member Self-Service Security View — 💻
 
 - [ ] **Personal security status card** — Dashboard-style card showing the member's own:
   - Current clearance level and status (Active, Interim, Expired, Suspended, None)
@@ -427,7 +336,7 @@ Updated: 2026-04-03
 - [ ] **Incident summary (own only)** — Member can see their own incident records (case number, status, date opened, date closed). They CANNOT see the detailed description or investigation notes — only the obscured case number and current status.
 - [ ] **No export for members** — Members cannot export or print their security data from the self-service view.
 
-#### 12c. Security Admin Management View — 💻
+#### 11c. Security Admin Management View — 💻
 
 - [ ] **Full roster view** — Security role users see a searchable, filterable, sortable table of all personnel with key security columns (name, org, clearance level, status, investigation type, PR due date, days until due).
 - [ ] **Inline status indicators** — Color-coded: Green = current, Yellow = PR due within 90 days, Red = expired/overdue/suspended.
@@ -436,7 +345,7 @@ Updated: 2026-04-03
 - [ ] **Security compliance dashboard** — Per-org breakdown of clearance currency, training compliance, and incident counts. Drillable to individual records.
 - [ ] **Export capability** — Security role users can export security roster to CSV (with audit log entry for the export event).
 
-#### 12d. Monthly Excel Import / Data Ingestion — 🤝
+#### 11d. Monthly Excel Import / Data Ingestion — 🤝
 
 > **Security data originates from DISS and is provided as a monthly Excel spreadsheet. The app must ingest this data to keep records current.**
 
@@ -449,7 +358,7 @@ Updated: 2026-04-03
 - [ ] **Excel parsing** — Use client-side JavaScript Excel parsing (SheetJS/xlsx library via CDN or inline). No server-side processing.
   - **⚠️ Dependency:** Verify that the SheetJS CDN is accessible from the production network (`usaf.dps.mil`). If blocked, the library must be inlined into Index.html.
 
-#### 12e. Incident & Case Management — 💻
+#### 11e. Incident & Case Management — 💻
 
 - [ ] **New incident form** — Security role users can create a new security incident record with:
   - Subject member (lookup to `CCSD_Personnel`)
@@ -470,7 +379,7 @@ Updated: 2026-04-03
 - [ ] **Incident attachment support** — Ability to attach documents (PDFs, images) to an incident record using the existing `attachFileToListItem()` API pattern from training submissions.
 - [ ] **Incident resolution** — When an incident reaches `Resolved` or `Closed`, capture: resolution date, resolution summary, outcome (e.g., No Action, Corrective Action, Access Suspended, Access Revoked, Referred).
 
-#### 12f. Notifications & Recurring Reminders — 🤝
+#### 11f. Notifications & Recurring Reminders — 🤝
 
 > **The app needs a notification framework that supports scheduled, recurring, and ad-hoc notifications to individuals, branches, or the entire organization.**
 
@@ -506,7 +415,7 @@ Updated: 2026-04-03
   - Optional link to the relevant security record or incident
 - [ ] **Notification log** — All sent notifications are logged to a new `CCSD_Notifications` list (see SharePoint list requirements below) for audit purposes.
 
-#### 12g. Permissions, Privacy & Audit Logging — 💻
+#### 11g. Permissions, Privacy & Audit Logging — 💻
 
 - [ ] **Role enforcement in API calls** — Every REST API call for security data must check the caller's role before returning results. Enforce at the query level (filter by PersonID for members, unfiltered for Security/Admin roles).
 - [ ] **No client-side-only gating** — Security visibility rules must be enforced at the data query level, not just by hiding UI elements. If a non-privileged user inspects network traffic, they must not see other members' security data.
@@ -521,7 +430,7 @@ Updated: 2026-04-03
 - [ ] **Data retention** — Incident records and notification logs should not be hard-deletable. Use the existing `softDeleteItem()` pattern for archival.
 - [ ] **Session security** — Security module inherits the existing 30-minute session timeout with 5-minute warning overlay.
 
-#### 12h. Reporting & Dashboards — 💻
+#### 11h. Reporting & Dashboards — 💻
 
 - [ ] **Security compliance report** — Org-level breakdown: total personnel, cleared count by level, PR current/due/overdue, training compliance %, active incident count.
 - [ ] **SF-86 due date report** — List of all members with upcoming PR due dates, sortable by date, filterable by org.
@@ -536,7 +445,7 @@ Updated: 2026-04-03
 - [ ] **🔬 DISS Excel export format** — Need a sample monthly Excel file to determine: exact column headers, data types, unique key field, and how to map to SharePoint columns. This blocks the Excel import feature.
 - [ ] **🔬 Incident categories** — The specific list of incident categories (SEAD 3 reportable events, security violations, spillages, unauthorized disclosures, etc.) needs to be defined. Placeholder choices will be used until confirmed.
 - [ ] **🔬 Incident resolution steps** — The exact step-by-step lifecycle may vary depending on incident type. The current linear status model (`Reported` → `Closed`) may need branching paths (e.g., some incidents go directly to external referral, some require SOR/appeal). Needs validation against SEAD 3/4 processes.
-- [ ] **🔬 Notification delivery method** — Currently planned as in-app only. Determine whether email notifications via Power Automate are required in addition. If so, this depends on the Power Automate integration in Section 13.
+- [ ] **🔬 Notification delivery method** — Currently planned as in-app only. Determine whether email notifications via Power Automate are required in addition. If so, this depends on the Power Automate integration in Section 14.
 - [ ] **🔬 Continuous Vetting (CV) tracking** — Under Trusted Workforce 2.0, periodic reinvestigations are being replaced by continuous vetting. Determine whether the 5-year SF-86 cycle still applies to the CPSG population or if CV enrollment changes the tracking model.
 - [ ] **🔬 SCI/SAP access tracking** — Determine whether SCI and SAP access eligibility need separate tracking from collateral clearances, and whether the Security module should track these.
 - [ ] **🔬 Physical security features** — Determine whether key control, security container (SF-700/702) tracking, or visitor control should be part of this module or a separate future module.
@@ -624,7 +533,7 @@ Updated: 2026-04-03
 
 ---
 
-## 13. Supervisor Hub (P1) — 🤝
+## 12. Supervisor Hub (P1) — 🤝
 
 > **New major feature. Adds a dedicated Supervisor-only section to the SPA that consolidates team oversight, pending actions, people management, and cross-module visibility into a single landing page. Requires new SharePoint lists for some features; many features build on existing data.**
 
@@ -632,7 +541,7 @@ Updated: 2026-04-03
 
 > **These are confirmed by the project owner or directly derivable from existing app code and data.**
 
-#### 13a. Role-Based Visibility & Access Control — 💻
+#### 12a. Role-Based Visibility & Access Control — 💻
 
 > **Existing infrastructure:** The `Supervisor` role is already detected two ways: (1) via `CCSD_AppRoles` where `Role = 'Supervisor'`, and (2) via the `IsSupervisor` boolean flag on `CCSD_Personnel` (see `Index.html:1998,2025`). Both paths push `'Supervisor'` into `APP.state.roleNames`. Existing gate functions `canReviewTraining()` and `canManageInOut()` already include the Supervisor role.
 
@@ -645,7 +554,7 @@ Updated: 2026-04-03
 - [ ] **App Admin sees all** — Users with `App Admin` role see the Hub with access to all personnel (no org/supervisor filter). A dropdown lets them select any org to scope the view.
 - [ ] **Keyboard shortcut** — Register `Alt+V` (for superVisor) to navigate to the Hub, gated by role check (same pattern as `Alt+D` for diagnostics in `Index.html`).
 
-#### 13b. Supervisor Landing Page / Overview Dashboard — 💻
+#### 12b. Supervisor Landing Page / Overview Dashboard — 💻
 
 > **This is the main view when a supervisor navigates to the Hub. It consolidates at-a-glance metrics, pending actions, and team status into a single dashboard.**
 
@@ -670,7 +579,7 @@ Updated: 2026-04-03
   - Open requests: Count of open/overdue requests for the team
 - [ ] **Recent activity feed** — Last 10 events relevant to the team (new personnel, departures, completed requests, submitted leave, training completions). Sourced from existing lists sorted by `Created` or `Modified` date.
 
-#### 13c. Team Roster & Status Visibility — 💻
+#### 12c. Team Roster & Status Visibility — 💻
 
 > **Existing infrastructure:** The People module (`Index.html:2000+`) already loads all personnel with org/position/supervisor lookups. The Home dashboard already shows a "Team Availability — Today" widget (`Index.html:2508`). The supervisor request dashboard (`Index.html:4099`) already filters requests by org.
 
@@ -692,7 +601,7 @@ Updated: 2026-04-03
 - [ ] **Upcoming departures** — List of team members with `DateDeparted` set in the future or within 90 days, sourced from `CCSD_Personnel`.
 - [ ] **Upcoming arrivals** — In-processing cases (`CCSD_InOutProcessing` where `ProcessType = 'In-Processing'` and `Status` is open/in-progress) for the supervisor's org.
 
-#### 13d. People Management & Administrative Tools — 💻
+#### 12d. People Management & Administrative Tools — 💻
 
 > **Existing infrastructure:** The People module has edit personnel modal (`canEditPeople()` gated to HR/Admin/App Admin), departure processing, org transfer workflow, and personnel CSV export. The Supervisor Hub extends these capabilities specifically for supervisors managing their own team.
 
@@ -715,11 +624,11 @@ Updated: 2026-04-03
   - 30/60/90-day check-in schedule set
   - **Note:** These items could be individual steps in `CCSD_InOutStepStatus` assigned to the supervisor, leveraging the existing checklist infrastructure.
 
-#### 13e. Pending Actions, Queues & Alerts — 💻
+#### 12e. Pending Actions, Queues & Alerts — 💻
 
 > **Consolidates all actionable items a supervisor needs to act on across all modules into a single prioritized queue.**
 
-- [ ] **Unified action queue** — Single sortable list combining all pending items from Section 13b, with:
+- [ ] **Unified action queue** — Single sortable list combining all pending items from Section 12b, with:
   - Action type (Leave Request, Training Review, Request Assigned, In-Processing Step, SF-182 Approval)
   - Subject (team member name)
   - Submitted/due date
@@ -738,7 +647,7 @@ Updated: 2026-04-03
   - Reject → sets `Status = 'Rejected'` with notes
 - [ ] **Overdue alerts** — Visual alert badges on the Hub nav tab showing the count of overdue items (red badge, same pattern as notification badges on the Home dashboard).
 
-#### 13f. Cross-Module Connections — 💻
+#### 12f. Cross-Module Connections — 💻
 
 > **The Supervisor Hub does not replace existing modules — it provides a supervisor-scoped lens into them.**
 
@@ -747,10 +656,10 @@ Updated: 2026-04-03
 - [ ] **Link to Requests** — "View Team Requests" button that opens the existing supervisor request dashboard (`openSupervisorRequestDashboard()` at `Index.html:4099`), or navigates to `#requests` with a team filter.
 - [ ] **Link to In/Out** — "View In/Out Cases" button that navigates to `#inout` with the org filter applied to show only the supervisor's team's cases.
 - [ ] **Link to Assets** — "View Team Assets" button that navigates to `#assets` with a filter showing hardware/software assigned to team members.
-- [ ] **Link to Security** — "View Team Security Status" (if Security module is built) navigates to `#security`. Supervisors see limited summary view per Section 12 rules.
+- [ ] **Link to Security** — "View Team Security Status" (if Security module is built) navigates to `#security`. Supervisors see limited summary view per Section 11 rules.
 - [ ] **Context preservation** — When navigating from the Hub to another module via these links, the module should respect the org/team filter. When the user navigates back to `#supervisor`, the Hub state should be preserved.
 
-#### 13g. Reporting, Dashboards & Drilldowns — 💻
+#### 12g. Reporting, Dashboards & Drilldowns — 💻
 
 - [ ] **Team summary report** — Printable report showing:
   - Roster with current status, position, grade, arrival date
@@ -766,11 +675,11 @@ Updated: 2026-04-03
   - "Team Leave Utilization" report type
   - These reports respect the same role-gating: only visible to supervisors.
 
-#### 13h. Supervisor-Only Workflows & Approvals — 💻
+#### 12h. Supervisor-Only Workflows & Approvals — 💻
 
 > **Workflows that are exclusive to the Supervisor Hub and do not exist in other modules.**
 
-- [ ] **Leave request approval** — Full approve/deny workflow as described in Section 13e. This is the primary new workflow.
+- [ ] **Leave request approval** — Full approve/deny workflow as described in Section 12e. This is the primary new workflow.
 - [ ] **SF-182 supervisor approval step** — When an SF-182 training request is routed to the supervisor (existing `Status = 'Submitted'` flow), the Hub surfaces it as an actionable item. Supervisor can approve (→ `Status = 'Supervisor Approved'`) or return for revision.
 - [ ] **In-processing step sign-off** — Supervisor can mark in-processing steps assigned to them as complete (using existing `CompletedBy`/`CompletedOn` fields on `CCSD_InOutStepStatus`).
 - [ ] **Request routing** — When a request is assigned to the supervisor (via `AssignedTo` on `CCSD_AppRequests`), the Hub surfaces it for action. Supervisor can update status, add comments, reassign, or close.
@@ -845,9 +754,7 @@ The core Supervisor Hub (sections 13a-13h) operates entirely on existing lists:
 
 ---
 
-## 14. SharePoint Lists to Create — 👤
-
-> *Renumbered from 13*
+## 13. SharePoint Lists to Create — 👤
 
 > **These are all manual steps you perform in SharePoint.**
 
@@ -898,7 +805,7 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ---
 
-## 15. External Integrations (Future) — 🤝
+## 14. External Integrations (Future) — 🤝
 
 > **Each of these requires setup on your end before code can be built.**
 
@@ -932,7 +839,7 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ---
 
-## 16. Column Additions to Existing Lists — 👤
+## 15. Column Additions to Existing Lists — 👤
 
 > **Summary of all new columns needed on existing lists (referenced throughout this document).**
 
@@ -954,32 +861,16 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ---
 
-## Quick Reference: Recently Completed
-
-- [x] Sortable tables, request lifecycle, in/out completion, team training, SF182 edit
-- [x] Hardware and software assignment creation
-- [x] Supervisor chain display
-- [x] Admin/diagnostics restricted to App Admin role
-- [x] Interactive floor plan viewer with coordinate picker
-- [x] Org chart visual hierarchy with connector lines, leadership info, current-org highlight
-- [x] Fullscreen/embedded dual-mode support
-- [x] Seating chart overhaul (drag-reposition, edit, delete, sidebar, crosshairs)
-- [x] Calendar module (month/week/list/leaders views, federal holidays, org scope filter)
-- [x] Asset lifecycle overhaul: edit assets, edit assignments, unassign/return with condition, transfer, asset detail pages
-- [x] Home dashboard professional redesign: welcome banner, KPI strip, priority actions, team availability, training/requests/in-out cards, notifications, quick nav, admin health
-
----
-
 ## Priority Action Summary
 
 ### 🔴 Do First (blockers for existing features)
 1. **Create `CCSD_TimeOff` list** — The Calendar module is built but has no data source yet
 
 ### 🟡 Do When Ready (enables new features)
-2. **Create `CCSD_SecurityRecords` + `CCSD_SecurityIncidents` + `CCSD_Notifications`** — Enables Security module (Section 12)
+2. **Create `CCSD_SecurityRecords` + `CCSD_SecurityIncidents` + `CCSD_Notifications`** — Enables Security module (Section 11)
 3. **Add `Security` role entries to `CCSD_AppRoles`** — Required for Security module role-based access
 4. **Obtain sample DISS Excel export** — Blocks the Excel import feature for Security module
-5. **Add `Supervisor` role entries to `CCSD_AppRoles`** — Required for Supervisor Hub role-based access (Section 13)
+5. **Add `Supervisor` role entries to `CCSD_AppRoles`** — Required for Supervisor Hub role-based access (Section 12)
 6. **Create `CCSD_ConferenceRooms` + `CCSD_RoomReservations`** — Enables conference room scheduling
 7. **Add audit columns** to `CCSD_HardwareAssets` — Enables inventory audit mode
 8. **Azure AD App Registration** — Enables Outlook calendar integration (longest lead time)
