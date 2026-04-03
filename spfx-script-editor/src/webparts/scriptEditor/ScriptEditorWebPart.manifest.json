@@ -27,8 +27,6 @@
       "officeFabricIconFontName": "Code",
       "properties": {
         "scriptUrl": "",
-        "scriptContent": "",
-        "useIframe": true,
         "iframeHeight": "100vh"
       }
     }
