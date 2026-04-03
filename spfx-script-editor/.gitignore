@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Build output
+lib/
+dist/
+release/
+temp/
+sharepoint/solution/*.sppkg
+
+# Debug
+*.log
+.vscode/
