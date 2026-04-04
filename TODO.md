@@ -683,21 +683,6 @@ Add to `loadAppData()` (or the security-module init):
 
 ---
 
-### In/Out Processing Column Recommendations (Optional) — 👤
-
-> **Optional columns to persist In/Out Processing fields natively. Currently stored in the Notes field.**
-
-| List | Column | Type | Notes |
-|------|--------|------|-------|
-| `CCSD_InOutProcessing` | `FromLocation` | Single line of text | Prior base/unit/location |
-| `CCSD_InOutProcessing` | `ToLocation` | Single line of text | Gaining base/unit/location |
-| `CCSD_InOutProcessing` | `LosingOrgID` | Lookup → CCSD_Organizations | Org member is leaving |
-| `CCSD_InOutProcessing` | `GainingOrgID` | Lookup → CCSD_Organizations | Org member is joining |
-
-**How to add**: Site Contents → open `CCSD_InOutProcessing` → Add column. Once created, let Claude know and the code will be updated to write to these columns directly instead of the Notes field.
-
----
-
 ## 11. Security Module (P1) — 🤝
 
 > **Comprehensive security management for a DoD/USAF-aligned civilian personnel support group. Covers personnel security, incident/case management, notifications, training compliance, and (in future phases) physical security, information security, OPSEC, and industrial security. Research-backed by SEAD 3, SEAD 4, DoDM 5200.02, EO 12968, EO 13526, AFI 16-1406, and related directives. See `SECURITY_RESEARCH_SUMMARY.md` for the full regulatory analysis.**
@@ -955,7 +940,7 @@ Add to `loadAppData()` (or the security-module init):
   - **Criminal conduct:** Reported → Reported to DISS → Interim Action → Under Investigation (parallel to legal proceedings) → Adjudication → SOR if needed
   - **Financial issues:** Reported → Reported to DISS → Adjudication (may allow extended mitigation period before determination)
   - **Substance abuse / positive UA:** Reported → Interim Action (immediate suspension) → Under Investigation → Adjudication (strong presumption against retention per SEAD 4 Guideline H)
-- [ ] **Status history tracking** — Each transition stored in `StatusHistoryJSON`: `[{status, changedBy, changedAt, notes}]`. Rendered as a visual timeline in the detail view.
+- [ ] **Status history tracking** — Each transition stored in the `CCSD_IncidentStatusHistory` list (one row per transition, per D1 Entity 2). Rendered as a visual timeline in the incident detail view.
 - [ ] **Deadline tracking per stage** — Configurable expected durations per stage. Visual indicator when a case exceeds expected time at a stage.
 
 #### 11g. Case Number Generation & SOR/Appeal Tracking — 💻
@@ -1774,11 +1759,10 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 | Outcome | Choice | `No Action`, `Letter of Caution`, `Clearance Retained with Conditions`, `Corrective Action Taken`, `Access Suspended`, `Eligibility Revoked`, `Eligibility Denied`, `Referred`, `Administrative Withdrawal` |
 | Conditions | Multiple lines of text | If outcome includes conditions (e.g., "Complete financial counseling") — **NEW** |
 | DebriefingDate | Date | If clearance revoked — SF-312 debriefing date — **NEW** |
-| StatusHistoryJSON | Multiple lines of text | JSON array: `[{status, changedBy, changedAt, notes}]` |
 | OrgID | Lookup → CCSD_Organizations | Member's org at time of incident |
 | Notes | Multiple lines of text | |
 
-> **Changes from original:** Added 10 new columns for SOR/appeal tracking, damage assessment, timeliness, conditions, and debriefing. Expanded Status choices from 10 to 16. Expanded Outcome choices. Added SEAD 4 guideline mapping fields.
+> **Changes from original:** Added 10 new columns for SOR/appeal tracking, damage assessment, timeliness, conditions, and debriefing. Removed `StatusHistoryJSON` (replaced by separate `CCSD_IncidentStatusHistory` list per D1 Entity 2). Expanded Status choices from 10 to 16. Expanded Outcome choices. Added SEAD 4 guideline mapping fields. The full implementation-grade schema is in D1 Entity 1 (46 columns including additional fields not shown in this abbreviated view).
 
 ##### `CCSD_Notifications` — REVISED (19 columns — see Section 9 Notification Framework for full design)
 
@@ -2572,6 +2556,33 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 See Section 1 above for full column definitions. Create when ready to build that feature.
 
+### Security Module Lists — See Section 11 for Full Schemas
+
+> **The following lists are defined in Section 11 (SharePoint Lists — Data Model). Create them when ready to build the Security Module.**
+
+- `CCSD_SecurityRecords` — 30 columns (Phase 1, Section 11)
+- `CCSD_SecurityIncidents` — 46 columns (Phase 2, Section 11 / D1)
+- `CCSD_IncidentStatusHistory` — 10 columns (Phase 2, D1 Entity 2)
+- `CCSD_IncidentActions` — 14 columns (Phase 2, D1 Entity 3)
+- `CCSD_IncidentNotifications` — 14 columns (Phase 2, D1 Entity 4)
+- `CCSD_IncidentParties` — 9 columns (Phase 2, D1 Entity 5)
+
+### Notification Framework Lists — See Section 9 for Full Schemas
+
+> **The following lists are defined in Section 9 (Notification Framework). Create them when ready to build the notification infrastructure.**
+
+- `CCSD_Notifications` — 19 columns (NF-01, Section 9)
+- `CCSD_NotificationReceipts` — 9 columns (NF-02, Section 9)
+
+### Supervisor Hub Lists — See Section 12 for Full Schemas
+
+> **The following lists are defined in Section 12 (Data Dependencies). Create them only when the corresponding Should-Have feature is approved.**
+
+- `CCSD_PerformanceTracking` — ~12 columns (SH-18, Section 12k)
+- `CCSD_TeleworkAgreements` — ~8 columns (SH-22, Section 12j)
+- `CCSD_Awards` — ~10 columns (SH-24, Section 12l)
+- `CCSD_TaskAssignments` — ~12 columns (SH-26, Section 12n)
+
 ### `CCSD_Announcements` — Planned (for Home dashboard news banner)
 
 1. Go to **Site Contents** > **New** > **List** > name it `CCSD_Announcements`
@@ -2625,7 +2636,7 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ## 15. Column Additions to Existing Lists — 👤
 
-> **Summary of all new columns needed on existing lists (referenced throughout this document).**
+> **Consolidated summary of ALL new columns needed on existing lists across all sections. This is the single reference for columns to add — individual section references point here. Security module columns (Section 11) require new lists, not column additions to existing lists, and are not included here.**
 
 | List | Column | Type | Needed For | Section |
 |------|--------|------|------------|---------|
@@ -2651,6 +2662,12 @@ See Section 1 above for full column definitions. Create when ready to build that
 | `CCSD_Positions` | `PositionStatus` | Choice | Manning visibility (12m) | 12 |
 | `CCSD_Positions` | `VacatedDate` | Date | Vacancy tracking (12m) | 12 |
 | `CCSD_Positions` | `FillActionStatus` | Choice | Recruitment status (12m) | 12 |
+| `CCSD_Personnel` | `IDPOnFile` | Yes/No | IDP tracking (12p) | 12 |
+| `CCSD_Personnel` | `IDPLastUpdated` | Date | IDP tracking (12p) | 12 |
+| `CCSD_InOutProcessing` | `FromLocation` | Single line of text | Prior base/unit/location (optional — currently in Notes) | 7 |
+| `CCSD_InOutProcessing` | `ToLocation` | Single line of text | Gaining base/unit/location (optional — currently in Notes) | 7 |
+| `CCSD_InOutProcessing` | `LosingOrgID` | Lookup → CCSD_Organizations | Org member is leaving (optional) | 7 |
+| `CCSD_InOutProcessing` | `GainingOrgID` | Lookup → CCSD_Organizations | Org member is joining (optional) | 7 |
 
 **How to add a column:**
 1. Go to **Site Contents** > open the list
@@ -2669,9 +2686,9 @@ See Section 1 above for full column definitions. Create when ready to build that
 3. **Add `Security` role entries to `CCSD_AppRoles`** — Required for Security module role-based access
 4. **👤 Obtain sample DISS Excel export** — #1 blocker for the DISS import feature. Provide one monthly export file so column mapping can be built.
 5. **👤 Verify SheetJS CDN access** from `usaf.dps.mil` — If blocked, library must be inlined (~500KB)
-6. **Create `CCSD_SecurityIncidents` list** (30 columns) — Enables Phase 2: Incident & Case Management
+6. **Create `CCSD_SecurityIncidents` list** (46 columns per D1) — Enables Phase 2: Incident & Case Management
 7. **Create `CCSD_Notifications` list** (19 columns per NF-01) + **`CCSD_NotificationReceipts` list** (9 columns per NF-02) — Enables notification framework (Section 9)
-8. **⚖️ Consult Privacy Act officer** — Verify SORN coverage for security PII in SharePoint (see Legal/Policy section)
+8. **⚖️ Consult Privacy Act officer** — Verify SORN coverage for security PII in SharePoint (Section 11 Legal/Policy item #1). Also review whether Supervisor Hub (Section 12) requires a PIA update for expanded supervisor access to subordinate data (Section 12 Policy item #9).
 9. **⚖️ Consult Information Security Program Manager** — Confirm CUI marking requirements for CSV exports
 
 ### 🟡 Do When Ready — Supervisor Hub (Section 12)
