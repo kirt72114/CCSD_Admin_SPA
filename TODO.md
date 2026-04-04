@@ -1908,222 +1908,633 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 
 ## 12. Supervisor Hub (P1) — 🤝
 
-> **New major feature. Adds a dedicated Supervisor-only section to the SPA that consolidates team oversight, pending actions, people management, and cross-module visibility into a single landing page. Requires new SharePoint lists for some features; many features build on existing data.**
+> **Dedicated supervisor-only section that consolidates team oversight, pending actions, compliance tracking, people management, and cross-module visibility into a single hub. Designed for USAF/DoD civilian supervisors managing GS/GG personnel (and potentially military), aligned with DPMAP (DoDI 1400.25 Vol 431), OPM leave administration, AFI 36-1001, SEAD 3 supervisor obligations, and Privacy Act boundaries. The SPA is a supplemental tracking tool — it does NOT replace enterprise systems of record (DCPDS, MyBiz+, ATAAPS, DISS). It tracks what those systems cannot: unit-level checklists, compliance dashboards, suspenses, and cross-module visibility that no single DoD enterprise system provides.**
+>
+> **Research-backed by:** DoDI 1400.25 (Vols 250, 431, 451, 771), AFI 36-1001, AFI 36-703, AFI 36-1004, DoDI 1035.01, AFI 36-816, SEAD 3, DoDI 5200.02, 5 CFR Parts 315/412/610/630, Privacy Act (5 USC 552a).
 
-### Known Requirements
+### Feature Tiers
 
-> **These are confirmed by the project owner or directly derivable from existing app code and data.**
+| Tier | Description | Criteria |
+|------|-------------|----------|
+| **Must-Have** | Core supervisor functionality — team visibility, action queues, compliance dashboards, leave approval, training oversight | Directly supports regulatory supervisory obligations or is essential for daily team management |
+| **Should-Have** | High-value additions — DPMAP tracking, probationary alerts, task/suspense management, onboarding checklists, awards | Addresses confirmed supervisory requirements but can be phased in after core Hub is operational |
+| **Future Enhancement** | Ambitious extensions — work schedules, budget visibility, IDP tracking, performance analytics, delegated admin | Requires new SharePoint lists, stakeholder validation, or policy decisions before building |
+
+---
+
+### MUST-HAVE Features
 
 #### 12a. Role-Based Visibility & Access Control — 💻
 
 > **Existing infrastructure:** The `Supervisor` role is already detected two ways: (1) via `CCSD_AppRoles` where `Role = 'Supervisor'`, and (2) via the `IsSupervisor` boolean flag on `CCSD_Personnel` (see `Index.html:1998,2025`). Both paths push `'Supervisor'` into `APP.state.roleNames`. Existing gate functions `canReviewTraining()` and `canManageInOut()` already include the Supervisor role.
 
-- [ ] **New "Supervisor Hub" nav tab** — Add to main navigation. Only visible when `hasAnyRole(['Supervisor','App Admin'])` returns true. Hidden entirely for non-supervisors (no empty-state placeholder).
-- [ ] **New route** — `#supervisor` hash route, guarded by role check. If a non-supervisor navigates directly to `#supervisor`, redirect to `#home` with a toast ("Access restricted to supervisors").
+- [ ] **New "Supervisor Hub" nav tab** — Add to `APP.nav` array (Index.html:814). Only visible when `hasAnyRole(['Supervisor','App Admin'])` returns true. Hidden entirely for non-supervisors (no empty-state placeholder). Position after "Reports" in nav order.
+- [ ] **New route** — `#supervisor` hash route in the router (Index.html:7148). Guarded by role check. If a non-supervisor navigates directly to `#supervisor`, redirect to `#home` with a toast ("Access restricted to supervisors").
+- [ ] **Gate function** — `canSeeSupervisorHub()` → `hasAnyRole(['Supervisor','App Admin'])`. Used by nav rendering, route guard, and all Hub-internal data queries.
 - [ ] **Team scope definition** — The Hub operates on the supervisor's "team," defined as:
-  - **Primary:** All active personnel in `CCSD_Personnel` where `SupervisorPersonID.Id` = current user's personnel ID (direct reports).
+  - **Primary (default):** All active personnel in `CCSD_Personnel` where `SupervisorPersonID.Id` = current user's personnel ID (direct reports).
   - **Extended:** All active personnel in the supervisor's org (`OrgID`) and its descendant orgs (using the existing `getOrgAndDescendants()` function, see `Index.html:4104`).
-  - **Toggle:** A scope toggle at the top of the Hub: "My Direct Reports" vs. "My Organization" to switch between primary and extended views.
-- [ ] **App Admin sees all** — Users with `App Admin` role see the Hub with access to all personnel (no org/supervisor filter). A dropdown lets them select any org to scope the view.
+  - **Toggle:** A scope toggle at the top of the Hub: "My Direct Reports" vs. "My Organization" to switch between primary and extended views. State persists in `APP.state.supervisorScope` for the session.
+- [ ] **App Admin sees all** — Users with `App Admin` role see the Hub with access to all personnel (no org/supervisor filter). A dropdown lets them select any org to scope the view. The dropdown uses `CCSD_Organizations` data already loaded.
 - [ ] **Keyboard shortcut** — Register `Alt+V` (for superVisor) to navigate to the Hub, gated by role check (same pattern as `Alt+D` for diagnostics in `Index.html`).
+- [ ] **Privacy boundary enforcement** — All Hub data queries are scoped to the supervisor's team. No lateral access (a supervisor cannot view another supervisor's team unless they are in their org hierarchy). App Admin bypasses this restriction. Queries use `$filter` constructed from team PersonIDs or OrgIDs — never unscoped queries.
+- [ ] **Privacy Act banner** — Display a one-time-per-session banner when entering the Hub: "This system contains Privacy Act-protected information. Access is restricted to authorized personnel with a legitimate need to know. Unauthorized access or disclosure may result in civil and criminal penalties." Dismissal logged to `logAudit()` with action `PrivacyBannerAcknowledged`.
 
 #### 12b. Supervisor Landing Page / Overview Dashboard — 💻
 
-> **This is the main view when a supervisor navigates to the Hub. It consolidates at-a-glance metrics, pending actions, and team status into a single dashboard.**
+> **The main view when a supervisor navigates to the Hub. Consolidates at-a-glance metrics, pending actions, team status, and compliance indicators. Follows the same visual pattern as the Home dashboard (KPI strip → cards → grid) but scoped entirely to the supervisor's team.**
 
-- [ ] **Team strength summary** — KPI strip at top:
-  - Total assigned (count of direct reports or org members depending on scope toggle)
-  - Present for duty today (total minus those with `CCSD_TimeOff` entries for today where `Status = 'Approved'`)
-  - On leave today (count with `TimeOffType` in `Annual Leave`, `Sick Leave`, `Comp Time`, `LWOP`)
-  - TDY today (count with `TimeOffType = 'TDY'`)
-  - Telework today (count with `TimeOffType = 'Telework'`)
-  - In training today (count with `TimeOffType = 'Training'`)
-- [ ] **Pending actions queue** — Prominent card listing items requiring the supervisor's attention, with counts and direct-action links:
+- [ ] **Team strength summary** — KPI strip at top (same `dash-kpis` pattern as Home dashboard):
+  - **Total assigned** (count of team members per scope toggle)
+  - **Present today** (total minus those with `CCSD_TimeOff` entries for today where `Status = 'Approved'`)
+  - **On leave** (count with `TimeOffType` in `Annual Leave`, `Sick Leave`, `Comp Time`, `LWOP`)
+  - **TDY** (count with `TimeOffType = 'TDY'`)
+  - **Telework** (count with `TimeOffType = 'Telework'`)
+  - **Training** (count with `TimeOffType = 'Training'`)
+  - **Vacancies** (if Manning feature is built — see 12m; graceful omission if not)
+  - Each KPI is clickable — drills down to the filtered team roster showing those people
+
+- [ ] **Pending actions queue** — Prominent card (red border if items overdue) listing ALL items requiring the supervisor's action, with counts and one-click action buttons:
   - Leave requests pending approval (`CCSD_TimeOff` where `Status = 'Pending'` for team members)
-  - Requests assigned to supervisor (`CCSD_AppRequests` where `AssignedTo` = current user or status includes "Pending Supervisor")
-  - Training submissions pending review (`CCSD_TrainingSubmissions` where `Status = 'Pending Review'` and reviewer is supervisor)
-  - In-processing cases with overdue steps (from `CCSD_InOutStepStatus` for team members)
-  - SF-182 requests pending supervisor approval (from `CCSD_SF182TrainingRequests`)
-  - **Security clearance expirations** within 90 days (from `CCSD_SecurityRecords` if Security module exists — graceful degradation if not yet built)
-- [ ] **Team readiness scorecard** — Color-coded indicators (green/amber/red):
-  - Training compliance: % of team with all mandatory training current (from `CCSD_TrainingRecords` vs. `CCSD_TrainingCatalog` where `IsMandatory = true`)
-  - Asset accountability: % of team's assigned hardware verified within 90 days (from `CCSD_HardwareAssignments`)
-  - In/Out processing: Count of active cases, any overdue steps highlighted
-  - Open requests: Count of open/overdue requests for the team
-- [ ] **Recent activity feed** — Last 10 events relevant to the team (new personnel, departures, completed requests, submitted leave, training completions). Sourced from existing lists sorted by `Created` or `Modified` date.
+  - Requests assigned to supervisor (`CCSD_AppRequests` where `AssignedTo` = current user and status is open)
+  - Training submissions pending review (`CCSD_TrainingSubmissions` where `Status = 'Pending Review'` for team members)
+  - In-processing steps assigned to supervisor (`CCSD_InOutStepStatus` where `AssignedTo` = current user or `OwningOrgID` matches supervisor's org, and status is open)
+  - SF-182 requests pending supervisor approval (`CCSD_SF182TrainingRequests` where `Status = 'Submitted'` for team members)
+  - **Security clearance expirations** within 90 days (from `CCSD_SecurityRecords` if Security module exists — graceful omission if not yet built)
+  - **DPMAP milestones overdue** (if Performance feature is built — see 12k; graceful omission if not)
+  - **Probationary period milestones** (if tracking is built — see 12l; graceful omission if not)
+  - Each item shows: type icon, subject name, age in days, due date, one-click action (Approve/Review/Open)
+  - Items sorted by: overdue first (red), then due within 3 days (yellow), then age descending
+
+- [ ] **Team readiness scorecard** — Color-coded indicators (green ≥90% / amber 70-89% / red <70%):
+  - **Training compliance**: % of team with all mandatory training current (from `getTeamTrainingModel()` at Index.html:6939)
+  - **Asset accountability**: % of team's assigned hardware verified within 90 days (from `CCSD_HardwareAssignments`)
+  - **In/Out processing**: Count of active cases, any overdue steps highlighted red
+  - **Open requests**: Count of open/overdue requests for the team
+  - **Security status**: % of team with current clearance investigations (from `CCSD_SecurityRecords` if built)
+  - **DPMAP on track**: % of team with current performance plan (if Performance feature is built)
+  - Each scorecard cell is clickable — drills down to the relevant detail view
+
+- [ ] **Recent activity feed** — Last 15 events relevant to the team:
+  - New personnel arrivals (from `CCSD_Personnel` where `DateArrived` is recent)
+  - Departures (from `CCSD_Personnel` where `DateDeparted` is recent)
+  - Completed requests (from `CCSD_AppRequests` where status changed to complete)
+  - Leave submitted/approved (from `CCSD_TimeOff` recently created)
+  - Training completions (from `CCSD_TrainingRecords` recently created)
+  - In/Out step completions (from `CCSD_InOutStepStatus` recently completed)
+  - Sourced from existing lists sorted by `Created` or `Modified` date, filtered to team PersonIDs
+  - Shows: icon, event description, person name, timestamp, relative time ("2 hours ago")
 
 #### 12c. Team Roster & Status Visibility — 💻
 
-> **Existing infrastructure:** The People module (`Index.html:2000+`) already loads all personnel with org/position/supervisor lookups. The Home dashboard already shows a "Team Availability — Today" widget (`Index.html:2508`). The supervisor request dashboard (`Index.html:4099`) already filters requests by org.
+> **Existing infrastructure:** The People module (`Index.html:2032`) already loads all personnel with org/position/supervisor lookups. The Home dashboard already shows a "Team Availability — Today" widget (`Index.html:2508`). The supervisor request dashboard (`Index.html:4099`) already filters requests by org. `getTeamTrainingModel()` (Index.html:6939) already computes per-person training compliance for the supervisor's team. `formatPerson()` (Index.html:2920) handles name display with rank prefix.**
 
 - [ ] **Team roster table** — Sortable, filterable table of all team members showing:
-  - Name, grade/rank, position title, org
-  - Current status (Active, Leave, TDY, Training, Telework, Departed)
-  - Today's status (computed from `CCSD_TimeOff` entries for today)
-  - Training compliance % (computed per person)
-  - Open requests count
-  - Last activity date
-  - Click row to open person detail modal (existing functionality)
-- [ ] **Status filter bar** — Quick filters: All | Present | Leave | TDY | Telework | Training | Departed
-- [ ] **Team calendar view** — Week/month grid showing team availability at a glance:
-  - Rows = team members, columns = days
-  - Color-coded cells: present (green), leave (blue), TDY (orange), telework (teal), training (purple)
+  - Name (with rank/grade prefix), position title, org
+  - Personnel category (Civilian, Military, Contractor, NAF — from `Category` field)
+  - Current personnel status (Active, Leave, TDY, Training, Telework, Departed — from `Status` field)
+  - Today's availability (computed from `CCSD_TimeOff` entries for today: ✅ Present, �� Leave, 🟠 TDY, 🟣 Telework, 🟤 Training)
+  - Training compliance % (computed per person via `getTeamTrainingModel()` data, color-coded)
+  - Open requests count (from `CCSD_AppRequests` filtered to that person)
+  - Date arrived (from `DateArrived`)
+  - Click row → opens existing person detail modal (`view-person` action)
+  - Each row has a mini-action menu: View | Training | Assets | Leave History | Requests
+
+- [ ] **Status filter bar** — Quick filter pills: All | Present | Leave | TDY | Telework | Training | Departed
+  - Each shows a count badge
+  - Multiple can be selected (OR logic) except "All" which is exclusive
+  - Filter state persists in `APP.state.supervisorRosterFilter`
+
+- [ ] **Roster search** — Text search across name, grade, position, org (reuses `filterLocal()` pattern from Index.html:1926)
+
+- [ ] **Team calendar / availability grid** — Week/month grid showing team availability at a glance:
+  - Rows = team members (sorted by org → name), columns = days
+  - Color-coded cells: present (green), leave (blue), TDY (orange), telework (teal), training (purple), holiday (red stripe)
   - Summary row at top: "X of Y present" per day
-  - Red highlight on any day where present-for-duty drops below 50%
-  - Reuses data already loaded by the Calendar module (`CCSD_TimeOff`)
-- [ ] **Upcoming departures** — List of team members with `DateDeparted` set in the future or within 90 days, sourced from `CCSD_Personnel`.
-- [ ] **Upcoming arrivals** — In-processing cases (`CCSD_InOutProcessing` where `ProcessType = 'In-Processing'` and `Status` is open/in-progress) for the supervisor's org.
+  - **Critical staffing alert:** Red highlight on any day where present-for-duty drops below 50% of assigned strength
+  - Federal holidays rendered with holiday name (reuses `getFederalHolidays()` at Index.html:2141)
+  - Click a cell → shows detail (person name, time-off type, dates, notes)
+  - Click a person row header → opens person detail
+  - Reuses `CCSD_TimeOff` data already loaded by the Calendar module
+  - Week/month toggle with prev/next navigation
+
+- [ ] **Upcoming departures** — Card showing team members with `DateDeparted` set within the next 90 days, sourced from `CCSD_Personnel`. Shows: name, departure date, days remaining, out-processing status (from linked `CCSD_InOutProcessing` case if it exists). Red highlight if departure is within 30 days and no out-processing case exists.
+
+- [ ] **Upcoming arrivals** — Card showing in-processing cases (`CCSD_InOutProcessing` where `ProcessType = 'In-Processing'` and `Status` is open/in-progress) for the supervisor's org. Shows: person name, arrival date, process status, % steps complete, overdue steps count.
+
+- [ ] **Team org chart view** — Optional visual showing the supervisor's reporting chain as a tree/hierarchy. Reuses `getSupervisorChain()` (Index.html:7111) and org hierarchy data. Clickable nodes → person detail. Shows vacancy indicators for unfilled positions (if Manning feature is built).
 
 #### 12d. People Management & Administrative Tools — 💻
 
-> **Existing infrastructure:** The People module has edit personnel modal (`canEditPeople()` gated to HR/Admin/App Admin), departure processing, org transfer workflow, and personnel CSV export. The Supervisor Hub extends these capabilities specifically for supervisors managing their own team.
+> **Existing infrastructure:** The People module has edit personnel modal (`canEditPeople()` gated to HR/Admin/App Admin), departure processing, org transfer workflow, and personnel CSV export. The Supervisor Hub extends these with team-specific actions. Supervisors do NOT get full edit access to personnel records — that remains HR/Admin-gated. Supervisors get read access + limited actions on their own team members only.**
 
 - [ ] **Quick actions per team member** — From the roster row or a detail modal, supervisor can:
-  - View full person detail (existing modal)
-  - View assigned assets (links to Assets module filtered to that person)
+  - View full person detail (existing `view-person` modal)
+  - View assigned assets (links to Assets module filtered to that person via `focus-person-assets` action at Index.html:7465)
   - View training records (links to Training module filtered to that person)
-  - View time-off history (links to Calendar module filtered to that person)
-  - View/create requests on behalf of team member
-  - Initiate in-processing or out-processing case for the team member
-- [ ] **Supervisor-initiated leave entry** — Supervisor can create a `CCSD_TimeOff` entry on behalf of a team member (pre-populating `ApprovedBy` with the supervisor's identity).
-- [ ] **Supervisor notes** — A free-text notes field visible only to the supervisor for each team member. This would require a new column on `CCSD_Personnel` (`SupervisorNotes`, type: Note) or a separate list.
-  - **⚠️ Decision needed:** Store on `CCSD_Personnel` (simpler, but visible to HR/Admin) or in a new `CCSD_SupervisorNotes` list with broken permission inheritance (more private, more complex)?
-- [ ] **Newcomer integration tracking** — For team members currently in-processing, show a checklist of supervisor-specific onboarding tasks:
-  - Welcome meeting conducted
-  - Workspace/seat assigned
-  - IT accounts verified
-  - Team introduction completed
-  - Performance expectations discussed
-  - 30/60/90-day check-in schedule set
-  - **Note:** These items could be individual steps in `CCSD_InOutStepStatus` assigned to the supervisor, leveraging the existing checklist infrastructure.
+  - View time-off history (shows `CCSD_TimeOff` entries for that person, last 12 months)
+  - View/create requests on behalf of team member (pre-fills `PersonID` on request form)
+  - Initiate in-processing or out-processing case for the team member (opens `openCreateInOutModal()` at Index.html:4251 with person pre-selected)
+  - View security status summary (if Security module built — clearance level, investigation date, training status; no incident details per Section 11 privacy rules)
+
+- [ ] **Supervisor-initiated leave entry** — Supervisor can create a `CCSD_TimeOff` entry on behalf of a team member:
+  - Pre-populates `PersonID` with the selected team member
+  - Pre-populates `ApprovedBy` with the supervisor
+  - Status defaults to `Approved` (supervisor is recording an already-approved absence)
+  - Audit logged: `LeaveCreatedBySupervisor` action type
+
+- [ ] **Supervisor notes** — Free-text notes field visible only to the supervisor for each team member:
+  - **⚠️ Policy decision needed:** Store on `CCSD_Personnel` as `SupervisorNotes` column (simpler, but visible to HR/Admin/App Admin) or in a new `CCSD_SupervisorNotes` list (more private, more complex). **Recommendation:** Use `CCSD_Personnel` column — supervisory notes about work assignments, development areas, and goals are not inherently private from HR. Truly private notes should not be in any shared system.
+  - Character limit: 2000 characters
+  - Shows last-edited timestamp
+  - **Privacy note:** Notes must NOT contain medical information, EEO complaint details, or information the supervisor learned through accommodation processes. Display a reminder when editing.
+
+- [ ] **Newcomer integration tracking** — For team members currently in-processing (`CCSD_InOutProcessing` where `ProcessType = 'In-Processing'` and status is open), show a dedicated onboarding card with:
+  - Overall progress (% of steps complete)
+  - Supervisor-specific steps as a checklist (assigned to the supervisor in `CCSD_InOutStepStatus`):
+    - Welcome meeting conducted
+    - Workspace/seat assigned (links to Facilities module seat assignment)
+    - IT accounts verified (links to relevant request if created)
+    - Team introduction completed
+    - DPMAP performance plan initiated (links to Performance tracker if built)
+    - Security in-briefing coordinated (links to Security module if built)
+    - 30/60/90-day check-in schedule set
+  - These are standard `CCSD_InOutStepStatus` rows assigned to the supervisor — they leverage the existing checklist infrastructure, not a new list
+  - Days-since-arrival counter with milestone markers (30/60/90 days)
+  - **⚠️ Regulatory note (DoDI 1400.25 Vol 250):** New employee orientation must be completed within the first week. DPMAP performance plan must be established within 30 days of entry on duty.
 
 #### 12e. Pending Actions, Queues & Alerts — 💻
 
-> **Consolidates all actionable items a supervisor needs to act on across all modules into a single prioritized queue.**
+> **Consolidates ALL actionable items a supervisor needs to act on across ALL modules into a single prioritized queue. This is the Hub's core value proposition — replacing the need to check 5+ separate modules for pending items.**
 
-- [ ] **Unified action queue** — Single sortable list combining all pending items from Section 12b, with:
-  - Action type (Leave Request, Training Review, Request Assigned, In-Processing Step, SF-182 Approval)
-  - Subject (team member name)
-  - Submitted/due date
-  - Age (days since created)
-  - Priority indicator (overdue = red, due within 3 days = yellow, normal = default)
-  - One-click action button (Approve, Deny, Review, Open Detail)
+- [ ] **Unified action queue** — Single sortable/filterable list combining all pending items:
+  - **Columns:** Action type (icon + label), Subject (team member name), Description, Submitted date, Due date, Age (days since created), Priority indicator, Action button
+  - **Item sources:**
+    1. Leave requests pending (`CCSD_TimeOff` where `Status = 'Pending'`)
+    2. Requests assigned to supervisor (`CCSD_AppRequests` where `AssignedTo` = current user, status open)
+    3. Training submissions pending review (`CCSD_TrainingSubmissions` where `Status = 'Pending Review'`)
+    4. In-processing steps assigned to supervisor (`CCSD_InOutStepStatus` where `AssignedTo` = current user or `OwningOrgID` = supervisor's org, status open)
+    5. SF-182 requests pending supervisor approval (`CCSD_SF182TrainingRequests` where `Status = 'Submitted'`)
+    6. Overdue training (team members with expired mandatory training — from `getTeamTrainingModel()`)
+    7. DPMAP milestones overdue (if Performance feature built)
+    8. Probationary period milestones approaching (if Probation tracking built)
+    9. Security clearance actions needed (if Security module built and supervisor has notifications)
+    10. Task/suspense items assigned to supervisor (if Task feature built — see 12n)
+  - **Sorting:** Overdue first (red), then due within 3 days (yellow), then by age descending
+  - **Filtering:** By type (checkbox pills), by person, by date range
+  - **One-click actions:** Approve, Deny, Review, Open Detail — inline where possible, modal for complex actions
+  - **Batch actions:** Select multiple leave requests → batch approve
+
 - [ ] **Leave approval workflow** — Inline approve/deny for pending leave requests:
-  - Show the request details (person, dates, type, hours)
-  - Show conflict check: are other team members also off during that period?
-  - Show manning impact: "Approving would bring team to X of Y present on [dates]"
-  - Approve button → sets `CCSD_TimeOff.Status = 'Approved'`, `ApprovedBy = currentUser`
-  - Deny button → requires a reason note, sets `Status = 'Denied'`
+  - Expandable detail row showing: person, dates, type, hours, notes
+  - **Conflict check:** Automatically shows other team members with approved time off overlapping the requested dates
+  - **Manning impact:** "Approving would bring team to X of Y present on [dates]" — red warning if below 50%
+  - **Leave balance awareness:** Display a note: "Leave balance information is maintained in ATAAPS. Verify balance before approving." (The SPA does not track leave balances — that's ATAAPS.)
+  - Approve → sets `CCSD_TimeOff.Status = 'Approved'`, `ApprovedBy = currentUser`, `SupervisorDecisionDate = now()`. Calls `logAudit()`.
+  - Deny → requires a reason note (`DecisionNotes`), sets `Status = 'Denied'`. Calls `logAudit()`.
+  - If Notification Framework (Section 9) is built, sends notification to the requestor on approval/denial.
+
 - [ ] **Training submission review** — Inline approve/reject for pending training submissions:
-  - Show certificate/proof if attached
-  - Approve → creates `CCSD_TrainingRecords` entry (existing pattern)
+  - Show certificate/proof attachment if present (expandable inline preview)
+  - Show training details: name, code, frequency, mandatory flag
+  - Approve → creates `CCSD_TrainingRecords` entry (existing pattern from Index.html training submission flow). Calls `logAudit()`.
+  - Reject → sets `Status = 'Rejected'` with notes. Calls `logAudit()`.
+
+- [ ] **SF-182 approval** — Inline review for pending SF-182 training requests:
+  - Show: training name, requestor, estimated cost, duty hours, non-duty hours, justification
+  - Approve → sets `Status = 'Supervisor Approved'` (existing status value per `openSF182EditModal()` at Index.html:6986). Calls `logAudit()`.
+  - Return for revision → sets `Status = 'Returned'` with notes
   - Reject → sets `Status = 'Rejected'` with notes
-- [ ] **Overdue alerts** — Visual alert badges on the Hub nav tab showing the count of overdue items (red badge, same pattern as notification badges on the Home dashboard).
+
+- [ ] **In-processing step sign-off** — Supervisor marks steps assigned to them as complete:
+  - Show step details: step number, title, description, due date
+  - Complete → sets `Status = 'Complete'`, `CompletedBy = currentUser`, `CompletedOn = now()` on the `CCSD_InOutStepStatus` row. Calls `logAudit()`.
+  - If all supervisor steps are complete, show a summary "All your onboarding steps for [person] are done."
+
+- [ ] **Overdue badge on Hub nav tab** — Red badge showing count of overdue items across all sources. Badge renders in `renderNav()` when `canSeeSupervisorHub()` is true. Count computed from cached action queue data. Updates on each page load.
 
 #### 12f. Cross-Module Connections — 💻
 
-> **The Supervisor Hub does not replace existing modules — it provides a supervisor-scoped lens into them.**
+> **The Supervisor Hub does not replace existing modules — it provides a supervisor-scoped lens into them. Each link passes context (org filter, person filter) so the destination module shows team-relevant data immediately.**
 
-- [ ] **Link to Calendar** — "View Team Calendar" button that navigates to `#calendar` with the org scope pre-set to the supervisor's org.
-- [ ] **Link to Training** — "View Team Training" button that opens the existing team training compliance modal (`getTeamTrainingModel()` at `Index.html:6939`), or navigates to `#training` with the org filter applied.
-- [ ] **Link to Requests** — "View Team Requests" button that opens the existing supervisor request dashboard (`openSupervisorRequestDashboard()` at `Index.html:4099`), or navigates to `#requests` with a team filter.
-- [ ] **Link to In/Out** — "View In/Out Cases" button that navigates to `#inout` with the org filter applied to show only the supervisor's team's cases.
-- [ ] **Link to Assets** — "View Team Assets" button that navigates to `#assets` with a filter showing hardware/software assigned to team members.
-- [ ] **Link to Security** — "View Team Security Status" (if Security module is built) navigates to `#security`. Supervisors see limited summary view per Section 11 rules.
-- [ ] **Context preservation** — When navigating from the Hub to another module via these links, the module should respect the org/team filter. When the user navigates back to `#supervisor`, the Hub state should be preserved.
+- [ ] **Link to Calendar** — "View Team Calendar" navigates to `#calendar` with `APP.state.calendarOrgFilter` set to the supervisor's org. The Calendar module already supports org-scoped time-off display.
+- [ ] **Link to Training** — "View Team Training" renders the existing `renderTeamTraining()` function (Index.html:6970) inline within the Hub (as a tab or expandable card), OR navigates to `#training` with org filter. The inline approach is preferred — it keeps the supervisor in the Hub.
+- [ ] **Link to Requests** — "View Team Requests" renders the existing `openSupervisorRequestDashboard()` (Index.html:4099) content inline or as a modal. Shows open requests, overdue counts, SLA tracking.
+- [ ] **Link to In/Out** — "View Team In/Out Cases" navigates to `#inout` with org filter showing only the supervisor's team's cases.
+- [ ] **Link to Assets** — "View Team Equipment" shows a summary of hardware/software assigned to team members. Per-person asset count with drill-down to individual assignments.
+- [ ] **Link to Security** — "View Team Security Status" (if Security module is built) shows the supervisor-scoped summary view defined in Section 11 (clearance levels and investigation currency only — NO incident details, NO case information, NO derogatory data per DoDM 5200.02 need-to-know rules).
+- [ ] **Context preservation** — When navigating from the Hub to another module, the module respects the passed filter. When the user navigates back to `#supervisor`, the Hub state (scope toggle, active tab, scroll position) is preserved in `APP.state.supervisorState`.
 
 #### 12g. Reporting, Dashboards & Drilldowns — 💻
 
-- [ ] **Team summary report** — Printable report showing:
-  - Roster with current status, position, grade, arrival date
-  - Training compliance matrix (person × mandatory training items, with current/expired/due status)
-  - Open requests summary
+> **Supervisors need actionable reports, not raw data. Each report is accessible within the Hub and also registered in the Reports module (Section 10) for consistency. All reports are scoped to the supervisor's team — App Admin can select any org.**
+
+- [ ] **Team summary report** — Printable/exportable report showing:
+  - Roster with: name, grade, position, org, status, date arrived, training compliance %, open requests count
+  - Training compliance matrix (person × mandatory training items, with Current/Expired/Missing status per cell)
+  - Open requests summary by type and status
   - Asset inventory per person (count of hardware/software assigned)
-  - Time-off utilization (hours approved this month/quarter/year)
-- [ ] **Training compliance drilldown** — Click the training compliance KPI to see a per-person × per-training matrix (reuses `getTeamTrainingModel()` data).
-- [ ] **Leave utilization chart** — Bar chart or table showing leave usage by team member for the current month/quarter (from `CCSD_TimeOff` aggregations).
-- [ ] **Add to Reports module** — Supervisor-specific reports integrated into the existing Reports nav section (Section 10):
-  - "Supervisor Team Summary" report type
-  - "Team Training Compliance" report type
-  - "Team Leave Utilization" report type
-  - These reports respect the same role-gating: only visible to supervisors.
+  - Time-off summary (approved hours by type for selected period: month/quarter/FY)
+  - In/Out processing status (active cases, step completion %)
+  - **Export:** CSV and print-optimized HTML. CSV includes CUI banner header if security data is included.
 
-#### 12h. Supervisor-Only Workflows & Approvals — 💻
+- [ ] **Training compliance drilldown** — Click the training compliance KPI to see a full per-person × per-training matrix:
+  - Rows = team members, columns = mandatory training items (from `CCSD_TrainingCatalog` where `IsMandatory = true` or `Required = true`)
+  - Cell values: ✅ Current (green) | ⚠️ Due Soon (yellow) | ❌ Expired (red) | — Missing (gray)
+  - Expiration date shown in each cell
+  - Column header shows overall % compliant for that training
+  - Row total shows per-person compliance %
+  - Click any cell → shows training detail modal
+  - Reuses `getTeamTrainingModel()` data with expanded per-training detail
 
-> **Workflows that are exclusive to the Supervisor Hub and do not exist in other modules.**
+- [ ] **Leave utilization report** — Table showing leave usage by team member for selected period:
+  - Rows = team members, columns = leave types (Annual, Sick, Comp Time, LWOP, TDY, Telework, Training)
+  - Cell values = count of days or total hours for the period
+  - Period selector: This Month | This Quarter | This FY | Custom Date Range
+  - Summary row: team totals per type
+  - Sourced from `CCSD_TimeOff` filtered to team members and date range
+  - **Privacy note:** This tracks APPROVED time-off entries in the SPA, not official leave balances (those are in ATAAPS).
 
-- [ ] **Leave request approval** — Full approve/deny workflow as described in Section 12e. This is the primary new workflow.
-- [ ] **SF-182 supervisor approval step** — When an SF-182 training request is routed to the supervisor (existing `Status = 'Submitted'` flow), the Hub surfaces it as an actionable item. Supervisor can approve (→ `Status = 'Supervisor Approved'`) or return for revision.
-- [ ] **In-processing step sign-off** — Supervisor can mark in-processing steps assigned to them as complete (using existing `CompletedBy`/`CompletedOn` fields on `CCSD_InOutStepStatus`).
-- [ ] **Request routing** — When a request is assigned to the supervisor (via `AssignedTo` on `CCSD_AppRequests`), the Hub surfaces it for action. Supervisor can update status, add comments, reassign, or close.
+- [ ] **Equipment accountability report** — Table showing per-person hardware/software assignments:
+  - Rows = team members, columns = hardware count, software count, last audit date
+  - Expandable row → shows individual asset details
+  - Highlights: unaudited assets (>90 days), missing assignments
+  - Sourced from `CCSD_HardwareAssignments` and `CCSD_SoftwareAssignments`
 
-### Needs Research / Validation
+- [ ] **Add to Reports module** — Register supervisor-specific report types in the existing Reports nav section (Section 10):
+  - "Supervisor Team Summary" | "Team Training Compliance" | "Team Leave Utilization" | "Team Equipment Accountability"
+  - These reports are role-gated: only visible when `canSeeSupervisorHub()` returns true
 
-> **These items require further discovery — either from the project owner providing decisions, from reviewing governing regulations, or from detailed UX design sessions.**
+#### 12h. Supervisor Notification Integration — 💻
 
-- [ ] **🔬 Performance management (DPMAP/EPR/OPR)** — Determine whether the Hub should track performance review cycles, midpoint reviews, ratings, and performance improvement plans. This is a major sub-feature that would require new SharePoint lists (`CCSD_PerformanceReviews`, `CCSD_PerformanceActions`). Placeholder for future expansion.
-- [ ] **🔬 Awards and recognition tracking** — Determine whether the Hub should track award nominations (Time-Off Awards, QSIs, Performance Awards, Quarterly/Annual Awards). Would require a new `CCSD_Awards` list. Placeholder.
-- [ ] **🔬 Disciplinary action tracking** — Determine whether the Hub should track LOCs, LOAs, LORs (military) and progressive discipline (civilian). Requires extremely sensitive data handling and likely broken permission inheritance. Would require a new `CCSD_DisciplinaryActions` list. Placeholder.
-- [ ] **🔬 Individual Development Plans (IDPs)** — Determine whether the Hub should support creating and tracking IDPs for team members. Would require a new `CCSD_IndividualDevelopmentPlans` list. Placeholder.
-- [ ] **🔬 Work schedule management** — Determine whether the Hub should track alternate work schedules (CWS, FWS, Maxiflex, 4-10, 5-4/9), telework agreements (DD Form 2946), and overtime authorization. Would require new lists. Placeholder.
-- [ ] **🔬 Newcomer sponsorship program** — Determine whether the Hub should manage sponsor assignments for incoming team members. Would require a new `CCSD_SponsorAssignments` list. Placeholder.
-- [ ] **🔬 Duty roster / shift scheduling** — Determine whether the Hub needs a visual duty roster for daily/weekly scheduling. This is common for military units but may be less relevant for a civilian personnel support group. Placeholder.
-- [ ] **🔬 GPC (Government Purchase Card) tracking** — Determine whether supervisors need to track/approve GPC transactions for their team. Would require a new list. Placeholder.
-- [ ] **🔬 Budget visibility** — Determine whether supervisors need to see budget execution data (allocated vs. obligated vs. expended) for their org. Would require a new list. Placeholder.
-- [ ] **🔬 Medical/fitness readiness (military)** — If active duty military are assigned to CPSG, determine whether the Hub should track PHA, dental readiness, fitness assessments, and immunization status. Would require new lists. Placeholder — likely low priority for a civilian-majority organization.
-- [ ] **🔬 Deployment readiness (military)** — Similar to above. Determine scope and priority. Placeholder.
-- [ ] **🔬 Task assignment and tracking** — Determine whether the Hub should have a Kanban-style task board for assigning action items/suspenses to team members. Would require a new `CCSD_TaskAssignments` list. Placeholder.
-- [ ] **🔬 Standup/status notes** — Determine whether the Hub should support recording daily/weekly standup notes (accomplishments, plans, issues). Would require a new list. Placeholder.
-- [ ] **🔬 Team announcements** — Determine whether supervisors need org-scoped announcements separate from the planned `CCSD_Announcements` list (Section 13). May be handled by adding a `TargetOrgID` column to that list. Placeholder.
+> **Integrates the Supervisor Hub with the Notification Framework (Section 9) so supervisors receive timely alerts about their team and can send team-scoped notifications.**
 
-### SharePoint Lists Required — 👤
+- [ ] **Supervisor-specific notification types** — The Hub generates these via the Notification Framework:
+  - `SUP-TEAM-ALERT`: Weekly team compliance summary (training gaps, overdue requests, expiring clearances) — generated by `initNotificationChecks()` (NF-13)
+  - `SUP-LEAVE-PENDING`: Immediate notification when a team member submits a leave request requiring approval
+  - `SUP-INOUT-STEP`: Notification when an in-processing step is assigned to the supervisor
+  - `SUP-TRAINING-SUBMIT`: Notification when a team member submits training completion for review
+  - `SUP-SF182-PENDING`: Notification when an SF-182 request needs supervisor approval
+  - `SUP-DPMAP-DUE`: DPMAP milestone approaching (if Performance feature built)
+  - `SUP-PROBATION-DUE`: Probationary period milestone approaching (if Probation feature built)
 
-> **Core Hub features use existing lists. The items below are only needed if specific sub-features are approved during discovery.**
+- [ ] **Supervisor notification templates** — Add to `APP.config.notificationTemplates`:
+  | Template ID | Sensitivity | Body Pattern |
+  |-------------|-------------|-------------|
+  | `SUP-TEAM-ALERT` | Internal | "{count} item(s) requiring attention in your team. Review the Supervisor Hub." |
+  | `SUP-LEAVE-PENDING` | Internal | "{personName} has submitted a leave request for {dates}. Review in the Supervisor Hub." |
+  | `SUP-INOUT-STEP` | Public | "An in-processing step has been assigned to you for {personName}." |
+  | `SUP-TRAINING-SUBMIT` | Public | "{personName} has submitted a training completion for your review." |
+  | `SUP-SF182-PENDING` | Public | "An SF-182 training request from {personName} requires your approval." |
+  | `SUP-DPMAP-DUE` | Internal | "DPMAP milestone approaching: {milestone} for {personName} is due {dueDate}." |
+  | `SUP-PROBATION-DUE` | Internal | "Probationary period milestone: {personName}'s {milestone} review is due {dueDate}." |
 
-#### No New Lists Required for Core Hub
+- [ ] **Send team notification** — Supervisor can send notifications to their team via `openNotificationComposer()` (NF-12) with `AudienceType = 'Organization'` pre-set to their org. Restricted to `Supervisor Alert` and `General` notification types per NF permission matrix.
 
-The core Supervisor Hub (sections 13a-13h) operates entirely on existing lists:
-- `CCSD_Personnel` — team roster, supervisor linkage
-- `CCSD_Organizations` — org hierarchy, scope filtering
-- `CCSD_TimeOff` — leave management, team calendar
-- `CCSD_TrainingRecords` / `CCSD_TrainingCatalog` — training compliance
-- `CCSD_TrainingSubmissions` — submission review
-- `CCSD_AppRequests` — request management
-- `CCSD_InOutProcessing` / `CCSD_InOutStepStatus` — in/out processing
-- `CCSD_SF182TrainingRequests` — SF-182 approvals
-- `CCSD_HardwareAssignments` / `CCSD_SoftwareAssignments` — asset visibility
-- `CCSD_SecurityRecords` — security status (if built)
-- `CCSD_AppRoles` — role detection (Supervisor role already supported)
-- `CCSD_AppAuditLog` — audit logging
+- [ ] **Hub notification panel** — Dedicated notification section within the Hub showing supervisor-relevant notifications:
+  - Filtered to notification types starting with `SUP-` or where `RecipientRole = 'Supervisor'`
+  - Shows alongside the pending actions queue
+  - Uses the same `CCSD_NotificationReceipts` query as the general notification panel but with Hub-specific filtering
 
-#### Future Lists (Only If Research Items Are Approved)
+---
 
-| List | Sub-Feature | Priority |
-|------|-------------|----------|
-| `CCSD_PerformanceReviews` | Performance management (DPMAP/EPR/OPR) | TBD |
-| `CCSD_Awards` | Awards and recognition tracking | TBD |
-| `CCSD_DisciplinaryActions` | Disciplinary action tracking | TBD |
-| `CCSD_IndividualDevelopmentPlans` | IDP tracking | TBD |
-| `CCSD_WorkSchedules` | Alternate work schedule management | TBD |
-| `CCSD_TeleworkAgreements` | Telework agreement tracking | TBD |
-| `CCSD_OvertimeAuthorization` | Overtime approval workflow | TBD |
-| `CCSD_SponsorAssignments` | Newcomer sponsorship program | TBD |
-| `CCSD_TaskAssignments` | Task board / suspense tracking | TBD |
-| `CCSD_StandupNotes` | Standup/status note history | TBD |
-| `CCSD_GPCTransactions` | GPC tracking | TBD |
-| `CCSD_BudgetTracking` | Budget visibility | TBD |
-| `CCSD_MedicalReadiness` | Medical readiness (military) | TBD |
-| `CCSD_FitnessAssessments` | Fitness assessment tracking (military) | TBD |
-| `CCSD_LeaveBalances` | Leave balance tracking (manual/periodic) | TBD |
+### SHOULD-HAVE Features
 
-### Columns to Add to Existing Lists — 👤 (Optional)
+> **High-value additions that address confirmed supervisory requirements (regulatory or best practice). Each requires a new SharePoint list or significant new column additions. Recommended for phased implementation after the Must-Have core is operational.**
 
-| List | Column | Type | Needed For | Required? |
-|------|--------|------|------------|-----------|
-| `CCSD_Personnel` | `SupervisorNotes` | Multiple lines of text | Supervisor-only notes per team member | Optional — see decision note in 13d |
-| `CCSD_TimeOff` | `RequestedDate` | Date | Track when leave was originally requested | Optional — enhances leave approval workflow |
-| `CCSD_TimeOff` | `SupervisorDecisionDate` | Date | Track when supervisor approved/denied | Optional — enhances leave audit trail |
-| `CCSD_TimeOff` | `DecisionNotes` | Multiple lines of text | Reason for denial or conditions | Optional — enhances leave denial workflow |
+#### 12i. Training Compliance Deep View — 💻
+
+> **Extends the basic training compliance KPI from 12b into a full supervisor-facing training management view. Builds on the existing `getTeamTrainingModel()` function (Index.html:6939) and `renderTeamTraining()` (Index.html:6970).**
+
+- [ ] **Full training compliance matrix** — Person × Training grid:
+  - Rows = team members. Columns = all mandatory training items from `CCSD_TrainingCatalog` where `Required = true` or `IsMandatory = true`.
+  - Cell = completion status (Current ✅ / Due Soon ⚠️ / Expired ❌ / Missing —) with expiration date
+  - Row summary: compliance % per person. Column summary: compliance % per training.
+  - Color-coded: row turns red if any item expired, yellow if any due soon
+  - Click a cell → shows training record detail or "no record found" with "Notify" button
+  - **Data:** Entirely from existing `CCSD_TrainingRecords`, `CCSD_TrainingCatalog`, `CCSD_Personnel`. No new lists needed.
+
+- [ ] **Training gap actions** — From the matrix, supervisor can:
+  - Send reminder notification to a team member with expired/missing training (uses Notification Framework NF-12 with `TRAIN-EXPIRED` or `TRAIN-EXPIRE-30` template)
+  - Bulk-select team members with a specific missing training → send batch reminder
+  - Export training compliance matrix to CSV for reporting to higher headquarters
+  - View pending training submissions for review (same as action queue item)
+
+- [ ] **Supervisor's own training tracker** — Prominent card showing the supervisor's own mandatory trainings, including supervisor-specific requirements:
+  - DPMAP Supervisory Training (initial + refresher per DoDI 1400.25 Vol 431)
+  - Supervisory EEO/No FEAR Act Training (per DoDI 1400.25 Vol 771)
+  - Civilian Supervisory Course (if required within first year of supervisory assignment)
+  - Cyber Awareness, SAPR, Suicide Prevention, AT Level I, OPSEC, Records Management (standard DoD mandatory training)
+  - **Data:** From existing `CCSD_TrainingRecords` for the current user. No new lists needed.
+
+#### 12j. Telework & Work Schedule Management — 🤝
+
+> **✦ Regulatory: DoDI 1035.01 and AFI 36-816 require written telework agreements (DD Form 2946) before telework begins, reviewed annually. 5 CFR 610 governs alternate work schedules. This feature tracks agreement status and schedules — it does NOT replace official HR forms.**
+
+- [ ] **Telework agreement tracker** — Per team member:
+  - Agreement status: Active, Expired, None, Pending
+  - Agreement type: Routine (regular schedule), Situational (ad hoc), Emergency
+  - Approved date, expiration date (auto-computed: approval + 1 year)
+  - Regular telework days (e.g., Mon/Wed)
+  - **Alert:** Flag expired agreements (red). Flag agreements expiring within 30 days (yellow).
+  - **⚠️ Policy decision needed:** Store in `CCSD_Personnel` as additional columns (simpler) or in a new `CCSD_TeleworkAgreements` list (more structured, supports history). **Recommendation:** New list — agreements have start/end dates and change over time.
+  - **Data dependency:** New `CCSD_TeleworkAgreements` list (see data dependencies section).
+
+- [ ] **Alternate work schedule visibility** — Per team member:
+  - Schedule type: Standard (5/8), CWS (Compressed Work Schedule), FWS (Flexible Work Schedule), Maxiflex, 4-10, 5-4/9
+  - Regular day off (RDO) for CWS employees
+  - Core hours (if FWS/Maxiflex)
+  - **Use:** Integrated into the team calendar/availability grid (12c) — show RDOs as "scheduled off" in a distinct color
+  - **Data dependency:** New columns on `CCSD_Personnel`: `WorkScheduleType` (Choice), `RegularDayOff` (Choice: Mon-Fri), `CoreHoursStart` (Text), `CoreHoursEnd` (Text). Simple columns, no new list needed.
+
+#### 12k. DPMAP Performance Cycle Tracking — 🤝
+
+> **✦ Regulatory requirement (DoDI 1400.25 Vol 431). The DPMAP appraisal cycle runs 1 April – 31 March. Supervisors must establish performance plans within 30 days, conduct at least one midpoint progress review, and complete annual appraisals by 31 March. The SPA tracks cycle dates and milestones — it does NOT store narrative appraisals, objectives, or ratings (those belong in MyBiz+/PAA).**
+
+- [ ] **DPMAP cycle dashboard** — Per team member, track:
+  - Appraisal cycle: Current FY cycle (e.g., 1 Apr 2025 – 31 Mar 2026)
+  - Performance plan established: Yes/No, date established
+  - Midpoint review completed: Yes/No, date completed
+  - Annual appraisal completed: Yes/No, date completed, rating submitted to HR: Yes/No
+  - Next cycle action: What's due next and when
+  - Status: On Track (green) / Milestone Approaching (yellow) / Overdue (red)
+  - **Alerts:**
+    - Performance plan not established by 1 May → yellow, by 15 May → red
+    - Midpoint review not completed by 1 Nov → yellow, by 15 Nov → red
+    - Annual appraisal not completed by 15 Mar → yellow, by 31 Mar → red
+  - **⚠️ Critical:** Do NOT store performance ratings, narrative objectives, critical elements, or improvement plans. Those are in the enterprise PAA (Performance Appraisal Application) / MyBiz+. The SPA tracks only: "has this milestone been completed, and when?"
+
+- [ ] **Probationary period tracking** — For new employees (per 5 CFR 315.801-805; AFI 36-1001):
+  - Probationary start date (= `DateArrived` for new competitive-service appointees)
+  - Probationary end date (start + 1 year)
+  - Status: In Probation / Converted / Separated
+  - **Milestone alerts:**
+    - 6-month check-in due
+    - 9-month progress review due (supervisor must assess whether employee should be retained)
+    - 11-month final decision point — **critical**: missing this means automatic conversion
+    - 30 days before end: urgent alert if no decision recorded
+  - **Data dependency:** New `CCSD_PerformanceTracking` list (see data dependencies section). Alternatively, could be additional columns on `CCSD_Personnel` if the scope stays minimal.
+
+#### 12l. Awards & Recognition Tracking — 🤝
+
+> **Best practice aligned with DoDI 1400.25 Vol 451 and AFI 36-1004. Tracks award nominations submitted by the supervisor and helps ensure equitable distribution. The SPA does NOT replace the official awards processing system — it tracks nominations and outcomes for supervisor awareness.**
+
+- [ ] **Awards tracker** — Supervisor can record and track:
+  - Award type: Time-Off Award, Quality Step Increase (QSI), On-the-Spot Award, Special Act Award, Performance Award, Quarterly/Annual Award, Commander's Coin, Letter of Appreciation
+  - Nominee (team member)
+  - Nomination date, submitted date, decision date
+  - Status: Draft, Submitted, Approved, Denied, Presented
+  - Amount (hours for Time-Off Awards, dollars for monetary awards)
+  - **Constraints from DoDI 1400.25 Vol 451:**
+    - Time-Off Awards: max 40 hours per award, max 80 hours per employee per year
+    - On-the-Spot Awards: max $50 without higher approval (varies by installation)
+  - **Equity view:** Summary showing awards distribution by team member over trailing 12 months — helps supervisor ensure equitable recognition
+  - **Data dependency:** New `CCSD_Awards` list (see data dependencies section).
+
+#### 12m. Manning & Position Visibility — 🤝
+
+> **Best practice per AFI 38-101 and AFI 36-1001. Supervisors should know their authorized vs. assigned positions, vacancy status, and pending fill actions. The SPA provides unit-level visibility — it does NOT replace UMPR (Unit Manpower Personnel Roster) or DCPDS position management.**
+
+- [ ] **Manning roster** — Table showing:
+  - Position number (from `CCSD_Positions`)
+  - Position title, grade, series
+  - Incumbent (linked to `CCSD_Personnel`) or "VACANT"
+  - Status: Filled, Vacant, Pending Fill, Frozen, Temporarily Occupied
+  - Fill action status (if vacant): Recruitment in progress, Awaiting classification, Pending funding, None
+  - Date vacated (if vacant)
+  - Days vacant counter
+  - **KPI:** Authorized strength / Assigned strength / Fill rate %
+  - **Data sources:** `CCSD_Positions` (existing) linked to `CCSD_Personnel` (existing). May need new columns on `CCSD_Positions`: `AuthorizedGrade` (Choice), `PositionStatus` (Choice), `VacatedDate` (Date), `FillActionStatus` (Choice).
+  - **Privacy note:** Position data (grade, title, occupancy) is NOT PII — it's organizational/manpower data. No privacy restrictions on supervisor access.
+
+- [ ] **Position description (PD) currency tracker** — For each position:
+  - PD number, last review date
+  - Flag PDs not reviewed in >2 years (per AFI 36-1001 — supervisors must keep PDs current)
+  - Alert when a PD review is overdue
+  - **Data dependency:** New columns on `CCSD_Positions`: `PDNumber` (Text), `PDLastReviewDate` (Date).
+
+#### 12n. Task & Suspense Management — 🤝
+
+> **Best practice for DoD unit-level management. Tasks/taskers flow from higher headquarters and must be tracked to completion. This is consistently identified as a high-value feature for supervisor oversight tools. The SPA provides a lightweight task tracker — not a replacement for TMT (Task Management Tool) or official tasker systems.**
+
+- [ ] **Task board** — Supervisor can create, assign, and track tasks/suspenses:
+  - Task fields: Title, description, assigned to (team member or self), originator, suspense date, priority (Routine/High/Urgent), status (Open/In Progress/Complete/Cancelled), category (Tasker/Suspense/Action Item/Follow-Up/Other), completion date, notes
+  - **Views:**
+    - **List view:** Sortable/filterable table with overdue highlighting
+    - **Kanban board (optional):** Columns = Open / In Progress / Complete. Drag to change status.
+    - **Calendar view:** Tasks plotted by suspense date on a calendar grid
+  - **Features:**
+    - Overdue tasks highlighted red, due within 3 days yellow
+    - Recurring tasks (e.g., "Weekly staff meeting prep" — auto-recreates on completion)
+    - Task assignment notification via Notification Framework (NF-04)
+    - Bulk assign: select multiple team members → assign the same task to each
+    - Task completion notification to originator
+  - **Integration:** Task items appear in the unified action queue (12e) alongside leave requests, training reviews, etc.
+  - **Data dependency:** New `CCSD_TaskAssignments` list (see data dependencies section).
+
+---
+
+### FUTURE ENHANCEMENT Features
+
+> **Ambitious extensions requiring new SharePoint lists, stakeholder validation, or policy decisions. Each is independently viable and does not block Must-Have or Should-Have features. Build only when approved by the project owner.**
+
+#### 12o. Disciplinary Action Tracking — 🤝
+
+> **⚠️ Extremely sensitive data. Per 5 CFR 752 and AFI 36-704, disciplinary records have strict access rules and retention limits. Supervisors may access records they initiated or that are active. Full documentation belongs in the Employee Relations (ER) case file, not the SPA. The SPA tracks only: type, date issued, expiration, status.**
+
+- [ ] **Active action tracker** — Per team member (visible only to their supervisor and HR/Admin):
+  - Action type: Letter of Counseling, Letter of Admonishment, Letter of Reprimand, Suspension, Removal Action, PIP (Performance Improvement Plan)
+  - Date issued, expiration date (reprimands: 1-3 years per Douglas Factors), status (Active/Expired/Rescinded)
+  - NO narrative content, NO underlying facts, NO witness statements — those are in the ER file
+  - Auto-archive when expiration date passes
+  - **⚠️ Policy decision required:** Confirm with Employee Relations and Privacy Act officer before implementing. May require broken permission inheritance on the SharePoint list.
+  - **Data dependency:** New `CCSD_DisciplinaryActions` list.
+
+#### 12p. Individual Development Plans (IDPs) — 💻
+
+> **Soft requirement per 5 CFR 412.101 and DoDI 1400.25 Vol 250. IDPs are encouraged for all employees, typically updated annually alongside DPMAP. The SPA tracks only whether an IDP exists and when it was last updated — NOT the plan content.**
+
+- [ ] **IDP status tracker** — Per team member:
+  - IDP on file: Yes/No
+  - Last updated date
+  - Next review date (typically aligns with DPMAP midpoint review)
+  - Status: Current (updated within 12 months) / Due for Update / No IDP
+  - **Data:** Could be 2 columns on `CCSD_Personnel` (`IDPOnFile` Yes/No, `IDPLastUpdated` Date) — no new list needed.
+
+#### 12q. Work Schedule & Overtime Management — 🤝
+
+> **Tracks alternate work schedules, overtime authorization, and comp time. The SPA is NOT the timekeeper (that's ATAAPS). It provides supervisor awareness of scheduling arrangements.**
+
+- [ ] **Overtime authorization tracker** — Record approved overtime/comp time:
+  - Employee, date, hours authorized, type (Overtime/Comp Time/Credit Hours), approver, reason
+  - Running total by employee per pay period / month / FY
+  - **Data dependency:** New `CCSD_OvertimeAuthorization` list or columns on `CCSD_TimeOff` (with an expanded `TimeOffType` choice set).
+
+#### 12r. Sponsorship Program Management — 🤝
+
+> **Best practice for military/DoD organizations. Assign sponsors to incoming personnel to facilitate smooth integration.**
+
+- [ ] **Sponsor assignments** — When an in-processing case is created:
+  - Supervisor assigns a sponsor from the team roster
+  - Sponsor receives notification (via NF-04)
+  - Sponsor checklist: initial contact made, welcome packet sent, workstation tour, first-day escort
+  - Tracked as steps in `CCSD_InOutStepStatus` assigned to the sponsor — no new list needed
+
+#### 12s. Additional Future Items — ⚠️ Requires Stakeholder Validation
+
+> **These items were identified during research but require explicit project owner approval before any design work begins. Each is listed with the rationale for inclusion and the decision needed.**
+
+| Item | Rationale | Decision Needed | Potential Data Source |
+|------|-----------|-----------------|---------------------|
+| **GPC (Government Purchase Card) tracking** | Supervisors accountable for cardholder oversight (DoDI 5000.76) | Does CPSG manage GPC cards? | New `CCSD_GPCTransactions` list |
+| **Budget visibility** | Supervisors may need org-level budget execution data | Is budget data available/appropriate for the SPA? | New `CCSD_BudgetTracking` list |
+| **Medical/fitness readiness (military)** | Track IMR status for military subordinates (AFI 10-203) — status only, no diagnoses | Are military personnel assigned to CPSG? | New columns on `CCSD_Personnel` |
+| **Deployment readiness (military)** | Track deployment-related readiness items | Same as above | New list or columns |
+| **Duty roster / shift scheduling** | Visual duty roster for daily coverage | Is shift scheduling relevant for CPSG? | New `CCSD_DutyRoster` list |
+| **Standup/status notes** | Weekly accomplishments/plans/issues recording | Does the team want digital standup tracking? | New `CCSD_StandupNotes` list |
+| **Leave balance tracking** | Manual/periodic recording of leave balances from ATAAPS | Is this needed given ATAAPS is the system of record? | New `CCSD_LeaveBalances` list |
+| **Team announcements** | Org-scoped announcements from supervisors | Can this be handled by `CCSD_Announcements` with a `TargetOrgID` column? | Column addition to existing list |
+| **Delegation of authority** | Track temporary supervisor delegations (leave, acting) | Is this needed? | New `CCSD_Delegations` list |
+| **Reasonable accommodation tracking** | Track implementation status of approved accommodations (NOT medical details) | Privacy officer approval needed | New list with restricted access |
+
+---
+
+### Data Dependencies Summary
+
+#### Must-Have Core (No New Lists Required)
+
+The Must-Have features (12a-12h) operate entirely on existing lists:
+
+| Existing List | Used By | Purpose |
+|---------------|---------|---------|
+| `CCSD_Personnel` | 12a, 12c, 12d | Team roster, supervisor linkage, person details |
+| `CCSD_Organizations` | 12a, 12c | Org hierarchy, scope filtering |
+| `CCSD_TimeOff` | 12b, 12c, 12e | Leave management, team calendar, leave approval |
+| `CCSD_TrainingRecords` / `CCSD_TrainingCatalog` | 12b, 12i | Training compliance |
+| `CCSD_TrainingSubmissions` | 12e | Submission review |
+| `CCSD_AppRequests` | 12b, 12e | Request management |
+| `CCSD_InOutProcessing` / `CCSD_InOutStepStatus` | 12b, 12c, 12d, 12e | In/out processing |
+| `CCSD_SF182TrainingRequests` | 12e | SF-182 approvals |
+| `CCSD_HardwareAssignments` / `CCSD_SoftwareAssignments` | 12b, 12g | Asset visibility |
+| `CCSD_SecurityRecords` | 12b, 12f | Security status (if built) |
+| `CCSD_Notifications` / `CCSD_NotificationReceipts` | 12h | Notification integration (if built per Section 9) |
+| `CCSD_AppRoles` | 12a | Role detection |
+| `CCSD_AppAuditLog` | All | Audit logging |
+| `CCSD_Positions` | 12m | Position/manning data |
+
+#### Columns to Add to Existing Lists — 👤
+
+| List | Column | Type | Needed For | Tier |
+|------|--------|------|------------|------|
+| `CCSD_Personnel` | `SupervisorNotes` | Multiple lines of text | Supervisor notes per team member (12d) | Must-Have |
+| `CCSD_TimeOff` | `RequestedDate` | Date | Track when leave was originally requested (12e) | Must-Have |
+| `CCSD_TimeOff` | `SupervisorDecisionDate` | Date | Track when supervisor approved/denied (12e) | Must-Have |
+| `CCSD_TimeOff` | `DecisionNotes` | Multiple lines of text | Reason for denial or conditions (12e) | Must-Have |
+| `CCSD_Personnel` | `WorkScheduleType` | Choice | CWS/FWS/Maxiflex/Standard schedule type (12j) | Should-Have |
+| `CCSD_Personnel` | `RegularDayOff` | Choice (Mon-Fri) | RDO for CWS employees (12j) | Should-Have |
+| `CCSD_Personnel` | `ProbationaryStartDate` | Date | Probationary period tracking (12k) | Should-Have |
+| `CCSD_Personnel` | `ProbationaryEndDate` | Date | Probationary period tracking (12k) | Should-Have |
+| `CCSD_Personnel` | `ProbationaryStatus` | Choice | In Probation/Converted/Separated (12k) | Should-Have |
+| `CCSD_Personnel` | `IDPOnFile` | Yes/No | IDP tracking (12p) | Future |
+| `CCSD_Personnel` | `IDPLastUpdated` | Date | IDP tracking (12p) | Future |
+| `CCSD_Positions` | `PDNumber` | Single line of text | PD currency tracking (12m) | Should-Have |
+| `CCSD_Positions` | `PDLastReviewDate` | Date | PD currency tracking (12m) | Should-Have |
+| `CCSD_Positions` | `PositionStatus` | Choice | Filled/Vacant/Pending Fill/Frozen (12m) | Should-Have |
+| `CCSD_Positions` | `VacatedDate` | Date | Vacancy duration tracking (12m) | Should-Have |
+| `CCSD_Positions` | `FillActionStatus` | Choice | Recruitment status (12m) | Should-Have |
+
+#### New SharePoint Lists Required (Should-Have / Future Tiers Only)
+
+| List | Columns | Feature | Tier | Priority |
+|------|---------|---------|------|----------|
+| `CCSD_TeleworkAgreements` | ~8 (PersonID, AgreementType, ApprovedDate, ExpirationDate, TeleworkDays, Status, ApprovedBy, Notes) | Telework agreement tracking (12j) | Should-Have | P2 |
+| `CCSD_PerformanceTracking` | ~12 (PersonID, CycleYear, PlanEstablished, PlanDate, MidpointCompleted, MidpointDate, AnnualCompleted, AnnualDate, RatingSubmitted, ProbationaryStatus, ProbStartDate, ProbEndDate) | DPMAP + probation tracking (12k) | Should-Have | P1 |
+| `CCSD_Awards` | ~10 (PersonID, AwardType, NominationDate, SubmittedDate, DecisionDate, Status, Amount, Hours, ApprovedBy, Notes) | Awards tracking (12l) | Should-Have | P2 |
+| `CCSD_TaskAssignments` | ~12 (Title, Description, AssignedTo, Originator, SuspenseDate, Priority, Status, Category, CompletionDate, IsRecurring, RecurrencePattern, Notes) | Task/suspense management (12n) | Should-Have | P2 |
+| `CCSD_DisciplinaryActions` | ~8 (PersonID, ActionType, DateIssued, ExpirationDate, Status, IssuedBy, Notes, IsArchived) | Disciplinary tracking (12o) | Future | P3 |
+| `CCSD_OvertimeAuthorization` | ~8 (PersonID, Date, Hours, Type, ApprovedBy, Reason, PayPeriod, Notes) | Overtime tracking (12q) | Future | P3 |
+
+---
+
+### Implementation Tasks (SH-01 through SH-24)
+
+> **Ordered by dependency. SH = Supervisor Hub. Must-Have tasks first, then Should-Have, then Future. Each task maps to a specific feature section.**
+
+##### Must-Have Core (Build First — No New Lists Needed)
+
+- [ ] **SH-01: Add `Supervisor` role entries to `CCSD_AppRoles`** — 👤 Data entry. Add rows mapping each supervisor to `Role = 'Supervisor'`. Alternatively, the `IsSupervisor` flag on `CCSD_Personnel` auto-grants the role (existing logic at Index.html:2025).
+- [ ] **SH-02: Add leave approval columns to `CCSD_TimeOff`** — 👤 Add `RequestedDate` (Date), `SupervisorDecisionDate` (Date), `DecisionNotes` (Multi-line text). See Columns table above.
+- [ ] **SH-03: Add `SupervisorNotes` column to `CCSD_Personnel`** — 👤 Multi-line text. See Columns table above. ⚠️ See privacy decision note in 12d.
+- [ ] **SH-04: Build `canSeeSupervisorHub()` gate + route** — 💻 Add gate function, add `#supervisor` route to router (Index.html:7148), add nav tab to `APP.nav` array (Index.html:814) with conditional visibility, add `Alt+V` keyboard shortcut.
+- [ ] **SH-05: Build team scope resolution** — 💻 `getTeamMembers(scope)` function. Scope = 'direct' (SupervisorPersonID match) or 'org' (getOrgAndDescendants). Returns filtered personnel array. `APP.state.supervisorScope` persists toggle state.
+- [ ] **SH-06: Build Privacy Act banner** — 💻 One-time-per-session acknowledgment modal on first Hub visit. Logged to `logAudit()`.
+- [ ] **SH-07: Build landing page / overview dashboard** — 💻 Per 12b spec. KPI strip, pending actions summary, readiness scorecard, recent activity feed. Reuses existing data loading functions.
+- [ ] **SH-08: Build team roster table** — 💻 Per 12c spec. Sortable/filterable table with status filter pills, search, quick actions per row.
+- [ ] **SH-09: Build team calendar / availability grid** — 💻 Per 12c spec. Week/month grid, color-coded cells, manning summary, critical staffing alerts. Reuses `CCSD_TimeOff` data.
+- [ ] **SH-10: Build unified action queue** — 💻 Per 12e spec. Aggregates all pending items, sorted by urgency. One-click actions. Badge count on nav tab.
+- [ ] **SH-11: Build leave approval workflow** — 💻 Per 12e spec. Inline approve/deny with conflict check, manning impact display, audit logging.
+- [ ] **SH-12: Build training submission review** — 💻 Per 12e spec. Inline approve/reject with certificate preview.
+- [ ] **SH-13: Build SF-182 approval workflow** — 💻 Per 12e spec. Inline approve/return/reject.
+- [ ] **SH-14: Build in-processing step sign-off** — 💻 Per 12e spec. Complete steps assigned to supervisor.
+- [ ] **SH-15: Build cross-module links** — 💻 Per 12f spec. Context-passing navigation to Calendar, Training, Requests, In/Out, Assets, Security.
+- [ ] **SH-16: Build reports** — 💻 Per 12g spec. Team summary, training compliance matrix, leave utilization, equipment accountability. CSV export. Register in Reports module.
+- [ ] **SH-17: Integrate with Notification Framework** — 💻 Per 12h spec. Supervisor notification templates, team notification sending, Hub notification panel. Depends on NF-04 (Section 9) being built.
+
+##### Should-Have (Build After Core — Requires New Lists/Columns)
+
+- [ ] **SH-18: Create `CCSD_PerformanceTracking` list** — 👤 ~12 columns per data dependencies table.
+- [ ] **SH-19: Add position management columns to `CCSD_Positions`** — 👤 PDNumber, PDLastReviewDate, PositionStatus, VacatedDate, FillActionStatus.
+- [ ] **SH-20: Build DPMAP cycle tracker** — 💻 Per 12k spec. Cycle dashboard, milestone alerts, probationary period tracking.
+- [ ] **SH-21: Build manning/position visibility** — 💻 Per 12m spec. Manning roster, vacancy tracking, PD currency tracker.
+- [ ] **SH-22: Create `CCSD_TeleworkAgreements` list** — 👤 ~8 columns per data dependencies table.
+- [ ] **SH-23: Build telework agreement tracker** — 💻 Per 12j spec. Agreement status, expiration alerts, schedule visibility.
+- [ ] **SH-24: Create `CCSD_Awards` list** — 👤 ~10 columns per data dependencies table.
+- [ ] **SH-25: Build awards tracker** — 💻 Per 12l spec. Nomination tracking, equity view.
+- [ ] **SH-26: Create `CCSD_TaskAssignments` list** — 👤 ~12 columns per data dependencies table.
+- [ ] **SH-27: Build task/suspense management** — 💻 Per 12n spec. Task board, views, notifications, recurring tasks.
+
+##### Future Enhancement (Build Only When Approved)
+
+- [ ] **SH-28: Create `CCSD_DisciplinaryActions` list** — 👤 Per 12o spec. ⚠️ Requires ER/Privacy officer approval.
+- [ ] **SH-29: Build disciplinary action tracker** — 💻 Per 12o spec.
+- [ ] **SH-30: Build IDP tracking** — 💻 Per 12p spec. Columns on `CCSD_Personnel`.
+- [ ] **SH-31: Build overtime authorization** — 💻 Per 12q spec.
+- [ ] **SH-32: Build sponsorship program** — 💻 Per 12r spec. Uses existing `CCSD_InOutStepStatus`.
+
+---
+
+### Policy & Stakeholder Validation Items
+
+> **These items require human decisions before implementation can proceed. Each references the feature section that depends on the decision.**
+
+| # | Item | Decision Needed | Depends On | Action |
+|---|------|----------------|------------|--------|
+| 1 | **Supervisor notes storage** | Store on `CCSD_Personnel` (visible to HR/Admin) or new list with broken inheritance? Recommendation: `CCSD_Personnel` column. | 12d | **Ask project owner** |
+| 2 | **DPMAP scope** | Should the SPA track DPMAP cycle milestones? If yes, what level of detail? Recommendation: milestone dates only, no narratives. | 12k | **Ask project owner** |
+| 3 | **Probationary tracking** | Are there current probationary employees? Is this tracking needed? | 12k | **Ask project owner** |
+| 4 | **Awards tracking** | Does the unit want to track award nominations in the SPA? | 12l | **Ask project owner** |
+| 5 | **Manning/position visibility** | Is the `CCSD_Positions` list populated with UMD-level data? Does it include authorized grades and vacancy status? | 12m | **Ask project owner** |
+| 6 | **Task/suspense management** | Does the unit need a tasker tracking system in the SPA? Or is there an existing tool (TMT, SharePoint task list)? | 12n | **Ask project owner** |
+| 7 | **Telework agreements** | Does the unit need telework agreement tracking? Are DD Form 2946 agreements managed locally? | 12j | **Ask project owner** |
+| 8 | **Disciplinary action tracking** | ⚠️ Sensitive. Must confirm with Employee Relations and Privacy Act officer. Must determine access controls and retention periods. | 12o | **Consult ER + Privacy officer** |
+| 9 | **Privacy Act coverage** | Confirm SORN coverage for supervisor-visible PII in the SPA. The Hub adds supervisor access to subordinate data — this may need a PIA update. | 12a | **Consult Privacy Act officer** |
+| 10 | **GPC/budget/medical features** | Are any of the items in 12s relevant to this organization? | 12s | **Ask project owner** |
+| 11 | **Military personnel** | Are active duty military assigned to CPSG? If yes, medical readiness (IMR) and fitness tracking may be relevant. | 12s | **Ask project owner** |
+
+---
+
+### Implementation Roadmap
+
+| Phase | Tasks | Dependencies | Scope |
+|-------|-------|-------------|-------|
+| **Phase A: Infrastructure** | SH-01 through SH-06 | `CCSD_TimeOff` list exists, `Supervisor` role entries added | Route, gate, scope, privacy banner |
+| **Phase B: Core Views** | SH-07 through SH-09 | Phase A complete | Dashboard, roster, team calendar |
+| **Phase C: Action Queue** | SH-10 through SH-14 | Phase B complete | Unified queue, leave approval, training review, SF-182, in-processing |
+| **Phase D: Cross-Module** | SH-15 through SH-17 | Phase C complete, Notification Framework (Section 9) for SH-17 | Navigation, reports, notifications |
+| **Phase E: Should-Have** | SH-18 through SH-27 | Phase D complete, new lists created | DPMAP, manning, telework, awards, tasks |
+| **Phase F: Future** | SH-28 through SH-32 | Phase E complete, policy approvals | Disciplinary, IDP, overtime, sponsorship |
+
+**Recommended build order:** Phase A → B → C → D can be built sequentially with no new lists. Phase E requires stakeholder decisions (items 1-7 from Policy section) and new SharePoint lists. Phase F requires sensitive policy approvals (items 8-11).
 
 ---
 
@@ -2216,16 +2627,30 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 > **Summary of all new columns needed on existing lists (referenced throughout this document).**
 
-| List | Column | Type | Needed For |
-|------|--------|------|------------|
-| `CCSD_HardwareAssets` | `LastAuditDate` | Date | Inventory audit |
-| `CCSD_HardwareAssets` | `LastAuditBy` | Person | Inventory audit |
-| `CCSD_HardwareAssets` | `WarrantyExpiration` | Date | Warranty tracking |
-| `CCSD_HardwareAssets` | `PhysicalLocation` | Text | Location tracking |
-| `CCSD_HardwareAssets` | `CostCenter` | Text | Cost center reporting |
-| `CCSD_HardwareAssignments` | `ExpectedReturnDate` | Date | Portable check-out |
-| `CCSD_SoftwareAssets` | `TotalLicenses` | Number | License utilization |
-| `CCSD_SoftwareAssets` | `CostCenter` | Text | Cost center reporting |
+| List | Column | Type | Needed For | Section |
+|------|--------|------|------------|---------|
+| `CCSD_HardwareAssets` | `LastAuditDate` | Date | Inventory audit | 2 |
+| `CCSD_HardwareAssets` | `LastAuditBy` | Person | Inventory audit | 2 |
+| `CCSD_HardwareAssets` | `WarrantyExpiration` | Date | Warranty tracking | 2 |
+| `CCSD_HardwareAssets` | `PhysicalLocation` | Text | Location tracking | 2 |
+| `CCSD_HardwareAssets` | `CostCenter` | Text | Cost center reporting | 2 |
+| `CCSD_HardwareAssignments` | `ExpectedReturnDate` | Date | Portable check-out | 2 |
+| `CCSD_SoftwareAssets` | `TotalLicenses` | Number | License utilization | 2 |
+| `CCSD_SoftwareAssets` | `CostCenter` | Text | Cost center reporting | 2 |
+| `CCSD_Personnel` | `SupervisorNotes` | Multiple lines of text | Supervisor notes (12d) | 12 |
+| `CCSD_TimeOff` | `RequestedDate` | Date | Leave request tracking (12e) | 12 |
+| `CCSD_TimeOff` | `SupervisorDecisionDate` | Date | Leave approval audit (12e) | 12 |
+| `CCSD_TimeOff` | `DecisionNotes` | Multiple lines of text | Denial reason (12e) | 12 |
+| `CCSD_Personnel` | `WorkScheduleType` | Choice | Work schedule type (12j) | 12 |
+| `CCSD_Personnel` | `RegularDayOff` | Choice (Mon-Fri) | CWS regular day off (12j) | 12 |
+| `CCSD_Personnel` | `ProbationaryStartDate` | Date | Probationary tracking (12k) | 12 |
+| `CCSD_Personnel` | `ProbationaryEndDate` | Date | Probationary tracking (12k) | 12 |
+| `CCSD_Personnel` | `ProbationaryStatus` | Choice | Probation status (12k) | 12 |
+| `CCSD_Positions` | `PDNumber` | Text | PD currency tracking (12m) | 12 |
+| `CCSD_Positions` | `PDLastReviewDate` | Date | PD currency tracking (12m) | 12 |
+| `CCSD_Positions` | `PositionStatus` | Choice | Manning visibility (12m) | 12 |
+| `CCSD_Positions` | `VacatedDate` | Date | Vacancy tracking (12m) | 12 |
+| `CCSD_Positions` | `FillActionStatus` | Choice | Recruitment status (12m) | 12 |
 
 **How to add a column:**
 1. Go to **Site Contents** > open the list
@@ -2249,14 +2674,23 @@ See Section 1 above for full column definitions. Create when ready to build that
 8. **⚖️ Consult Privacy Act officer** — Verify SORN coverage for security PII in SharePoint (see Legal/Policy section)
 9. **⚖️ Consult Information Security Program Manager** — Confirm CUI marking requirements for CSV exports
 
+### 🟡 Do When Ready — Supervisor Hub (Section 12)
+10. **Add `Supervisor` role entries to `CCSD_AppRoles`** (SH-01) — Required for Supervisor Hub. Alternatively, `IsSupervisor` flag on `CCSD_Personnel` auto-grants the role.
+11. **Add leave approval columns to `CCSD_TimeOff`** (SH-02) — `RequestedDate`, `SupervisorDecisionDate`, `DecisionNotes`. Required for leave approval workflow.
+12. **Add `SupervisorNotes` column to `CCSD_Personnel`** (SH-03) — Multi-line text. See policy decision #1.
+13. **👤 Review 11 policy/stakeholder decisions** — Section 12 Policy & Stakeholder Validation table. Items 1-7 can be decided by project owner. Items 8-11 require Privacy/ER officer consultation.
+
 ### 🟡 Do When Ready — Other Features
-10. **Add `Supervisor` role entries to `CCSD_AppRoles`** — Required for Supervisor Hub (Section 12)
-11. **Create `CCSD_ConferenceRooms` + `CCSD_RoomReservations`** — Enables conference room scheduling
-12. **Add audit columns** to `CCSD_HardwareAssets` — Enables inventory audit mode
-13. **Azure AD App Registration** — Enables Outlook calendar integration (longest lead time)
+14. **Create `CCSD_ConferenceRooms` + `CCSD_RoomReservations`** — Enables conference room scheduling
+15. **Add audit columns** to `CCSD_HardwareAssets` — Enables inventory audit mode
+16. **Azure AD App Registration** — Enables Outlook calendar integration (longest lead time)
 
 ### 🟢 Low Urgency (nice-to-have prerequisites)
-14. **Add `TotalLicenses`** to software assets — Enables license dashboard
-15. **Add `WarrantyExpiration`** to hardware assets — Enables warranty alerts
-16. **Create `CCSD_Announcements`** — Enables Home dashboard news banner
-17. **Set up Teams Incoming Webhook** — Enables Teams notifications
+17. **Add `TotalLicenses`** to software assets — Enables license dashboard
+18. **Add `WarrantyExpiration`** to hardware assets — Enables warranty alerts
+19. **Create `CCSD_Announcements`** — Enables Home dashboard news banner
+20. **Set up Teams Incoming Webhook** — Enables Teams notifications
+21. **Create `CCSD_PerformanceTracking` list** (SH-18) — Enables DPMAP cycle tracking (Section 12k)
+22. **Create `CCSD_TeleworkAgreements` list** (SH-22) — Enables telework agreement tracking (Section 12j)
+23. **Create `CCSD_Awards` list** (SH-24) — Enables awards tracking (Section 12l)
+24. **Create `CCSD_TaskAssignments` list** (SH-26) — Enables task/suspense management (Section 12n)
