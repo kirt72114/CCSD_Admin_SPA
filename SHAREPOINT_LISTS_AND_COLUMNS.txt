@@ -1,0 +1,1118 @@
+================================================================================
+  CCSD ADMINISTRATIVE SPA — COMPLETE SHAREPOINT LIST & COLUMN REFERENCE
+================================================================================
+  Generated: 2026-04-05
+  Source: TODO.md (master task list)
+  Purpose: Exactly what lists to create, what columns each needs, column types,
+           and choice values for all choice columns.
+================================================================================
+
+
+TABLE OF CONTENTS
+-----------------
+  PART A — NEW LISTS TO CREATE
+    1.  CCSD_TimeOff ............................ Calendar / Supervisor Hub
+    2.  CCSD_ConferenceRooms .................... Calendar Module
+    3.  CCSD_RoomReservations ................... Calendar Module
+    4.  CCSD_Announcements ...................... Home Dashboard
+    5.  CCSD_Notifications ...................... Notification Framework
+    6.  CCSD_NotificationReceipts ............... Notification Framework
+    7.  CCSD_SecurityRecords .................... Security Module Phase 1
+    8.  CCSD_SecurityIncidents .................. Security Module Phase 2
+    9.  CCSD_IncidentStatusHistory .............. Security Module Phase 2
+    10. CCSD_IncidentActions .................... Security Module Phase 2
+    11. CCSD_IncidentNotifications .............. Security Module Phase 2
+    12. CCSD_IncidentParties .................... Security Module Phase 2
+    13. CCSD_PerformanceTracking ................ Supervisor Hub (Should-Have)
+    14. CCSD_TeleworkAgreements ................. Supervisor Hub (Should-Have)
+    15. CCSD_Awards ............................. Supervisor Hub (Should-Have)
+    16. CCSD_TaskAssignments .................... Supervisor Hub (Should-Have)
+    17. CCSD_DisciplinaryActions ................ Supervisor Hub (Future)
+    18. CCSD_OvertimeAuthorization .............. Supervisor Hub (Future)
+    19. CCSD_SecurityContainers ................. Security Phase 3 (Future)
+    20. CCSD_ContainerChecks .................... Security Phase 3 (Future)
+    21. CCSD_AreaChecks ......................... Security Phase 3 (Future)
+    22. CCSD_VisitorLog ......................... Security Phase 3 (Future)
+    23. CCSD_RestrictedAreas .................... Security Phase 3 (Future)
+    24. CCSD_AreaAccessRoster ................... Security Phase 3 (Future)
+    25. CCSD_ClassifiedDocuments ................ Security Phase 4 (Future)
+    26. CCSD_DestructionRecords ................. Security Phase 4 (Future)
+    27. CCSD_DD254Registry ...................... Security Phase 5 (Future)
+    28. CCSD_ContractorPersonnel ................ Security Phase 5 (Future)
+
+  PART B — COLUMNS TO ADD TO EXISTING LISTS
+    CCSD_HardwareAssets
+    CCSD_HardwareAssignments
+    CCSD_SoftwareAssets
+    CCSD_Personnel
+    CCSD_TimeOff (additional columns beyond initial creation)
+    CCSD_Positions
+    CCSD_InOutProcessing
+    CCSD_AppRoles (data entries, not schema changes)
+
+
+================================================================================
+  PART A — NEW LISTS TO CREATE
+================================================================================
+
+
+--------------------------------------------------------------------------------
+  1. CCSD_TimeOff
+--------------------------------------------------------------------------------
+  Purpose:  Time-off / leave tracking for Calendar module and Supervisor Hub
+  Priority: CRITICAL — Calendar module depends on this list existing
+  Columns:  11
+  Section:  13, 12e
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default column. Auto: "Leave - Smith"
+  PersonID                 Lookup -> CCSD_Personnel    Who is taking time off
+  OrgID                    Lookup -> CCSD_Organizations  Their org at time of entry
+  StartDate                Date and Time               First day off (date only, no time)
+  EndDate                  Date and Time               Last day off (date only, no time)
+  TimeOffType              Choice                      See choices below
+  Status                   Choice                      See choices below. Default: Approved
+  Hours                    Number                      Total hours (optional)
+  Notes                    Multiple lines of text      Plain text
+  ApprovedBy               Person or Group             Supervisor who approved
+  CreatedBy                Person or Group             Who entered it
+
+  CHOICE VALUES:
+    TimeOffType:  Annual Leave | Sick Leave | TDY | Training | Comp Time |
+                  Telework | LWOP | Other
+    Status:       Approved | Pending | Denied | Cancelled
+
+
+--------------------------------------------------------------------------------
+  2. CCSD_ConferenceRooms
+--------------------------------------------------------------------------------
+  Purpose:  Conference room registry for room scheduling
+  Priority: When ready to build conference room feature (Section 1)
+  Columns:  10
+  Section:  1
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto-generated display name
+  RoomName                 Single line of text         e.g. "Conf Room 201A"
+  FacilityID               Lookup -> CCSD_Facilities   Links room to a building
+  Floor                    Number                      Floor number
+  Capacity                 Number                      Max occupants
+  HasProjector             Yes/No                      Default: No
+  HasVTC                   Yes/No                      Video teleconference capable
+  HasPhone                 Yes/No                      Conference phone
+  HasWhiteboard            Yes/No                      Default: No
+  Notes                    Multiple lines of text      Plain text
+
+
+--------------------------------------------------------------------------------
+  3. CCSD_RoomReservations
+--------------------------------------------------------------------------------
+  Purpose:  Room booking records
+  Priority: When ready to build conference room feature (Section 1)
+  Columns:  10
+  Section:  1
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Meeting subject
+  ConferenceRoomID         Lookup -> CCSD_ConferenceRooms  Which room
+  ReservedBy               Person or Group             Who booked it
+  StartTime                Date and Time               Include time
+  EndTime                  Date and Time               Include time
+  Subject                  Single line of text         Meeting title
+  Notes                    Multiple lines of text      Plain text
+  IsRecurring              Yes/No                      Default: No
+  RecurrencePattern        Single line of text         e.g. "Weekly-Mon" (future use)
+  Status                   Choice                      See choices below
+
+  CHOICE VALUES:
+    Status:  Confirmed | Cancelled
+
+
+--------------------------------------------------------------------------------
+  4. CCSD_Announcements
+--------------------------------------------------------------------------------
+  Purpose:  Home dashboard news/announcements banner
+  Priority: Low urgency / nice-to-have
+  Columns:  7
+  Section:  8, 13
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Announcement headline
+  Body                     Multiple lines of text      Rich text or plain text
+  StartDate                Date and Time               When to start showing
+  EndDate                  Date and Time               When to stop showing
+  Priority                 Choice                      See choices below
+  Audience                 Choice                      See choices below
+  IsActive                 Yes/No                      Default: Yes
+
+  CHOICE VALUES:
+    Priority:  Normal | Important | Critical
+    Audience:  All | Admin | Supervisors
+
+
+--------------------------------------------------------------------------------
+  5. CCSD_Notifications
+--------------------------------------------------------------------------------
+  Purpose:  Master notification records for the reusable Notification Framework
+  Priority: Required before Security Phase 2 and Supervisor Hub notifications
+  Columns:  19
+  Section:  9 (NF-01)
+  Indexes:  Add indexed columns on NotificationType, SourceModule, SentDate
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Notification subject line
+  NotificationType         Choice                      See choices below
+  SourceModule             Choice                      See choices below
+  Body                     Multiple lines of text      Notification body text. For Sensitive
+                                                       level, contains only redacted version.
+  SensitivityLevel         Choice                      See choices below
+  AudienceType             Choice                      See choices below
+  RecipientPersonID        Lookup -> CCSD_Personnel    Required if AudienceType = Individual
+  RecipientOrgID           Lookup -> CCSD_Organizations  Required if AudienceType = Organization
+  RecipientRole            Single line of text         Required if AudienceType = Role.
+                                                       Value matches CCSD_AppRoles role name.
+  SentBy                   Lookup -> CCSD_Personnel    Who sent/triggered the notification
+  SentDate                 Date and Time               When the notification was created
+  ExpiresDate              Date and Time               Optional. Hidden after this date.
+  RelatedEntityType        Choice                      See choices below
+  RelatedEntityID          Number                      SharePoint item ID of related entity
+  RelatedCaseNumber        Single line of text         If linked to a security incident
+  ActionURL                Single line of text         Hash route on click (e.g. #security)
+  IsSystemGenerated        Yes/No                      True if auto-generated by app logic
+  TemplateID               Single line of text         Template code (e.g. NT-01, SF86-REMIND-90)
+  Notes                    Multiple lines of text      Internal notes (not shown to recipient)
+
+  CHOICE VALUES:
+    NotificationType:    Security | SF86 Reminder | Incident Update |
+                         Training Reminder | Request Update | Supervisor Alert |
+                         System | Broadcast | General
+    SourceModule:        Security | Training | Requests | Calendar | Assets |
+                         Facilities | SupervisorHub | System | Admin
+    SensitivityLevel:    Public | Internal | Sensitive
+    AudienceType:        Individual | Organization | Role | All
+    RelatedEntityType:   SecurityIncident | SecurityRecord | TrainingRecord |
+                         Request | Asset | Announcement | Other
+
+
+--------------------------------------------------------------------------------
+  6. CCSD_NotificationReceipts
+--------------------------------------------------------------------------------
+  Purpose:  Per-recipient read tracking (one row per recipient per notification)
+  Priority: Required alongside CCSD_Notifications
+  Columns:  9
+  Section:  9 (NF-02)
+  Indexes:  Add indexed columns on RecipientPersonID, IsRead, NotificationID
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: "NR-{NotificationID}-{PersonID}"
+  NotificationID           Lookup -> CCSD_Notifications  Which notification
+  RecipientPersonID        Lookup -> CCSD_Personnel    The specific recipient
+  IsRead                   Yes/No                      Default: No
+  ReadDate                 Date and Time               When marked as read
+  IsDismissed              Yes/No                      Default: No. Security notifications
+                                                       are NOT dismissable (app-enforced).
+  DismissedDate            Date and Time               When dismissed
+  DeliveryChannel          Choice                      See choices below
+  EmailSentDate            Date and Time               Set by Power Automate if email sent
+
+  CHOICE VALUES:
+    DeliveryChannel:  InApp | Email | Both
+
+
+--------------------------------------------------------------------------------
+  7. CCSD_SecurityRecords
+--------------------------------------------------------------------------------
+  Purpose:  Personnel security clearance tracking (one record per person)
+  Priority: Required for Security Module Phase 1
+  Columns:  30
+  Section:  11 (Phase 1)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: "Smith, John - TS/SCI"
+  PersonID                 Lookup -> CCSD_Personnel    The member this record belongs to
+  ClearanceLevel           Choice                      See choices below
+  ClearanceStatus          Choice                      See choices below
+  PositionSensitivity      Choice                      See choices below
+  InvestigationType        Choice                      See choices below
+  InvestigationOpenDate    Date                        When investigation was initiated
+  InvestigationDate        Date                        Date of most recent investigation close
+  EligibilityDate          Date                        Date eligibility was formally granted
+  LastSF86Date             Date                        Date of most recent SF-86 submission
+  NextSF86DueDate          Date                        Calculated: LastSF86Date + interval by level
+  CVEnrolled               Yes/No                      Enrolled in Continuous Vetting
+  CVAlertStatus            Choice                      See choices below
+  NIPRAccess               Yes/No                      Has NIPR access determination
+  SIPRAccess               Yes/No                      Has SIPR access determination
+  JWICSAccess              Yes/No                      Has JWICS access determination
+  SCIAccess                Yes/No                      Has SCI access (boolean only)
+  SAPAccess                Yes/No                      Has SAP access (boolean only)
+  NDASignedDate            Date                        SF-312 NDA signed date
+  NDAOnFile                Yes/No                      SF-312 confirmed on file
+  InitialBriefingDate      Date                        Required before access (DoDM 5200.01)
+  AnnualRefresherDate      Date                        Every 12 months (DoDM 5200.01)
+  DerivedClassDate         Date                        Every 24 months (EO 13526)
+  CIAwarenessDate          Date                        Every 12 months (DoDI 5240.06)
+  InsiderThreatDate        Date                        Every 12 months (EO 13587)
+  CUITrainingDate          Date                        Every 12 months (DoDI 5200.48)
+  DoDID                    Single line of text         DoD ID / EDIPI — match key for DISS imports
+  SMOCode                  Single line of text         Owning Security Management Office code
+  SourceFile               Single line of text         Name of Excel file last updated from
+  LastImportDate           Date                        When last updated via DISS import
+  Notes                    Multiple lines of text      Security manager notes
+
+  CHOICE VALUES:
+    ClearanceLevel:       None | Confidential | Secret | Top Secret
+    ClearanceStatus:      Active | Interim | Expired | Suspended | Revoked |
+                          Denied | Not Cleared | Administrative Withdrawal
+    PositionSensitivity:  Non-sensitive | Noncritical-Sensitive |
+                          Critical-Sensitive | Special-Sensitive
+    InvestigationType:    T1 | T2 | T3 | T4 | T5 | T5R | CV
+    CVAlertStatus:        No Alerts | Alert Pending Review | Alert Resolved
+
+
+--------------------------------------------------------------------------------
+  8. CCSD_SecurityIncidents
+--------------------------------------------------------------------------------
+  Purpose:  Security incident / case management (one row per incident)
+  Priority: Required for Security Module Phase 2
+  Columns:  46 (full D1 Entity 1 schema)
+  Section:  11 (D1 Entity 1)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto-set to CaseNumber
+  CaseNumber               Single line of text         Generated: SEC-YYYY-NNNN or ISV-YYYY-NNNN
+  PersonID                 Lookup -> CCSD_Personnel    Subject of the incident
+  ReportedByPersonID       Lookup -> CCSD_Personnel    Who filed the report
+  ReporterRole             Choice                      See choices below
+  IncidentCategory         Choice                      See choices below (18 SEAD 3 values)
+  IncidentSubType          Single line of text         Free text sub-type (e.g. "Bankruptcy Ch7")
+  SEAD4Guidelines          Single line of text         Auto from category; editable. "F,E"
+  IncidentDate             Date                        When the event occurred
+  DiscoveredDate           Date                        When the event was discovered
+  ReportedDate             Date                        When the report was filed in this system
+  ReportingDeadline        Date                        Calculated from category + SEAD 3 timelines
+  TimelinessFlag           Choice                      See choices below. Auto-computed.
+  Status                   Choice                      See choices below (16 values)
+  PriorStatus              Single line of text         Auto-set on each transition (enables undo)
+  Severity                 Choice                      See choices below
+  ReportingSource          Choice                      See choices below
+  AssignedTo               Lookup -> CCSD_Personnel    Security staff managing this case
+  Description              Multiple lines of text      Detailed narrative (Security role only)
+  InvestigationNotes       Multiple lines of text      Running notes (Security role only)
+  DamageAssessment         Multiple lines of text      For spillage/unauthorized disclosure
+  ContainmentActions       Multiple lines of text      Immediate actions taken
+  CommanderNotifiedDate    Date                        When the commander was informed
+  CommanderAction          Choice                      See choices below
+  DISSReportedDate         Date                        When reported to DISS
+  DISSIncidentNumber       Single line of text         DISS-assigned reference number
+  ExternalReferralAgency   Single line of text         "AFOSI", "DCSA", "DOJ", "FBI", etc.
+  ExternalReferralDate     Date                        When referred
+  SORIssuedDate            Date                        When Statement of Reasons was issued
+  SORGuidelines            Single line of text         SEAD 4 guidelines cited: "F,E"
+  SORResponseDeadline      Date                        Auto: SORIssuedDate + 30 days
+  SORExtensionGranted      Yes/No                      Default: No
+  SORExtendedDeadline      Date                        If extension granted
+  SORResponseDate          Date                        When subject's response was received
+  SORResult                Choice                      See choices below
+  AppealFiledDate          Date                        Within 30 days of final determination
+  AppealBody               Single line of text         "PSAB" or agency equivalent
+  PersonalAppearance       Yes/No                      Whether subject requested appearance
+  AppealOutcome            Choice                      See choices below
+  AppealClosedDate         Date                        When appeal concluded
+  ResolutionDate           Date                        Date case reached final disposition
+  Outcome                  Choice                      See choices below
+  Conditions               Multiple lines of text      If outcome includes conditions
+  DebriefingDate           Date                        SF-312 debriefing date if clearance revoked
+  OrgID                    Lookup -> CCSD_Organizations  Subject's org at time of incident
+  IsArchived               Yes/No                      Default: No. Set by softDeleteItem()
+  ArchivedDate             Date                        When archived
+  Notes                    Multiple lines of text      General notes
+
+  CHOICE VALUES:
+    ReporterRole:         Self | Supervisor | Security Manager | Commander | Other
+
+    IncidentCategory:     Foreign Travel |
+                          Foreign Contacts |
+                          Foreign Activities and Interests |
+                          Financial Issues |
+                          Criminal Conduct and Legal Issues |
+                          Substance Abuse or Illegal Drugs |
+                          Alcohol-Related Events |
+                          Mental Health |
+                          Unauthorized Disclosure |
+                          Security Violations and Infractions |
+                          Change in Personal Status |
+                          Associations or Memberships |
+                          Technology and Cyber |
+                          Subversion of Adjudicative Process |
+                          Outside Activities or Employment |
+                          Information Security Incident |
+                          Physical Security Incident |
+                          Other or Uncategorized
+
+    TimelinessFlag:       On Time | Late | Significantly Late
+
+    Status:               Reported |
+                          Preliminary Inquiry |
+                          Reported to DISS |
+                          Interim Action Taken |
+                          Under Investigation |
+                          Investigation Complete |
+                          Adjudication |
+                          SOR Issued |
+                          Response/Appeal |
+                          Resolved |
+                          Closed - No Action Required |
+                          Closed - Favorable |
+                          Closed - Adverse Action |
+                          Referred to External Agency |
+                          Referred to AFOSI |
+                          Administrative Withdrawal
+
+    Severity:             Infraction | Violation | Compromise |
+                          Low | Medium | High | Critical
+
+    ReportingSource:      Self-Report | Supervisor | Commander | CV Alert |
+                          AFOSI | External Agency | Anonymous |
+                          SF-702 Discrepancy
+
+    CommanderAction:      None | Access Suspended | Duty Reassignment |
+                          Commanders Inquiry Directed | Other
+
+    SORResult:            Pending | Sustained | Modified | Reversed
+
+    AppealOutcome:        Pending | Upheld | Overturned | Modified
+
+    Outcome:              No Action |
+                          Letter of Caution |
+                          Security Education |
+                          Clearance Retained with Conditions |
+                          Corrective Action |
+                          Access Suspended |
+                          Eligibility Suspended |
+                          Eligibility Revoked |
+                          Eligibility Denied |
+                          Referred to External |
+                          Administrative Withdrawal
+
+
+--------------------------------------------------------------------------------
+  9. CCSD_IncidentStatusHistory
+--------------------------------------------------------------------------------
+  Purpose:  Status transition log (one row per status change on an incident)
+  Priority: Required for Security Module Phase 2
+  Columns:  10
+  Section:  11 (D1 Entity 2)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: "SEC-2026-0042 -> Under Investigation"
+  IncidentID               Lookup -> CCSD_SecurityIncidents  Parent case
+  CaseNumber               Single line of text         Denormalized for query performance
+  FromStatus               Choice                      Same 16 values as SecurityIncidents.Status
+  ToStatus                 Choice                      Same 16 values as SecurityIncidents.Status
+  TransitionDate           Date and Time               When the transition occurred
+  ChangedBy                Lookup -> CCSD_Personnel    Who made the change
+  Notes                    Multiple lines of text      Transition notes
+  DaysInPriorStatus        Number                      Computed: days in previous status
+  DeadlineWasMet           Yes/No                      Was stage completed within expected duration?
+
+  CHOICE VALUES:
+    FromStatus / ToStatus: (Same 16 values as CCSD_SecurityIncidents.Status above)
+                          Reported |
+                          Preliminary Inquiry |
+                          Reported to DISS |
+                          Interim Action Taken |
+                          Under Investigation |
+                          Investigation Complete |
+                          Adjudication |
+                          SOR Issued |
+                          Response/Appeal |
+                          Resolved |
+                          Closed - No Action Required |
+                          Closed - Favorable |
+                          Closed - Adverse Action |
+                          Referred to External Agency |
+                          Referred to AFOSI |
+                          Administrative Withdrawal
+
+
+--------------------------------------------------------------------------------
+  10. CCSD_IncidentActions
+--------------------------------------------------------------------------------
+  Purpose:  Tasks/follow-ups per security incident case
+  Priority: Required for Security Module Phase 2
+  Columns:  14
+  Section:  11 (D1 Entity 3)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Action description
+  IncidentID               Lookup -> CCSD_SecurityIncidents  Parent case
+  CaseNumber               Single line of text         Denormalized for display
+  ActionType               Choice                      See choices below
+  ActionCategory           Choice                      See choices below
+  AssignedTo               Lookup -> CCSD_Personnel    Who is responsible
+  DueDate                  Date                        When it should be completed
+  Priority                 Choice                      See choices below
+  Status                   Choice                      See choices below
+  CompletedDate            Date                        When completed
+  CompletedBy              Lookup -> CCSD_Personnel    Who completed it
+  CompletionNotes          Multiple lines of text      Notes on completion
+  IsAutoGenerated          Yes/No                      True if created by status transition
+  TriggeringStatus         Single line of text         Which status transition created this
+
+  CHOICE VALUES:
+    ActionType:       Required | Recommended | Optional
+    ActionCategory:   Notification | Investigation | Documentation |
+                      Containment | DISS Update | Commander Action |
+                      Subject Communication | External Referral |
+                      Training | Follow-Up | Other
+    Priority:         Immediate | Urgent | Normal | Low
+    Status:           Pending | In Progress | Completed | Cancelled | Blocked
+
+
+--------------------------------------------------------------------------------
+  11. CCSD_IncidentNotifications
+--------------------------------------------------------------------------------
+  Purpose:  Case-specific communication log (part of the case file)
+  Priority: Required for Security Module Phase 2
+  Columns:  14
+  Section:  11 (D1 Entity 4)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: notification subject line
+  IncidentID               Lookup -> CCSD_SecurityIncidents  Parent case
+  CaseNumber               Single line of text         Denormalized
+  SentBy                   Lookup -> CCSD_Personnel    Security rep who sent it
+  RecipientPersonID        Lookup -> CCSD_Personnel    Who received it
+  RecipientRole            Choice                      See choices below
+  NotificationType         Choice                      See choices below
+  BodyText                 Multiple lines of text      Full text of the notification
+  ContainsCaseNumber       Yes/No                      Auto: true if body has a case number
+  ContainsPII              Yes/No                      Auto: true if body has PII (flagged)
+  SentDate                 Date and Time               When sent
+  DeliveryMethod           Choice                      See choices below
+  AcknowledgedDate         Date and Time               When recipient acknowledged
+  MirroredToGeneralNotifications  Yes/No               Whether copied to CCSD_Notifications
+
+  CHOICE VALUES:
+    RecipientRole:     Subject | Supervisor | Commander | Security Manager |
+                       External
+    NotificationType:  Initial Notification | Status Update | Action Required |
+                       Reminder | SOR Delivery | Appeal Notice |
+                       Resolution Notice | Debriefing Notice | General
+    DeliveryMethod:    In-App | In-App + Email | Verbal (Logged) |
+                       Written (External)
+
+
+--------------------------------------------------------------------------------
+  12. CCSD_IncidentParties
+--------------------------------------------------------------------------------
+  Purpose:  People involved in a security incident beyond the subject
+  Priority: Required for Security Module Phase 2
+  Columns:  9
+  Section:  11 (D1 Entity 5)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: person name + role
+  IncidentID               Lookup -> CCSD_SecurityIncidents  Parent case
+  CaseNumber               Single line of text         Denormalized
+  PersonID                 Lookup -> CCSD_Personnel    If internal person
+  ExternalName             Single line of text         If external (AFOSI agent, attorney, etc.)
+  ExternalOrg              Single line of text         External person's organization
+  PartyRole                Choice                      See choices below
+  InvolvedDate             Date                        When they became involved
+  Notes                    Multiple lines of text      Notes
+
+  CHOICE VALUES:
+    PartyRole:  Witness | Reporting Official | Investigating Officer |
+                Commander | First Sergeant | Legal Counsel |
+                Subject Representative | AFOSI Agent | DCSA Investigator |
+                Adjudicator | Other
+
+
+--------------------------------------------------------------------------------
+  13. CCSD_PerformanceTracking
+--------------------------------------------------------------------------------
+  Purpose:  DPMAP performance cycle milestones + probationary period tracking
+  Priority: Should-Have (Supervisor Hub Phase E)
+  Columns:  12
+  Section:  12k (SH-18)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: "Smith, John - FY26"
+  PersonID                 Lookup -> CCSD_Personnel    The employee
+  CycleYear                Number                      Fiscal year (e.g. 2026 for 1 Apr 25 - 31 Mar 26)
+  PlanEstablished          Yes/No                      Performance plan established?
+  PlanDate                 Date                        Date plan was established
+  MidpointCompleted        Yes/No                      Midpoint review completed?
+  MidpointDate             Date                        Date midpoint review occurred
+  AnnualCompleted          Yes/No                      Annual appraisal completed?
+  AnnualDate               Date                        Date annual appraisal completed
+  RatingSubmitted          Yes/No                      Rating submitted to HR?
+  ProbStartDate            Date                        Probationary period start (if applicable)
+  ProbEndDate              Date                        Probationary period end (start + 1 year)
+
+
+--------------------------------------------------------------------------------
+  14. CCSD_TeleworkAgreements
+--------------------------------------------------------------------------------
+  Purpose:  Telework agreement tracking per DD Form 2946
+  Priority: Should-Have (Supervisor Hub Phase E)
+  Columns:  8
+  Section:  12j (SH-22)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: "Smith, John - Routine"
+  PersonID                 Lookup -> CCSD_Personnel    The employee
+  AgreementType            Choice                      See choices below
+  ApprovedDate             Date                        Date agreement was approved
+  ExpirationDate           Date                        Auto: ApprovedDate + 1 year
+  TeleworkDays             Single line of text         Regular telework days (e.g. "Mon,Wed")
+  Status                   Choice                      See choices below
+  ApprovedBy               Lookup -> CCSD_Personnel    Approving supervisor
+  Notes                    Multiple lines of text      Additional notes
+
+  CHOICE VALUES:
+    AgreementType:  Routine | Situational | Emergency
+    Status:         Active | Expired | Pending | Terminated
+
+
+--------------------------------------------------------------------------------
+  15. CCSD_Awards
+--------------------------------------------------------------------------------
+  Purpose:  Award nominations and tracking for supervisor awareness
+  Priority: Should-Have (Supervisor Hub Phase E)
+  Columns:  10
+  Section:  12l (SH-24)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Award description/justification summary
+  PersonID                 Lookup -> CCSD_Personnel    Nominee
+  AwardType                Choice                      See choices below
+  NominationDate           Date                        When supervisor initiated nomination
+  SubmittedDate            Date                        When submitted for approval
+  DecisionDate             Date                        When decision was made
+  Status                   Choice                      See choices below
+  Amount                   Number                      Dollars for monetary awards
+  Hours                    Number                      Hours for Time-Off Awards
+                                                       (max 40 hrs/award, 80 hrs/yr)
+  ApprovedBy               Lookup -> CCSD_Personnel    Approving authority
+  Notes                    Multiple lines of text      Justification / notes
+
+  CHOICE VALUES:
+    AwardType:  Time-Off Award | Quality Step Increase | On-the-Spot Award |
+                Special Act Award | Performance Award | Quarterly Award |
+                Annual Award | Commanders Coin | Letter of Appreciation
+    Status:     Draft | Submitted | Approved | Denied | Presented
+
+
+--------------------------------------------------------------------------------
+  16. CCSD_TaskAssignments
+--------------------------------------------------------------------------------
+  Purpose:  Lightweight task/suspense tracking for supervisor oversight
+  Priority: Should-Have (Supervisor Hub Phase E)
+  Columns:  12
+  Section:  12n (SH-26)
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Task title
+  Description              Multiple lines of text      Task details
+  AssignedTo               Lookup -> CCSD_Personnel    Who is responsible
+  Originator               Lookup -> CCSD_Personnel    Who created the task
+  SuspenseDate             Date                        Deadline
+  Priority                 Choice                      See choices below
+  Status                   Choice                      See choices below
+  Category                 Choice                      See choices below
+  CompletionDate           Date                        When completed
+  IsRecurring              Yes/No                      Default: No
+  RecurrencePattern        Single line of text         e.g. "Weekly" (auto-recreates on completion)
+  Notes                    Multiple lines of text      Additional notes
+
+  CHOICE VALUES:
+    Priority:  Routine | High | Urgent
+    Status:    Open | In Progress | Complete | Cancelled
+    Category:  Tasker | Suspense | Action Item | Follow-Up | Other
+
+
+--------------------------------------------------------------------------------
+  17. CCSD_DisciplinaryActions
+--------------------------------------------------------------------------------
+  Purpose:  Active disciplinary action tracking (metadata only, no narratives)
+  Priority: Future Enhancement — REQUIRES ER/Privacy officer approval first
+  Columns:  8
+  Section:  12o (SH-28)
+
+  WARNING: Extremely sensitive data. Per 5 CFR 752 and AFI 36-704, these records
+  have strict access rules and retention limits. Must consult Employee Relations
+  and Privacy Act officer before creating this list.
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Brief identifier
+  PersonID                 Lookup -> CCSD_Personnel    The employee
+  ActionType               Choice                      See choices below
+  DateIssued               Date                        When the action was issued
+  ExpirationDate           Date                        When it expires (1-3 years per Douglas Factors)
+  Status                   Choice                      See choices below
+  IssuedBy                 Lookup -> CCSD_Personnel    Issuing authority
+  Notes                    Multiple lines of text      Administrative notes only
+  IsArchived               Yes/No                      Default: No. Auto-archive on expiration.
+
+  CHOICE VALUES:
+    ActionType:  Letter of Counseling | Letter of Admonishment |
+                 Letter of Reprimand | Suspension | Removal Action |
+                 Performance Improvement Plan
+    Status:      Active | Expired | Rescinded
+
+
+--------------------------------------------------------------------------------
+  18. CCSD_OvertimeAuthorization
+--------------------------------------------------------------------------------
+  Purpose:  Overtime/comp time authorization tracking
+  Priority: Future Enhancement
+  Columns:  8
+  Section:  12q
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Brief description
+  PersonID                 Lookup -> CCSD_Personnel    The employee
+  Date                     Date                        Date of overtime
+  Hours                    Number                      Hours authorized
+  Type                     Choice                      See choices below
+  ApprovedBy               Lookup -> CCSD_Personnel    Approving supervisor
+  Reason                   Multiple lines of text      Justification
+  PayPeriod                Single line of text         Pay period reference
+  Notes                    Multiple lines of text      Additional notes
+
+  CHOICE VALUES:
+    Type:  Overtime | Comp Time | Credit Hours
+
+
+--------------------------------------------------------------------------------
+  19. CCSD_SecurityContainers
+--------------------------------------------------------------------------------
+  Purpose:  Security container registry (SF-700 metadata)
+  Priority: Future — Security Phase 3 (requires owner approval)
+  Columns:  ~12
+  Section:  11k
+
+  WARNING: NEVER store actual safe/container combinations in this list.
+  Track metadata only.
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Container identifier
+  SerialNumber             Single line of text         Container serial number
+  Manufacturer             Single line of text         Container manufacturer
+  LockType                 Single line of text         Type of lock
+  GSARating                Single line of text         GSA security rating
+  Location                 Single line of text         Building/room
+  AssignedOrgID            Lookup -> CCSD_Organizations  Owning organization
+  DatePlacedInService      Date                        When placed in service
+  LastCombinationChange    Date                        When combination was last changed
+  PersonsWithAccess        Multiple lines of text      Names/IDs of persons with access
+  Notes                    Multiple lines of text      General notes
+  IsActive                 Yes/No                      Default: Yes
+
+
+--------------------------------------------------------------------------------
+  20. CCSD_ContainerChecks
+--------------------------------------------------------------------------------
+  Purpose:  SF-702 daily end-of-day security check records per container
+  Priority: Future — Security Phase 3
+  Columns:  ~6
+  Section:  11k
+  Note:     HIGH VOLUME list — one row per container per day
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: container + date
+  ContainerID              Lookup -> CCSD_SecurityContainers  Which container
+  CheckDate                Date                        Date of check
+  CheckTime                Single line of text         Time checked (text for flexibility)
+  CheckedBy                Lookup -> CCSD_Personnel    Who performed the check
+  Status                   Choice                      See choices below
+  Comments                 Multiple lines of text      Notes / discrepancy details
+
+  CHOICE VALUES:
+    Status:  Secured | Found Unsecured
+
+
+--------------------------------------------------------------------------------
+  21. CCSD_AreaChecks
+--------------------------------------------------------------------------------
+  Purpose:  SF-701 end-of-day area security check records
+  Priority: Future — Security Phase 3
+  Columns:  ~7
+  Section:  11k
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: area + date
+  AreaName                 Single line of text         Area/room name
+  CheckDate                Date                        Date of check
+  CheckTime                Single line of text         Time checked
+  CheckedBy                Lookup -> CCSD_Personnel    Who performed the check
+  AllClear                 Yes/No                      All clear?
+  Discrepancies            Multiple lines of text      If not all clear, describe
+  TPIWitness               Lookup -> CCSD_Personnel    Two-person integrity witness (if TPI required)
+
+
+--------------------------------------------------------------------------------
+  22. CCSD_VisitorLog
+--------------------------------------------------------------------------------
+  Purpose:  Digital visitor register for controlled/restricted areas
+  Priority: Future — Security Phase 3
+  Columns:  ~10
+  Section:  11l
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Visitor name
+  VisitorName              Single line of text         Full name
+  VisitorOrg               Single line of text         Organization
+  VisitDate                Date                        Date of visit
+  TimeIn                   Single line of text         Time entered
+  TimeOut                  Single line of text         Time departed
+  Purpose                  Single line of text         Purpose of visit
+  Sponsor                  Lookup -> CCSD_Personnel    Government sponsor/escort
+  ClearanceVerified        Yes/No                      Was clearance verified?
+  ClearanceVerifiedBy      Lookup -> CCSD_Personnel    Who verified clearance
+  BadgeNumber              Single line of text         Badge number if issued
+
+
+--------------------------------------------------------------------------------
+  23. CCSD_RestrictedAreas
+--------------------------------------------------------------------------------
+  Purpose:  Registry of controlled/restricted/exclusion areas
+  Priority: Future — Security Phase 3
+  Columns:  ~8
+  Section:  11l
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Area name/number
+  AreaType                 Choice                      See choices below
+  Location                 Single line of text         Building/floor
+  OwningOrgID              Lookup -> CCSD_Organizations  Owning organization
+  MaxClassification        Choice                      See choices below
+  AccessRequirements       Multiple lines of text      What's required for access
+  Notes                    Multiple lines of text      General notes
+  IsActive                 Yes/No                      Default: Yes
+
+  CHOICE VALUES:
+    AreaType:            Restricted Area | Controlled Area | Exclusion Area
+    MaxClassification:   Unclassified | Confidential | Secret | Top Secret |
+                         TS/SCI
+
+
+--------------------------------------------------------------------------------
+  24. CCSD_AreaAccessRoster
+--------------------------------------------------------------------------------
+  Purpose:  Per-area authorized personnel list (AF Form 2586 tracking)
+  Priority: Future — Security Phase 3
+  Columns:  ~6
+  Section:  11l
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Auto: person + area
+  AreaID                   Lookup -> CCSD_RestrictedAreas  Which area
+  PersonID                 Lookup -> CCSD_Personnel    Authorized person
+  AuthorizationDate        Date                        When authorized
+  ExpirationDate           Date                        When authorization expires
+  AuthorizingOfficial      Lookup -> CCSD_Personnel    Who authorized
+  Basis                    Single line of text         Basis for authorization
+
+
+--------------------------------------------------------------------------------
+  25. CCSD_ClassifiedDocuments
+--------------------------------------------------------------------------------
+  Purpose:  Document accountability (UNCLASSIFIED metadata only)
+  Priority: Future — Security Phase 4 (requires owner approval)
+  Columns:  ~10
+  Section:  11n
+
+  WARNING: Use unclassified short titles and control numbers ONLY.
+  NEVER store classified content in this list.
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Unclassified short title
+  ControlNumber            Single line of text         Document control number
+  ClassificationLevel      Choice                      See choices below
+  DateOfDocument           Date                        Document date
+  DateReceived             Date                        When received
+  ReceivedFrom             Single line of text         Source
+  CopyNumber               Single line of text         Copy number
+  CurrentCustodian         Lookup -> CCSD_Personnel    Who holds it
+  StorageLocation          Single line of text         Container ID / location
+  LastInventoryDate        Date                        For TS: date of last annual inventory
+  NextInventoryDue         Date                        For TS: next inventory due date
+
+  CHOICE VALUES:
+    ClassificationLevel:  Confidential | Secret | Top Secret | TS/SCI
+
+
+--------------------------------------------------------------------------------
+  26. CCSD_DestructionRecords
+--------------------------------------------------------------------------------
+  Purpose:  Classified material destruction records
+  Priority: Future — Security Phase 4
+  Columns:  ~8
+  Section:  11n
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Document reference
+  DocumentID               Lookup -> CCSD_ClassifiedDocuments  Link to document record
+  ClassificationLevel      Choice                      Same as ClassifiedDocuments choices
+  DateDestroyed            Date                        When destroyed
+  Method                   Single line of text         Destruction method (shred, burn, etc.)
+  DestroyingOfficial       Lookup -> CCSD_Personnel    Who destroyed it
+  Witness1                 Lookup -> CCSD_Personnel    First witness
+  Witness2                 Lookup -> CCSD_Personnel    Second witness (required for TS)
+  Notes                    Multiple lines of text      Additional notes
+
+  CHOICE VALUES:
+    ClassificationLevel:  Confidential | Secret | Top Secret | TS/SCI
+
+
+--------------------------------------------------------------------------------
+  27. CCSD_DD254Registry
+--------------------------------------------------------------------------------
+  Purpose:  DD-254 Contract Security Classification Specification tracking
+  Priority: Future — Security Phase 5 (requires owner approval)
+  Columns:  ~10
+  Section:  11p
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Contract identifier
+  ContractNumber           Single line of text         Contract number
+  ContractorName           Single line of text         Contractor company name
+  IssuingOffice            Single line of text         Issuing contracting office
+  DateIssued               Date                        When DD-254 was issued
+  LastRevision             Date                        Date of last revision
+  ClassificationLevel      Choice                      See choices below
+  SAPRequired              Yes/No                      SAP access required (no details)
+  ExpirationDate           Date                        When DD-254 expires
+  Status                   Choice                      See choices below
+  LastReviewDate           Date                        Last periodic review
+  NextReviewDue            Date                        Next review due date
+
+  CHOICE VALUES:
+    ClassificationLevel:  Confidential | Secret | Top Secret
+    Status:               Active | Expired | Revised
+
+
+--------------------------------------------------------------------------------
+  28. CCSD_ContractorPersonnel
+--------------------------------------------------------------------------------
+  Purpose:  Contractor roster with clearance verification tracking
+  Priority: Future — Security Phase 5
+  Columns:  ~12
+  Section:  11p
+
+  Column Name              Type                        Notes
+  ----------------------   -------------------------   ---------------------------
+  Title                    Single line of text         Default. Contractor name
+  ContractorName           Single line of text         Full name
+  Company                  Single line of text         Company name
+  ContractNumber           Single line of text         Contract number
+  DD254Reference           Lookup -> CCSD_DD254Registry  Linked DD-254
+  ClearanceLevel           Choice                      See choices below (as verified in DISS)
+  ClearanceVerifiedDate    Date                        Date clearance was verified
+  ClearanceVerifiedBy      Lookup -> CCSD_Personnel    Who verified
+  VerificationMethod       Single line of text         How verified (DISS query, etc.)
+  AccessStartDate          Date                        When access was granted
+  AccessEndDate            Date                        When access expires
+  EscortRequired           Yes/No                      Default: No
+  Notes                    Multiple lines of text      Additional notes
+
+  CHOICE VALUES:
+    ClearanceLevel:  None | Confidential | Secret | Top Secret
+
+
+================================================================================
+  PART B — COLUMNS TO ADD TO EXISTING LISTS
+================================================================================
+
+  These are columns that need to be added to lists that ALREADY EXIST in your
+  SharePoint site. Grouped by list.
+
+  HOW TO ADD A COLUMN:
+    1. Go to Site Contents > open the list
+    2. Click + Add column (or go to List Settings > Create column)
+    3. Select the type, enter the name exactly as shown, save
+
+
+--------------------------------------------------------------------------------
+  CCSD_HardwareAssets — 5 columns to add
+--------------------------------------------------------------------------------
+
+  Column Name              Type                        Needed For
+  ----------------------   -------------------------   ---------------------------
+  LastAuditDate            Date and Time               Inventory audit (Section 2)
+                           (date only, no time)
+  LastAuditBy              Person or Group             Inventory audit (Section 2)
+  WarrantyExpiration       Date and Time               Warranty tracking (Section 2)
+                           (date only, no time)
+  PhysicalLocation         Single line of text         Location tracking (Section 2)
+                                                       e.g. "Bldg 500 / Rm 201"
+  CostCenter               Single line of text         Cost center reporting (Section 2)
+
+
+--------------------------------------------------------------------------------
+  CCSD_HardwareAssignments — 1 column to add
+--------------------------------------------------------------------------------
+
+  Column Name              Type                        Needed For
+  ----------------------   -------------------------   ---------------------------
+  ExpectedReturnDate       Date and Time               Portable device check-out (Section 2)
+                           (date only, no time)
+
+
+--------------------------------------------------------------------------------
+  CCSD_SoftwareAssets — 2 columns to add
+--------------------------------------------------------------------------------
+
+  Column Name              Type                        Needed For
+  ----------------------   -------------------------   ---------------------------
+  TotalLicenses            Number                      License utilization dashboard (Section 2)
+  CostCenter               Single line of text         Cost center reporting (Section 2)
+
+
+--------------------------------------------------------------------------------
+  CCSD_Personnel — 9 columns to add
+--------------------------------------------------------------------------------
+
+  Column Name              Type                        Needed For
+  ----------------------   -------------------------   ---------------------------
+  SupervisorNotes          Multiple lines of text      Supervisor notes per team member (12d)
+                                                       2000 char limit recommended
+  WorkScheduleType         Choice                      Work schedule type (12j) — Should-Have
+  RegularDayOff            Choice                      CWS regular day off (12j) — Should-Have
+  ProbationaryStartDate    Date                        Probationary tracking (12k) — Should-Have
+  ProbationaryEndDate      Date                        Probationary tracking (12k) — Should-Have
+  ProbationaryStatus       Choice                      Probation status (12k) — Should-Have
+  IDPOnFile                Yes/No                      IDP tracking (12p) — Future
+  IDPLastUpdated           Date                        IDP tracking (12p) — Future
+  DoDID                    Single line of text         Match key for DISS imports (Section 11)
+                                                       Optional if existing ID field works
+
+  CHOICE VALUES:
+    WorkScheduleType:     Standard (5/8) | CWS | FWS | Maxiflex | 4-10 | 5-4/9
+    RegularDayOff:        Monday | Tuesday | Wednesday | Thursday | Friday
+    ProbationaryStatus:   In Probation | Converted | Separated
+
+
+--------------------------------------------------------------------------------
+  CCSD_TimeOff — 3 columns to add (after initial list creation)
+--------------------------------------------------------------------------------
+
+  These are ADDITIONAL columns beyond the 11 columns in the initial creation
+  spec above (List #1). Add these for the Supervisor Hub leave approval workflow.
+
+  Column Name              Type                        Needed For
+  ----------------------   -------------------------   ---------------------------
+  RequestedDate            Date                        Track when leave was requested (12e)
+  SupervisorDecisionDate   Date                        When supervisor approved/denied (12e)
+  DecisionNotes            Multiple lines of text      Reason for denial or conditions (12e)
+
+
+--------------------------------------------------------------------------------
+  CCSD_Positions — 5 columns to add
+--------------------------------------------------------------------------------
+
+  Column Name              Type                        Needed For
+  ----------------------   -------------------------   ---------------------------
+  PDNumber                 Single line of text         PD currency tracking (12m) — Should-Have
+  PDLastReviewDate         Date                        PD currency tracking (12m) — Should-Have
+  PositionStatus           Choice                      Manning visibility (12m) — Should-Have
+  VacatedDate              Date                        Vacancy duration tracking (12m) — Should-Have
+  FillActionStatus         Choice                      Recruitment status (12m) — Should-Have
+
+  CHOICE VALUES:
+    PositionStatus:    Filled | Vacant | Pending Fill | Frozen | Temporarily Occupied
+    FillActionStatus:  Recruitment in Progress | Awaiting Classification |
+                       Pending Funding | None
+
+
+--------------------------------------------------------------------------------
+  CCSD_InOutProcessing — 4 columns to add
+--------------------------------------------------------------------------------
+
+  Column Name              Type                        Needed For
+  ----------------------   -------------------------   ---------------------------
+  FromLocation             Single line of text         Prior base/unit/location (Section 7)
+  ToLocation               Single line of text         Gaining base/unit/location (Section 7)
+  LosingOrgID              Lookup -> CCSD_Organizations  Org member is leaving (Section 7)
+  GainingOrgID             Lookup -> CCSD_Organizations  Org member is joining (Section 7)
+
+
+--------------------------------------------------------------------------------
+  CCSD_AppRoles — Data Entries (not schema changes)
+--------------------------------------------------------------------------------
+
+  No new columns needed. Add these ROWS (data entries) to the existing list:
+
+  Role Name         Notes
+  ----------------  ----------------------------------------------------------
+  Security          Required for Security Module role-based access (Section 11)
+  Supervisor        Required for Supervisor Hub. Alternatively, the IsSupervisor
+                    flag on CCSD_Personnel auto-grants this role.
+
+
+================================================================================
+  SUMMARY — TOTAL COUNTS
+================================================================================
+
+  NEW LISTS TO CREATE:             28
+    Critical (blockers):            1  (CCSD_TimeOff)
+    Security Module Phase 1:        1  (CCSD_SecurityRecords)
+    Security Module Phase 2:        5  (Incidents, StatusHistory, Actions,
+                                       IncidentNotifications, Parties)
+    Notification Framework:         2  (Notifications, NotificationReceipts)
+    Calendar Module:                2  (ConferenceRooms, RoomReservations)
+    Home Dashboard:                 1  (Announcements)
+    Supervisor Hub Should-Have:     4  (PerformanceTracking, TeleworkAgreements,
+                                       Awards, TaskAssignments)
+    Supervisor Hub Future:          2  (DisciplinaryActions, OvertimeAuthorization)
+    Security Phase 3 (Future):      6  (Containers, ContainerChecks, AreaChecks,
+                                       VisitorLog, RestrictedAreas, AreaAccessRoster)
+    Security Phase 4 (Future):      2  (ClassifiedDocuments, DestructionRecords)
+    Security Phase 5 (Future):      2  (DD254Registry, ContractorPersonnel)
+
+  COLUMNS TO ADD TO EXISTING LISTS: 29
+    CCSD_HardwareAssets:            5
+    CCSD_HardwareAssignments:       1
+    CCSD_SoftwareAssets:            2
+    CCSD_Personnel:                 9
+    CCSD_TimeOff:                   3  (after initial creation)
+    CCSD_Positions:                 5
+    CCSD_InOutProcessing:           4
+
+  DATA ENTRIES (not schema):
+    CCSD_AppRoles:                  2 rows (Security, Supervisor)
+
+================================================================================
+  END OF DOCUMENT
+================================================================================
