@@ -796,7 +796,7 @@ body.light-theme .skeleton{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,
 'use strict';
 
 var APP = {
-  version: '2026.04.03.3',
+  version: '2026.04.03.4',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -822,7 +822,9 @@ var APP = {
     { key: 'facilities', label: 'Facilities' },
     { key: 'calendar', label: 'Calendar' },
     { key: 'assets', label: 'Assets' },
+    { key: 'security', label: 'Security' },
     { key: 'reporting', label: 'Reports' },
+    { key: 'supervisor', label: 'Supervisor Hub' },
     { key: 'admin', label: 'Admin' },
     { key: 'diagnostics', label: 'Diagnostics' }
   ],
@@ -856,7 +858,19 @@ var APP = {
     SoftwareAssignments: 'CCSD_SoftwareAssignments',
     Systems: 'CCSD_Systems',
     Config: 'CCSD_Config',
-    TimeOff: 'CCSD_TimeOff'
+    TimeOff: 'CCSD_TimeOff',
+    SecurityRecords: 'CCSD_SecurityRecords',
+    SecurityIncidents: 'CCSD_SecurityIncidents',
+    IncidentStatusHistory: 'CCSD_IncidentStatusHistory',
+    IncidentActions: 'CCSD_IncidentActions',
+    IncidentNotifications: 'CCSD_IncidentNotifications',
+    IncidentParties: 'CCSD_IncidentParties',
+    Notifications: 'CCSD_Notifications',
+    NotificationReceipts: 'CCSD_NotificationReceipts',
+    PerformanceTracking: 'CCSD_PerformanceTracking',
+    TeleworkAgreements: 'CCSD_TeleworkAgreements',
+    Awards: 'CCSD_Awards',
+    TaskAssignments: 'CCSD_TaskAssignments'
     /* ───────────────────────────────────────────────────────────────────────
      * TODO: Conference Room Scheduling
      * ─────────────────────────────────────────────────────────────────────
@@ -1913,6 +1927,9 @@ function canReviewTraining(){ return hasAnyRole(['Training','HR','Supervisor','A
 function canSeeAllRequests(){ return hasAnyRole(['Admin','App Admin','HR','Training','Security','IT','Facilities']); }
 function canManageInOut(){ return hasAnyRole(['HR','Admin','App Admin','Supervisor']); }
 function canSeeAdmin(){ return hasAnyRole(['App Admin']); }
+function canManageSecurity(){ return hasAnyRole(['Security','App Admin']); }
+function canViewOwnSecurity(){ return APP.state.currentPersonnel && APP.state.currentPersonnel.Id; }
+function canSeeSupervisorHub(){ return hasAnyRole(['Supervisor','App Admin']); }
 function getCurrentOrgId(){
   var p = APP.state.currentPersonnel;
   return p && p.OrgID && p.OrgID.Id ? p.OrgID.Id : null;
@@ -2182,9 +2199,10 @@ function ensureHowToLoaded(force){
   return queryList(APP.lists.HowTo, ['Title','Module','Audience','Summary','Steps','Links','Tags','IsActive','DisplayOrder'], { top: 200, orderby: 'DisplayOrder asc' }, 'ensureHowToLoaded').then(function(rows){ APP.state.data.howto = rows || []; return rows || []; }).catch(function(){ APP.state.data.howto = []; return []; });
 }
 function renderNav(){
-  var adminOnly = { admin: true, diagnostics: true };
   var html = APP.nav.filter(function(item){
-    return !adminOnly[item.key] || canSeeAdmin();
+    if (item.key === 'admin' || item.key === 'diagnostics') { return canSeeAdmin(); }
+    if (item.key === 'supervisor') { return canSeeSupervisorHub(); }
+    return true;
   }).map(function(item){
     return '<button class="nav-link' + (APP.state.route === item.key ? ' active' : '') + '" role="tab" aria-selected="' + (APP.state.route === item.key ? 'true' : 'false') + '" data-action="nav" data-route="' + escAttr(item.key) + '">' + escHtml(item.label) + '</button>';
   }).join('');
@@ -7141,6 +7159,218 @@ function getOrgPeopleStats(orgId){
   return { total: orgPeople.length, active: active, departed: orgPeople.length - active };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+ *  SECURITY MODULE
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function renderSecurity(){
+  var html = '';
+  var isSecurityRole = canManageSecurity();
+  var hasOwnRecord = canViewOwnSecurity();
+
+  html += '<div class="section-header"><h2>Security</h2></div>';
+
+  if (isSecurityRole) {
+    html += '<div class="card"><div class="card-header">Security Administration</div><div class="card-body">';
+    html += '<p>The Security module will provide personnel security management, clearance tracking, incident case management, and compliance dashboards.</p>';
+    html += '<div class="alert alert-info" style="margin-top:10px">';
+    html += '<strong>Setup Required:</strong> The following SharePoint lists must be created before this module can be activated:';
+    html += '<ul style="margin:8px 0 0 20px">';
+    html += '<li><code>CCSD_SecurityRecords</code> — 30 columns (clearance tracking)</li>';
+    html += '<li><code>CCSD_SecurityIncidents</code> — 46 columns (incident/case management)</li>';
+    html += '<li><code>CCSD_IncidentStatusHistory</code> — 10 columns</li>';
+    html += '<li><code>CCSD_IncidentActions</code> — 14 columns</li>';
+    html += '<li><code>CCSD_IncidentNotifications</code> — 14 columns</li>';
+    html += '<li><code>CCSD_IncidentParties</code> — 9 columns</li>';
+    html += '</ul>';
+    html += '<p style="margin-top:8px">See <code>SHAREPOINT_LISTS_AND_COLUMNS.txt</code> for complete column definitions and choice values.</p>';
+    html += '</div></div></div>';
+  } else if (hasOwnRecord) {
+    html += '<div class="card"><div class="card-body">';
+    html += '<p>Your personal security status will appear here once the Security module is configured.</p>';
+    html += '</div></div>';
+  } else {
+    html += '<div class="card"><div class="card-body">';
+    html += '<p>No security record found for your account.</p>';
+    html += '</div></div>';
+  }
+
+  setView(html);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ *  SUPERVISOR HUB
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function renderSupervisorHub(){
+  if (!canSeeSupervisorHub()) { toast('Access restricted to supervisors.', 'danger'); return renderHome(); }
+
+  /* Privacy Act banner — once per session */
+  if (!APP.state.supervisorPrivacyAcknowledged) {
+    var bannerHtml = '<div style="max-width:640px;margin:60px auto;text-align:center">';
+    bannerHtml += '<div class="card"><div class="card-header" style="background:var(--danger,#c0392b);color:#fff">Privacy Act Notice</div>';
+    bannerHtml += '<div class="card-body" style="text-align:left;line-height:1.6">';
+    bannerHtml += '<p><strong>This system contains Privacy Act-protected information (5 USC 552a).</strong></p>';
+    bannerHtml += '<p>Access is restricted to authorized personnel with a legitimate need to know. ';
+    bannerHtml += 'Unauthorized access or disclosure may result in civil and criminal penalties.</p>';
+    bannerHtml += '<p>By proceeding, you acknowledge that you have a legitimate supervisory need to access this information and will protect it accordingly.</p>';
+    bannerHtml += '</div><div class="card-body" style="text-align:center;border-top:1px solid var(--border)">';
+    bannerHtml += '<button class="btn btn-primary" data-action="acknowledge-privacy-banner">I Acknowledge</button>';
+    bannerHtml += '</div></div></div>';
+    setView(bannerHtml);
+    return;
+  }
+
+  renderSupervisorHubContent();
+}
+
+function renderSupervisorHubContent(){
+  var html = '';
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+
+  /* Resolve team members */
+  var teamMembers = [];
+  if (hasRole('App Admin') && !currentPersonId) {
+    teamMembers = people;
+  } else if (scope === 'direct') {
+    teamMembers = people.filter(function(p){
+      return p.SupervisorID && p.SupervisorID.Id && String(p.SupervisorID.Id) === String(currentPersonId)
+        && String(p.Status || '').toLowerCase() !== 'departed';
+    });
+  } else {
+    var orgId = getCurrentOrgId();
+    if (orgId) {
+      var orgIds = {};
+      try { var orgsInScope = getOrgAndDescendants(orgId); orgsInScope.forEach(function(o){ orgIds[o.Id] = true; }); } catch(e){ orgIds[orgId] = true; }
+      teamMembers = people.filter(function(p){
+        return p.OrgID && p.OrgID.Id && orgIds[p.OrgID.Id]
+          && String(p.Status || '').toLowerCase() !== 'departed';
+      });
+    }
+  }
+
+  /* Header with scope toggle */
+  html += '<div class="section-header"><h2>Supervisor Hub</h2>';
+  html += '<div style="display:flex;gap:8px;margin-left:auto">';
+  html += '<button class="btn btn-sm' + (scope === 'direct' ? ' btn-primary' : '') + '" data-action="set-supervisor-scope" data-scope="direct">My Direct Reports</button>';
+  html += '<button class="btn btn-sm' + (scope === 'org' ? ' btn-primary' : '') + '" data-action="set-supervisor-scope" data-scope="org">My Organization</button>';
+  html += '</div></div>';
+
+  /* KPI strip */
+  var totalCount = teamMembers.length;
+  var timeOffData = APP.state.data.timeOff || [];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().split('T')[0];
+  var onLeave = 0; var onTDY = 0; var onTelework = 0; var onTraining = 0;
+  var teamIds = {};
+  teamMembers.forEach(function(p){ teamIds[p.Id] = true; });
+  timeOffData.forEach(function(t){
+    var pid = t.PersonID && t.PersonID.Id ? t.PersonID.Id : null;
+    if (!pid || !teamIds[pid]) return;
+    var status = String(t.Status || '').toLowerCase();
+    if (status !== 'approved') return;
+    var start = t.StartDate ? new Date(t.StartDate) : null;
+    var end = t.EndDate ? new Date(t.EndDate) : null;
+    if (!start || !end) return;
+    start.setHours(0,0,0,0); end.setHours(0,0,0,0);
+    if (today >= start && today <= end) {
+      var type = String(t.TimeOffType || '').toLowerCase();
+      if (type === 'tdy') { onTDY++; }
+      else if (type === 'telework') { onTelework++; }
+      else if (type === 'training') { onTraining++; }
+      else { onLeave++; }
+    }
+  });
+  var present = totalCount - onLeave - onTDY - onTelework - onTraining;
+  if (present < 0) present = 0;
+
+  html += '<div class="dash-kpis">';
+  html += '<div class="kpi-card"><div class="kpi-value">' + totalCount + '</div><div class="kpi-label">Assigned</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + present + '</div><div class="kpi-label">Present</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + onLeave + '</div><div class="kpi-label">On Leave</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + onTDY + '</div><div class="kpi-label">TDY</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + onTelework + '</div><div class="kpi-label">Telework</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + onTraining + '</div><div class="kpi-label">Training</div></div>';
+  html += '</div>';
+
+  /* Pending actions summary */
+  var pendingLeave = timeOffData.filter(function(t){
+    var pid = t.PersonID && t.PersonID.Id ? t.PersonID.Id : null;
+    return pid && teamIds[pid] && String(t.Status || '').toLowerCase() === 'pending';
+  });
+  var pendingRequests = (APP.state.data.requests || []).filter(function(r){
+    var assignedId = r.AssignedTo && r.AssignedTo.Id ? r.AssignedTo.Id : null;
+    var status = String(r.Status || '').toLowerCase();
+    return String(assignedId) === String(currentPersonId) && status !== 'complete' && status !== 'cancelled' && status !== 'closed';
+  });
+  var pendingTrainingSubs = (APP.state.data.trainingSubmissions || []).filter(function(s){
+    var pid = s.PersonID && s.PersonID.Id ? s.PersonID.Id : null;
+    return pid && teamIds[pid] && String(s.Status || '').toLowerCase() === 'pending review';
+  });
+
+  var totalPending = pendingLeave.length + pendingRequests.length + pendingTrainingSubs.length;
+
+  html += '<div class="card' + (totalPending > 0 ? ' border-danger' : '') + '" style="margin-top:16px">';
+  html += '<div class="card-header">Pending Actions' + (totalPending > 0 ? ' <span class="badge badge-danger">' + totalPending + '</span>' : '') + '</div>';
+  html += '<div class="card-body">';
+  if (totalPending === 0) {
+    html += '<p style="color:var(--text-muted)">No pending actions at this time.</p>';
+  } else {
+    if (pendingLeave.length > 0) {
+      html += '<div style="margin-bottom:8px"><strong>Leave Requests:</strong> ' + pendingLeave.length + ' pending approval</div>';
+    }
+    if (pendingRequests.length > 0) {
+      html += '<div style="margin-bottom:8px"><strong>Requests Assigned to You:</strong> ' + pendingRequests.length + ' open</div>';
+    }
+    if (pendingTrainingSubs.length > 0) {
+      html += '<div style="margin-bottom:8px"><strong>Training Submissions:</strong> ' + pendingTrainingSubs.length + ' pending review</div>';
+    }
+  }
+  html += '</div></div>';
+
+  /* Team roster */
+  html += '<div class="card" style="margin-top:16px"><div class="card-header">Team Roster</div>';
+  html += '<div class="card-body">';
+  if (teamMembers.length === 0) {
+    html += '<p style="color:var(--text-muted)">No team members found for the selected scope.</p>';
+  } else {
+    html += '<table class="data-table"><thead><tr>';
+    html += '<th>Name</th><th>Grade</th><th>Position</th><th>Org</th><th>Status</th>';
+    html += '</tr></thead><tbody>';
+    teamMembers.sort(function(a,b){ return (a.LastName || '').localeCompare(b.LastName || ''); });
+    teamMembers.forEach(function(p){
+      html += '<tr data-action="view-person" data-id="' + p.Id + '" style="cursor:pointer">';
+      html += '<td>' + escHtml(formatPerson(p)) + '</td>';
+      html += '<td>' + escHtml(p.Rank || p.Grade || '') + '</td>';
+      html += '<td>' + escHtml(p.PositionTitle || (p.PositionID && p.PositionID.Title ? p.PositionID.Title : '')) + '</td>';
+      html += '<td>' + escHtml(p.OrgID && p.OrgID.Title ? p.OrgID.Title : '') + '</td>';
+      html += '<td>' + escHtml(p.Status || 'Active') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div></div>';
+
+  /* Setup guidance for lists not yet created */
+  html += '<div class="card" style="margin-top:16px"><div class="card-header">Module Status</div>';
+  html += '<div class="card-body">';
+  html += '<div class="alert alert-info">';
+  html += '<strong>Additional features available after SharePoint list setup:</strong>';
+  html += '<ul style="margin:8px 0 0 20px">';
+  html += '<li>Leave approval workflow — requires <code>RequestedDate</code>, <code>SupervisorDecisionDate</code>, <code>DecisionNotes</code> columns on <code>CCSD_TimeOff</code></li>';
+  html += '<li>DPMAP tracking — requires <code>CCSD_PerformanceTracking</code> list</li>';
+  html += '<li>Telework agreements — requires <code>CCSD_TeleworkAgreements</code> list</li>';
+  html += '<li>Awards tracking — requires <code>CCSD_Awards</code> list</li>';
+  html += '<li>Task/suspense management — requires <code>CCSD_TaskAssignments</code> list</li>';
+  html += '</ul>';
+  html += '<p style="margin-top:8px">See <code>SHAREPOINT_LISTS_AND_COLUMNS.txt</code> for complete column definitions.</p>';
+  html += '</div></div></div>';
+
+  setView(html);
+}
+
 function renderRoute(){
   APP.state.renderToken += 1;
   var route = APP.state.route = getHashRoute();
@@ -7155,7 +7385,9 @@ function renderRoute(){
   if (route === 'facilities') { return renderFacilities(); }
   if (route === 'calendar') { return renderCalendar(); }
   if (route === 'assets') { return renderAssets(); }
+  if (route === 'security') { return renderSecurity(); }
   if (route === 'reporting') { return renderReporting(); }
+  if (route === 'supervisor') { if (!canSeeSupervisorHub()) { toast('Access restricted to supervisors.', 'danger'); return renderHome(); } return renderSupervisorHub(); }
   if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
   if (route === 'diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderDiagnostics(); }
   return renderHome();
@@ -7579,7 +7811,10 @@ function handleClick(e){
   if (action === 'report-timeoff') { renderTimeOffReport(); return; }
   if (action === 'report-sla') { renderSlaReport(); return; }
   if (action === 'report-data-quality') { renderDataQualityReport(); return; }
-  if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
+  if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + S</div><div class="v">Go to Security</div><div class="k">Alt + V</div><div class="v">Go to Supervisor Hub</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
+  /* Supervisor Hub actions */
+  if (action === 'acknowledge-privacy-banner') { APP.state.supervisorPrivacyAcknowledged = true; logAudit('PrivacyBannerAcknowledged', 'SupervisorHub', null, null, {}); renderSupervisorHub(); return; }
+  if (action === 'set-supervisor-scope') { APP.state.supervisorScope = el.getAttribute('data-scope') || 'direct'; renderSupervisorHubContent(); return; }
 }
 function detectEmbeddedMode(){
   var isEmbedded = false;
@@ -7622,8 +7857,9 @@ function bootstrap(){
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') { closeModal(); return; }
     if (!e.altKey) { return; }
-    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', c: 'calendar', a: 'assets' };
+    var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', c: 'calendar', a: 'assets', s: 'security' };
     if (canSeeAdmin()) { shortcuts.d = 'diagnostics'; }
+    if (canSeeSupervisorHub()) { shortcuts.v = 'supervisor'; }
     var route = shortcuts[e.key.toLowerCase()];
     if (route) { e.preventDefault(); routeTo(route); return; }
     if (e.key.toLowerCase() === 'n') { e.preventDefault(); openCreateRequestModal(); return; }
