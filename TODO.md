@@ -1,7 +1,7 @@
 # CCSD All-Things Administrative SPA — TODO
 
 Master task list for pending features, improvements, and technical debt.
-Updated: 2026-04-04
+Updated: 2026-04-14
 
 ---
 
@@ -739,8 +739,8 @@ Add to `loadAppData()` (or the security-module init):
 
 #### 11a. Access, Visibility & Privacy Controls — 💻
 
-- [ ] **New "Security" nav tab** — Add to main navigation. Visible to all authenticated users but content scoped by role per the Role Matrix above.
-- [ ] **Hash route `#security`** — Guarded by authentication (all users can access their own record). Role check determines which view loads.
+- [x] **New "Security" nav tab** — Added to `APP.nav` and main navigation. Visible to all authenticated users, content scoped by role. ✅ Done 2026-04-14.
+- [x] **Hash route `#security`** — Route added with role-based view switching (Security admin vs member self-service). ✅ Done 2026-04-14.
 - [ ] **Self-view default** — Non-privileged users see ONLY their own security record. No roster, no search, no other members visible.
 - [ ] **Obscured-by-default display** — ✦ All security fields masked on initial load (`●●●●●●` or `[Click to reveal]`). Reveal requires explicit click. This enforces need-to-know even for the record owner — prevents shoulder-surfing in shared workspaces.
 - [ ] **Security role access** — Users with `Security` role (via `CCSD_AppRoles`) see full searchable/filterable roster. Scoped by `ScopeOrgID` if set (org + descendants only).
@@ -1526,8 +1526,8 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 - [ ] **IM-05: Create `CCSD_IncidentParties` list** — 👤 9 columns per D1 Entity 5.
 - [ ] **IM-06: Create `CCSD_Notifications` list** — 👤 **Superseded by NF-01** (19 columns, see Section 9 Notification Framework). Create per NF-01 instead.
 - [ ] **IM-07: Add `Security` role to `CCSD_AppRoles`** — 👤 Data entry, not schema change.
-- [ ] **IM-08: Add gate functions** — 💻 `canManageSecurity()`, `canViewOwnSecurity()` alongside existing gates (Index.html ~line 1910).
-- [ ] **IM-09: Add `#security` route** — 💻 Hash route in the existing router. Role check determines which view renders.
+- [x] **IM-08: Add gate functions** — 💻 `canManageSecurity()`, `canViewOwnSecurity()` added alongside existing gates. ✅ Done 2026-04-14.
+- [x] **IM-09: Add `#security` route** — 💻 Hash route added to router, nav tab added to `APP.nav`, placeholder render function built, `Alt+S` keyboard shortcut registered. ✅ Done 2026-04-14.
 - [ ] **IM-10: Build incident list view (Security role)** — 💻 Sortable/filterable table using existing table pattern. Columns: CaseNumber, Subject Name, Category, Status, Severity, AssignedTo, ReportedDate, Days Open. Color-coded status badges.
 - [ ] **IM-11: Build incident list view (Member role)** — 💻 Simplified table: CaseNumber, Status, ReportedDate, ResolutionDate. Obscured by default with reveal toggle.
 - [ ] **IM-12: Build case number generation** — 💻 Two-step create pattern per D6. `SEC-`/`ISV-` prefix logic.
@@ -1912,17 +1912,17 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 
 > **Existing infrastructure:** The `Supervisor` role is already detected two ways: (1) via `CCSD_AppRoles` where `Role = 'Supervisor'`, and (2) via the `IsSupervisor` boolean flag on `CCSD_Personnel` (see `Index.html:1998,2025`). Both paths push `'Supervisor'` into `APP.state.roleNames`. Existing gate functions `canReviewTraining()` and `canManageInOut()` already include the Supervisor role.
 
-- [ ] **New "Supervisor Hub" nav tab** — Add to `APP.nav` array (Index.html:814). Only visible when `hasAnyRole(['Supervisor','App Admin'])` returns true. Hidden entirely for non-supervisors (no empty-state placeholder). Position after "Reports" in nav order.
-- [ ] **New route** — `#supervisor` hash route in the router (Index.html:7148). Guarded by role check. If a non-supervisor navigates directly to `#supervisor`, redirect to `#home` with a toast ("Access restricted to supervisors").
-- [ ] **Gate function** — `canSeeSupervisorHub()` → `hasAnyRole(['Supervisor','App Admin'])`. Used by nav rendering, route guard, and all Hub-internal data queries.
+- [x] **New "Supervisor Hub" nav tab** — Added to `APP.nav` after "Reports". Only visible when `canSeeSupervisorHub()` returns true. ✅ Done 2026-04-14.
+- [x] **New route** — `#supervisor` hash route added with role guard. Non-supervisors redirected to `#home` with toast. ✅ Done 2026-04-14.
+- [x] **Gate function** — `canSeeSupervisorHub()` added → `hasAnyRole(['Supervisor','App Admin'])`. ✅ Done 2026-04-14.
 - [ ] **Team scope definition** — The Hub operates on the supervisor's "team," defined as:
   - **Primary (default):** All active personnel in `CCSD_Personnel` where `SupervisorPersonID.Id` = current user's personnel ID (direct reports).
   - **Extended:** All active personnel in the supervisor's org (`OrgID`) and its descendant orgs (using the existing `getOrgAndDescendants()` function, see `Index.html:4104`).
   - **Toggle:** A scope toggle at the top of the Hub: "My Direct Reports" vs. "My Organization" to switch between primary and extended views. State persists in `APP.state.supervisorScope` for the session.
 - [ ] **App Admin sees all** — Users with `App Admin` role see the Hub with access to all personnel (no org/supervisor filter). A dropdown lets them select any org to scope the view. The dropdown uses `CCSD_Organizations` data already loaded.
-- [ ] **Keyboard shortcut** — Register `Alt+V` (for superVisor) to navigate to the Hub, gated by role check (same pattern as `Alt+D` for diagnostics in `Index.html`).
+- [x] **Keyboard shortcut** — `Alt+V` registered, gated by `canSeeSupervisorHub()`. ✅ Done 2026-04-14.
 - [ ] **Privacy boundary enforcement** — All Hub data queries are scoped to the supervisor's team. No lateral access (a supervisor cannot view another supervisor's team unless they are in their org hierarchy). App Admin bypasses this restriction. Queries use `$filter` constructed from team PersonIDs or OrgIDs — never unscoped queries.
-- [ ] **Privacy Act banner** — Display a one-time-per-session banner when entering the Hub: "This system contains Privacy Act-protected information. Access is restricted to authorized personnel with a legitimate need to know. Unauthorized access or disclosure may result in civil and criminal penalties." Dismissal logged to `logAudit()` with action `PrivacyBannerAcknowledged`.
+- [x] **Privacy Act banner** — One-time-per-session acknowledgment modal displayed on first Hub visit. Dismissal logged to `logAudit()` with action `PrivacyBannerAcknowledged`. ✅ Done 2026-04-14.
 
 #### 12b. Supervisor Landing Page / Overview Dashboard — 💻
 
@@ -2449,11 +2449,11 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 - [ ] **SH-01: Add `Supervisor` role entries to `CCSD_AppRoles`** — 👤 Data entry. Add rows mapping each supervisor to `Role = 'Supervisor'`. Alternatively, the `IsSupervisor` flag on `CCSD_Personnel` auto-grants the role (existing logic at Index.html:2025).
 - [ ] **SH-02: Add leave approval columns to `CCSD_TimeOff`** — 👤 Add `RequestedDate` (Date), `SupervisorDecisionDate` (Date), `DecisionNotes` (Multi-line text). See Columns table above.
 - [ ] **SH-03: Add `SupervisorNotes` column to `CCSD_Personnel`** — 👤 Multi-line text. See Columns table above. ⚠️ See privacy decision note in 12d.
-- [ ] **SH-04: Build `canSeeSupervisorHub()` gate + route** — 💻 Add gate function, add `#supervisor` route to router (Index.html:7148), add nav tab to `APP.nav` array (Index.html:814) with conditional visibility, add `Alt+V` keyboard shortcut.
-- [ ] **SH-05: Build team scope resolution** — 💻 `getTeamMembers(scope)` function. Scope = 'direct' (SupervisorPersonID match) or 'org' (getOrgAndDescendants). Returns filtered personnel array. `APP.state.supervisorScope` persists toggle state.
-- [ ] **SH-06: Build Privacy Act banner** — 💻 One-time-per-session acknowledgment modal on first Hub visit. Logged to `logAudit()`.
-- [ ] **SH-07: Build landing page / overview dashboard** — 💻 Per 12b spec. KPI strip, pending actions summary, readiness scorecard, recent activity feed. Reuses existing data loading functions.
-- [ ] **SH-08: Build team roster table** — 💻 Per 12c spec. Sortable/filterable table with status filter pills, search, quick actions per row.
+- [x] **SH-04: Build `canSeeSupervisorHub()` gate + route** — 💻 Gate function added, `#supervisor` route in router, nav tab in `APP.nav` with conditional visibility, `Alt+V` shortcut registered. ✅ Done 2026-04-14.
+- [x] **SH-05: Build team scope resolution** — 💻 Team scope resolution built inline in `renderSupervisorHubContent()`. Scope toggle ("My Direct Reports" / "My Organization") with `APP.state.supervisorScope` persistence. Uses `SupervisorPersonID` match for direct, `getOrgAndDescendants()` for org. ✅ Done 2026-04-14.
+- [x] **SH-06: Build Privacy Act banner** — 💻 One-time-per-session acknowledgment modal on first Hub visit. Logs `PrivacyBannerAcknowledged` to `logAudit()`. ✅ Done 2026-04-14.
+- [~] **SH-07: Build landing page / overview dashboard** — 💻 Per 12b spec. KPI strip and pending actions summary built. Still needed: readiness scorecard, recent activity feed. Partially done 2026-04-14.
+- [~] **SH-08: Build team roster table** — 💻 Per 12c spec. Basic sortable roster built (name, grade, position, org, status). Still needed: status filter pills, search bar, quick-action row menus, team calendar grid. Partially done 2026-04-14.
 - [ ] **SH-09: Build team calendar / availability grid** — 💻 Per 12c spec. Week/month grid, color-coded cells, manning summary, critical staffing alerts. Reuses `CCSD_TimeOff` data.
 - [ ] **SH-10: Build unified action queue** — 💻 Per 12e spec. Aggregates all pending items, sorted by urgency. One-click actions. Badge count on nav tab.
 - [ ] **SH-11: Build leave approval workflow** — 💻 Per 12e spec. Inline approve/deny with conflict check, manning impact display, audit logging.
