@@ -1,0 +1,869 @@
+<div id="ccsd-audit-root"></div>
+<style>
+#ccsd-audit-root{font-family:Segoe UI,sans-serif;max-width:1200px;margin:0 auto;padding:20px;color:#333}
+.audit-header{background:#0d4f9b;color:#fff;padding:20px;border-radius:8px;margin-bottom:20px}
+.audit-header h1{margin:0;font-size:22px}
+.audit-header p{margin:5px 0 0;opacity:.8;font-size:13px}
+.progress-bar{background:#e0e0e0;border-radius:4px;height:24px;margin:10px 0;overflow:hidden}
+.progress-fill{background:#4caf50;height:100%;transition:width .3s;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600}
+.summary-cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.card{flex:1;min-width:150px;padding:16px;border-radius:8px;text-align:center}
+.card h2{margin:0;font-size:28px}.card p{margin:4px 0 0;font-size:13px}
+.card-green{background:#e8f5e9;color:#2e7d32}.card-red{background:#ffebee;color:#c62828}
+.card-yellow{background:#fff8e1;color:#f57f17}.card-blue{background:#e3f2fd;color:#1565c0}
+.section{margin-bottom:16px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden}
+.section-header{padding:12px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:14px}
+.section-header:hover{opacity:.85}
+.section-body{padding:0 16px 16px;display:none}
+.section-body.open{display:block}
+.missing-list{background:#ffebee}.missing-list .section-header{background:#ef5350;color:#fff}
+.partial-list{background:#fff8e1}.partial-list .section-header{background:#ff9800;color:#fff}
+.ok-list{background:#e8f5e9}.ok-list .section-header{background:#4caf50;color:#fff}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th{background:#f5f5f5;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd}
+td{padding:6px 8px;border-bottom:1px solid #eee}
+tr:hover{background:#f9f9f9}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin:1px}
+.tag-missing{background:#ffcdd2;color:#b71c1c}.tag-ok{background:#c8e6c9;color:#1b5e20}
+.tag-type{background:#e3f2fd;color:#0d47a1}.tag-warn{background:#fff9c4;color:#f57f17}
+.choice-diff{margin-top:4px;font-size:12px}
+.choice-missing{color:#c62828;font-weight:600}.choice-extra{color:#1565c0}
+.filter-bar{margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap}
+.filter-btn{padding:6px 14px;border:1px solid #ccc;border-radius:16px;background:#fff;cursor:pointer;font-size:12px}
+.filter-btn.active{background:#0d4f9b;color:#fff;border-color:#0d4f9b}
+.cat-label{font-size:11px;padding:2px 6px;border-radius:4px;background:#e0e0e0;margin-left:8px}
+</style>
+<script>
+(function(){
+var root=document.getElementById('ccsd-audit-root');
+var S=[
+// ===== A. CORE ORG & PEOPLE =====
+{n:'CCSD_Organizations',cat:'Core',cols:[
+{n:'OrgID',t:'Text'},{n:'OrgName',t:'Text'},{n:'OrgCode',t:'Text'},
+{n:'OrgType',t:'Choice',c:['Wing','Group','Squadron','Flight','Section','Detachment','Office','Other']},
+{n:'OrgDisplayOrder',t:'Number'},{n:'IsActive',t:'Boolean'},{n:'Notes',t:'Note'},
+{n:'SharePointURL',t:'URL'},
+{n:'OrganizationAddressNumber',t:'Text'},{n:'OrganizationAddressBldgNumber',t:'Text'},
+{n:'OrganizationAddressStreet',t:'Text'},{n:'OrganizationAddressCity',t:'Text'},
+{n:'OrganizationAddressState',t:'Text'},{n:'OrganizationAddressZip',t:'Text'},
+{n:'ParentOrgID',t:'Lookup'}
+]},
+{n:'CCSD_Positions',cat:'Core',cols:[
+{n:'PositionID',t:'Text'},{n:'PositionTitle',t:'Text'},
+{n:'GradeBand',t:'Choice',c:['Officer','Enlisted','Warrant Officer','GS','GG','NH','SES','Contractor','Other']},
+{n:'GradeNumber',t:'Number'},{n:'AuthorizedCount',t:'Number'},{n:'IsKeyLeadership',t:'Boolean'},
+{n:'PositionLevel',t:'Choice',c:['Non-supervisory','Supervisory','Manager','Executive']},
+{n:'DutySummary',t:'Note'},{n:'Notes',t:'Note'},
+{n:'OrgID',t:'Lookup'},{n:'SupervisorPositionID',t:'Lookup'},
+{n:'PDNumber',t:'Text'},{n:'PDLastReviewDate',t:'DateTime'},
+{n:'PositionStatus',t:'Choice',c:['Filled','Vacant','Pending Fill','Frozen','Temporarily Occupied']},
+{n:'VacatedDate',t:'DateTime'},
+{n:'FillActionStatus',t:'Choice',c:['Recruitment in Progress','Awaiting Classification','Pending Funding','None']}
+]},
+{n:'CCSD_Personnel',cat:'Core',cols:[
+{n:'PersonID',t:'Text'},{n:'LastName',t:'Text'},{n:'FirstName',t:'Text'},{n:'MiddleName',t:'Text'},
+{n:'Suffix',t:'Choice',c:['Sr.','Jr.','I','II','III','IV','V','VI']},
+{n:'Grade',t:'Choice',c:['E-1','E-2','E-3','E-4','E-5','E-6','E-7','E-8','E-9','WO-1','WO-2','WO-3','WO-4','WO-5','O-1','O-2','O-3','O-4','O-5','O-6','O-7','O-8','O-9','GS-01','GS-02','GS-03','GS-04','GS-05','GS-06','GS-07','GS-08','GS-09','GS-10','GS-11','GS-12','GS-13','GS-14','GS-15','GG-01','GG-02','GG-03','GG-04','GG-05','GG-06','GG-07','GG-08','GG-09','GG-10','GG-11','GG-12','GG-13','GG-14','GG-15','NH-01','NH-02','NH-03','NH-04','Contractor','Other','SES']},
+{n:'Rank',t:'Choice',c:['CIV','CTR','AB','Amn','A1C','SrA','SSgt','TSgt','MSgt','SMSgt','CMSgt','2d LT','1st LT','Capt','Maj','Lt Col','Col','Brig Gen','Maj Gen','Lt Gen','Gen','Other']},
+{n:'Component',t:'Choice',c:['Active Duty','Air National Guard','Air Force Reserve','Civilian','Contractor','Other']},
+{n:'Category',t:'Choice',c:['Military','Civilian','Contractor','Student','Intern','Other']},
+{n:'Account',t:'User'},{n:'Email',t:'Text'},
+{n:'WorkcenterID',t:'Lookup'},{n:'OrgID',t:'Lookup'},{n:'PositionID',t:'Lookup'},{n:'SeatID',t:'Lookup'},
+{n:'SupervisorPersonID',t:'Lookup'},
+{n:'Status',t:'Choice',c:['In-Processing','Assigned','Deployed','TDY','Leave','Departed','Inactive']},
+{n:'DateArrived',t:'DateTime'},{n:'DateDeparted',t:'DateTime'},
+{n:'PrimaryPhone',t:'Text'},{n:'AltPhone',t:'Text'},{n:'OfficePhone',t:'Text'},
+{n:'IsSupervisor',t:'Boolean'},{n:'Notes',t:'Note'},{n:'AFSC',t:'Text'},{n:'Step',t:'Number'},
+{n:'EducationLevel',t:'Choice',c:['High school graduate or certificate equivalency','Terminal occupational program--did not complete','Terminal occupational program--certificate of completion, diploma or equivalent','Some college--less than one year','One year of college','Two years of college','Associate Degree','Three years of college','Four years of college','Bachelor\'s Degree','Post-Bachelor\'s','First professional','Post-first professional','Master\'s degree','Post-Master\'s','Sixth-year degree','Post-sixth year','Doctorate degree','Post-Doctorate']},
+{n:'SupervisorNotes',t:'Note'},
+{n:'WorkScheduleType',t:'Choice',c:['Standard (5/8)','CWS','FWS','Maxiflex','4-10','5-4/9']},
+{n:'RegularDayOff',t:'Choice',c:['Monday','Tuesday','Wednesday','Thursday','Friday']},
+{n:'ProbationaryStartDate',t:'DateTime'},{n:'ProbationaryEndDate',t:'DateTime'},
+{n:'ProbationaryStatus',t:'Choice',c:['In Probation','Converted','Separated']},
+{n:'IDPOnFile',t:'Boolean'},{n:'IDPLastUpdated',t:'DateTime'},{n:'DoDID',t:'Text'}
+]},
+// ===== B. FACILITIES, ROOMS & SEATING =====
+{n:'CCSD_Facilities',cat:'Core',cols:[
+{n:'FacilityID',t:'Text'},{n:'BuildingNumber',t:'Text'},{n:'Base',t:'Text'},
+{n:'Address',t:'Note'},{n:'HasNIPR',t:'Boolean'},{n:'HasSIPR',t:'Boolean'},{n:'HasJWICS',t:'Boolean'},
+{n:'FacilityPOC',t:'User'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_Rooms',cat:'Core',cols:[
+{n:'RoomID',t:'Text'},{n:'RoomNumber',t:'Text'},{n:'Floor',t:'Number'},
+{n:'RoomType',t:'Choice',c:['Office (Private)','Office (Shared)','Open Bay','Conference Room','Training Room','Server Room','Storage','Other']},
+{n:'MaxSeats',t:'Number'},{n:'IsSCIF',t:'Boolean'},{n:'Notes',t:'Note'},{n:'FacilityID',t:'Lookup'}
+]},
+{n:'CCSD_Seats',cat:'Core',cols:[
+{n:'SeatID',t:'Text'},{n:'SeatLabel',t:'Text'},{n:'PortNumber',t:'Text'},{n:'PhoneNumber',t:'Text'},
+{n:'HasNIPR',t:'Boolean'},{n:'HasSIPR',t:'Boolean'},{n:'HasJWICS',t:'Boolean'},
+{n:'VTCEnabled',t:'Boolean'},{n:'XCoord',t:'Number'},{n:'YCoord',t:'Number'},
+{n:'SeatStatus',t:'Choice',c:['Occupied','Vacant','Reserved','Out of Service','Planned','Decommissioned']},
+{n:'Notes',t:'Note'},{n:'RoomID',t:'Lookup'},{n:'CurrentPersonID',t:'Lookup'}
+]},
+// ===== C. IN/OUT PROCESSING =====
+{n:'CCSD_InOutProcessing',cat:'Core',cols:[
+{n:'InOutID',t:'Text'},
+{n:'ProcessType',t:'Choice',c:['In-Processing','Out-Processing','Internal Transfer','Temporary Assignment','Return from Deployment']},
+{n:'Status',t:'Choice',c:['Open','In Progress','Waiting on Member','Waiting on Office','Complete','Canceled']},
+{n:'Category',t:'Choice',c:['Military','Civilian','Contractor','Student','Intern','Other']},
+{n:'OpenedOn',t:'DateTime'},{n:'ClosedOn',t:'DateTime'},{n:'CurrentStep',t:'Text'},
+{n:'Priority',t:'Choice',c:['Low','Medium','High','Critical']},
+{n:'Notes',t:'Note'},{n:'CorrelationID',t:'Text'},
+{n:'PersonID',t:'Lookup'},{n:'OwningOrgID',t:'Lookup'},{n:'RequestID',t:'Lookup'},
+{n:'FromLocation',t:'Text'},{n:'ToLocation',t:'Text'},
+{n:'LosingOrgID',t:'Lookup'},{n:'GainingOrgID',t:'Lookup'}
+]},
+{n:'CCSD_InOutChecklists',cat:'Core',cols:[
+{n:'ChecklistID',t:'Text'},
+{n:'ProcessType',t:'Choice',c:['In-Processing','Out-Processing','Internal Transfer']},
+{n:'Category',t:'Choice',c:['HR','Security','IT','Facilities','Training','Finance','Command Staff','Other']},
+{n:'ApplicablePopulation',t:'Choice',c:['Officer','Enlisted','Civilian','Contractor','All']},
+{n:'StepNumber',t:'Number'},{n:'StepDescription',t:'Note'},
+{n:'IsActive',t:'Boolean'},
+{n:'OrgID',t:'Lookup'},{n:'OwningOrgID',t:'Lookup'}
+]},
+{n:'CCSD_InOutStepStatus',cat:'Core',cols:[
+{n:'StepNumber',t:'Number'},
+{n:'Status',t:'Choice',c:['Open','In Progress','Completed','Skipped']},
+{n:'DueDate',t:'DateTime'},{n:'CompletedOn',t:'DateTime'},
+{n:'OfficeNotes',t:'Note'},{n:'MemberNotes',t:'Note'},{n:'CorrelationID',t:'Text'},
+{n:'InOutID',t:'Lookup'},{n:'ChecklistID',t:'Lookup'},{n:'OwningOrgID',t:'Lookup'},
+{n:'AssignedTo',t:'User'},{n:'CompletedBy',t:'User'}
+]},
+// ===== D. SECURITY & CLEARANCES =====
+{n:'CCSD_Clearances',cat:'Core',cols:[
+{n:'ClearanceID',t:'Text'},{n:'PersonID',t:'Lookup'},
+{n:'ClearanceLevel',t:'Choice',c:['None','Confidential','Secret','Top-Secret','TS/SCI','TS/SCI (Poly)','Other']},
+{n:'InvestigationType',t:'Choice',c:['T1','T2','T3','T4','T5','CE (Continuous Evaluation)','Other']},
+{n:'InvestigationCloseDate',t:'DateTime'},{n:'EligibilityDate',t:'DateTime'},{n:'PRDueDate',t:'DateTime'},
+{n:'Accesses',t:'MultiChoice',c:['NIPR','SIPR','JWICS','SAP','NATO','Other']},
+{n:'OwningSMO',t:'Text'},{n:'DISSID',t:'Text'},{n:'SecurityPOC',t:'User'},
+{n:'Status',t:'Choice',c:['Active','Pending','Suspended','Revoked','Expired']},
+{n:'Notes',t:'Note'}
+]},
+// ===== E. TRAINING =====
+{n:'CCSD_TrainingCatalog',cat:'Core',cols:[
+{n:'TrainingCode',t:'Text'},{n:'TrainingName',t:'Text'},
+{n:'Category',t:'Choice',c:['Cyber','Security','Safety','Leadership','IT Systems','Compliance','Other']},
+{n:'FrequencyMonths',t:'Number'},
+{n:'RequiredFor',t:'Choice',c:['All','Civilian','Military-Active Duty','Military-Reserve','Military-National Guard','Contractor','Enlisted','Officer','Contracting','Program Managers','Supervisors','SES','Key Leadership','TS/SCI','Secret','NATO','Records Managers','Content Managers']},
+{n:'CostPerPerson',t:'Currency'},{n:'IsMandatory',t:'Boolean'},{n:'IsActive',t:'Boolean'},
+{n:'Notes',t:'Note'},{n:'TrainingLink',t:'URL'},{n:'SF182',t:'Boolean'},
+{n:'TrainingDutyHours',t:'Number'},{n:'TrainingNonDutyHours',t:'Number'},
+{n:'OwningOrgID',t:'Lookup'},{n:'TrainingType',t:'Lookup'}
+]},
+{n:'CCSD_TrainingRecords',cat:'Core',cols:[
+{n:'TrainingRecordID',t:'Text'},{n:'PersonID',t:'Lookup'},{n:'TrainingID',t:'Lookup'},
+{n:'CompletionDate',t:'DateTime'},{n:'ExpirationDate',t:'DateTime'},{n:'ExpectedCompletionDate',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Complete','In Progress','Expired','Waived','Pending Review']},
+{n:'SourceSystem',t:'Choice',c:['MyLearning','ADLS','AF Portal','Unit Training','External Vendor','Manual Entry','Other']},
+{n:'CertificateURL',t:'URL'},{n:'EnteredBy',t:'User'},{n:'EnteredOn',t:'DateTime'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_TrainingSubmissions',cat:'Core',cols:[
+{n:'Person',t:'User'},{n:'PersonID',t:'Text'},{n:'TrainingID',t:'Lookup'},
+{n:'CompletionDate',t:'DateTime'},{n:'ProofAttached',t:'Boolean'},
+{n:'Status',t:'Choice',c:['Submitted','Under Review','Approved','Rejected','Returned for Correction']},
+{n:'Reviewer',t:'User'},{n:'ReviewedOn',t:'DateTime'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_SF182TrainingRequests',cat:'Core',cols:[
+{n:'Requestor',t:'User'},{n:'Training',t:'Lookup'},
+{n:'TrainingStartDate',t:'DateTime'},{n:'TrainingEndDate',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Draft','Pending Supervisor Approval','Pending 2nd-line Supervisor Approval','Pending Training Officer Approval','Pending Finance Approval','Approved','Rejected','Pending Training Completion Certification','Complete']},
+{n:'ApprovalID',t:'Text'},{n:'GeneratedSF182',t:'URL'},{n:'RejectionComments',t:'Note'},
+{n:'SpecialAccommodation',t:'Boolean'}
+]},
+{n:'CCSD_SF182Library',cat:'Core',cols:[]},
+{n:'CCSD_TrainingCourseDataTypeCode',cat:'Core',cols:[
+{n:'TrainingSubTypeCodeShortExplanation',t:'Text'},{n:'TrainingSubTypeCodeExplanation',t:'Note'},
+{n:'TrainingTypeCode',t:'Number'},{n:'TrainingTypeCodeExplanation',t:'Text'},{n:'Competency',t:'Text'}
+]},
+{n:'CCSD_TrainingPurposeType',cat:'Core',cols:[
+{n:'Code',t:'Number'},{n:'Description',t:'Note'}
+]},
+{n:'CCSD_TrainingDeliveryTypeCode',cat:'Core',cols:[
+{n:'Code',t:'Number'},{n:'Description',t:'Note'}
+]},
+// ===== F. ADDITIONAL DUTIES & LETTERS =====
+{n:'CCSD_DutyTypes',cat:'Core',cols:[
+{n:'DutyTypeID',t:'Text'},{n:'Description',t:'Note'},{n:'DefaultOrgID',t:'Lookup'},
+{n:'TemplateName',t:'Text'},{n:'DefaultNotificationPOC',t:'User'},
+{n:'RequiredTraining',t:'Note'},{n:'IsActive',t:'Boolean'}
+]},
+{n:'CCSD_AdditionalDuties',cat:'Core',cols:[
+{n:'DutyID',t:'Text'},{n:'PersonID',t:'Lookup'},{n:'DutyTypeID',t:'Lookup'},{n:'OrgID',t:'Lookup'},
+{n:'AppointmentStartDate',t:'DateTime'},{n:'AppointmentEndDate',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Pending','Active','Vacant','Suspended','Closed']},
+{n:'NotificationPOC',t:'User'},{n:'AppointmentLetterURL',t:'URL'},
+{n:'LastNotifiedOn',t:'DateTime'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_DutyVacancyLog',cat:'Core',cols:[
+{n:'LogID',t:'Text'},{n:'DutyID',t:'Lookup'},{n:'PreviousPersonID',t:'Lookup'},
+{n:'DateVacant',t:'DateTime'},{n:'NotifiedTo',t:'User'},{n:'NotificationDate',t:'DateTime'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_LetterTemplates',cat:'Core',cols:[
+{n:'TemplateID',t:'Text'},
+{n:'TemplateType',t:'Choice',c:['Appointment Letter','Additional Duty Letter','Revocation Letter','Delegation Letter','Memorandum','Other']},
+{n:'DutyTypeID',t:'Lookup'},{n:'VersionNumber',t:'Number'},{n:'IsActive',t:'Boolean'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_Letters',cat:'Core',cols:[
+{n:'PersonID',t:'Lookup'},{n:'DutyTypeID',t:'Lookup'},
+{n:'LetterType',t:'Choice',c:['Appointment','Reappointment','Revocation','Temporary Assignment','Other']},
+{n:'RelatedDutyID',t:'Lookup'},{n:'GeneratedOn',t:'DateTime'},{n:'GeneratedBy',t:'User'},{n:'Notes',t:'Note'}
+]},
+// ===== G. HARDWARE & SOFTWARE =====
+{n:'CCSD_HardwareAssets',cat:'Core',cols:[
+{n:'Asset ID',t:'Text'},{n:'Asset Type',t:'Choice',c:['Desktop','Laptop','Monitor','Printer','Phone','VTC Equipment','Network Device','Headset','Mouse','Card Reader','Peripheral','Other']},
+{n:'Manufacturer',t:'Text'},{n:'Model',t:'Text'},{n:'Serial Number',t:'Text'},
+{n:'Status',t:'Choice',c:['In Service','In Storage','Assigned','Under Repair','Excess','Disposed']},
+{n:'Purchase Date',t:'DateTime'},{n:'Purchase Cost',t:'Currency'},
+{n:'DeviceNameHostName',t:'Text'},{n:'PrimaryNetworkEnvironment',t:'Choice'},
+{n:'Portable',t:'Boolean'},{n:'AssetTagAlias',t:'Text'},{n:'Notes',t:'Note'},
+{n:'Owning Org',t:'Lookup'},{n:'Default Cost Center',t:'Lookup'},
+{n:'LastAuditDate',t:'DateTime'},{n:'LastAuditBy',t:'User'},
+{n:'WarrantyExpiration',t:'DateTime'},{n:'PhysicalLocation',t:'Text'},{n:'CostCenter',t:'Text'}
+]},
+{n:'CCSD_HardwareAssignments',cat:'Core',cols:[
+{n:'Assignment ID',t:'Text'},{n:'Assigned On',t:'DateTime'},{n:'Unassigned On',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Active','Returned','Transferred','Lost','Stolen']},
+{n:'Notes',t:'Note'},{n:'Ticket / Reason',t:'Text'},{n:'Correlation ID',t:'Text'},
+{n:'NetworkEnvironment',t:'Choice'},{n:'AssignmentType',t:'Text'},
+{n:'Hardware Asset',t:'Lookup'},{n:'Person',t:'Lookup'},{n:'Seat',t:'Lookup'},
+{n:'Assigned By',t:'User'},{n:'ReturnedBy',t:'User'},
+{n:'ExpectedReturnDate',t:'DateTime'}
+]},
+{n:'CCSD_SoftwareAssets',cat:'Core',cols:[
+{n:'Software ID',t:'Text'},{n:'Vendor',t:'Text'},{n:'Software Version',t:'Text'},
+{n:'License Type',t:'Choice',c:['Per User','Per Device','Concurrent','Site License','Enterprise','Subscription','Other']},
+{n:'Total Licenses',t:'Number'},{n:'Annual Cost',t:'Currency'},
+{n:'Active',t:'Boolean'},{n:'Notes',t:'Note'},
+{n:'ApprovalStatus',t:'Text'},{n:'ApprovedVersion',t:'Text'},
+{n:'RequiresATO',t:'Boolean'},{n:'ATONumber',t:'Text'},{n:'ATOExpiration',t:'DateTime'},
+{n:'AllowedNetworkEnvironments',t:'MultiChoice'},
+{n:'Requestable',t:'Boolean'},{n:'RequiresAdministratorInstall',t:'Boolean'},
+{n:'Owning Org',t:'Lookup'},{n:'Default Cost Center',t:'Lookup'},{n:'System',t:'Lookup'},
+{n:'TotalLicenses',t:'Number'},{n:'CostCenter',t:'Text'}
+]},
+{n:'CCSD_SoftwareAssignments',cat:'Core',cols:[
+{n:'Assignment ID',t:'Text'},{n:'Assigned On',t:'DateTime'},{n:'Unassigned On',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Active','Revoked','Expired','Pending']},
+{n:'Notes',t:'Note'},{n:'Ticket / Reason',t:'Text'},{n:'Correlation ID',t:'Text'},
+{n:'NetworkEnvironment',t:'Choice'},{n:'AssignmentType',t:'Text'},
+{n:'ApprovalSnapshot',t:'Text'},{n:'VersionSnapshot',t:'Text'},
+{n:'ExceptionApproved',t:'Boolean'},{n:'ExceptionReason',t:'Note'},
+{n:'Software',t:'Lookup'},{n:'Person',t:'Lookup'},{n:'Seat',t:'Lookup'},{n:'Assigned By',t:'User'}
+]},
+{n:'CCSD_Systems',cat:'Core',cols:[
+{n:'System ID',t:'Text'},{n:'System Name',t:'Text'},{n:'Description',t:'Note'},
+{n:'Criticality',t:'Choice',c:['Low','Medium','High','Critical']},
+{n:'Notes',t:'Note'},{n:'Active',t:'Boolean'},
+{n:'ATONumber',t:'Text'},{n:'ATOStatus',t:'Text'},{n:'ATOExpiration',t:'DateTime'},
+{n:'AuthorizingOfficial',t:'Text'},{n:'NetworkEnvironment',t:'Choice'},
+{n:'ISSMISSO',t:'Text'},{n:'Owning Org',t:'Lookup'}
+]},
+// ===== H. CHANGE MANAGEMENT =====
+{n:'CCSD_ChangeRequests',cat:'Core',cols:[
+{n:'ChangeID',t:'Text'},{n:'Requestor',t:'User'},{n:'RequestedOn',t:'DateTime'},
+{n:'SystemID',t:'Lookup'},
+{n:'Category',t:'Choice',c:['Hardware','Software','Network','Facility','Security','Process','Other']},
+{n:'ChangeType',t:'Choice',c:['Standard','Normal','Emergency']},
+{n:'Priority',t:'Choice',c:['Low','Medium','High','Critical']},
+{n:'RiskLevel',t:'Choice',c:['Low','Medium','High','Severe']},
+{n:'PlannedStart',t:'DateTime'},{n:'PlannedEnd',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Draft','Submitted','Under Review','Approved','Scheduled','Implemented','Canceled','Failed']},
+{n:'Approver',t:'User'},{n:'ApprovedOn',t:'DateTime'},
+{n:'ImplementationNotes',t:'Note'},{n:'BackoutPlan',t:'Note'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_ChangeImpactedItems',cat:'Core',cols:[
+{n:'ImpactID',t:'Text'},{n:'ChangeID',t:'Lookup'},
+{n:'ImpactType',t:'Choice',c:['Hardware','Software','Seat','Room','Facility','Organization','System']},
+{n:'HardwareAssetID',t:'Lookup'},{n:'SoftwareID',t:'Lookup'},{n:'SeatID',t:'Lookup'},
+{n:'RoomID',t:'Lookup'},{n:'FacilityID',t:'Lookup'},{n:'OrgID',t:'Lookup'},{n:'SystemID',t:'Lookup'},
+{n:'ImpactDescription',t:'Note'}
+]},
+// ===== I. FINANCE & COST =====
+{n:'CCSD_CostCenters',cat:'Core',cols:[
+{n:'CostCenterID',t:'Text'},{n:'CostCenterName',t:'Text'},{n:'Description',t:'Note'},
+{n:'OwningOrgID',t:'Lookup'},{n:'Notes',t:'Note'},{n:'IsActive',t:'Boolean'}
+]},
+{n:'CCSD_CostMappings',cat:'Core',cols:[
+{n:'MappingID',t:'Text'},
+{n:'MappingType',t:'Choice',c:['Person','Hardware','Software','System','Organization']},
+{n:'PersonID',t:'Lookup'},{n:'AssetID',t:'Lookup'},{n:'SoftwareID',t:'Lookup'},
+{n:'SystemID',t:'Lookup'},{n:'OrgID',t:'Lookup'},{n:'CostCenterID',t:'Lookup'},
+{n:'Percentage',t:'Number'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_AssetCosts',cat:'Core',cols:[
+{n:'CostID',t:'Text'},
+{n:'AssetType',t:'Choice',c:['Hardware','Software','System','Other']},
+{n:'AssetID',t:'Lookup'},{n:'SoftwareID',t:'Lookup'},
+{n:'CostPeriod',t:'Choice',c:['One-Time','Monthly','Quarterly','Annual']},
+{n:'CostAmount',t:'Currency'},{n:'EffectiveFrom',t:'DateTime'},{n:'EffectiveTo',t:'DateTime'},
+{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_PersonCostSummary',cat:'Core',cols:[
+{n:'SummaryID',t:'Text'},{n:'PersonID',t:'Lookup'},{n:'OrgID',t:'Lookup'},
+{n:'Period',t:'Text'},{n:'HardwareCost',t:'Currency'},{n:'SoftwareCost',t:'Currency'},
+{n:'TrainingCost',t:'Currency'},{n:'OtherCost',t:'Currency'},{n:'TotalCost',t:'Currency'},
+{n:'LastCalculated',t:'DateTime'}
+]},
+// ===== J. REFERENCE / SUPPORT =====
+{n:'CCSD_Workcenters',cat:'Core',cols:[
+{n:'WorkcenterID',t:'Text'},{n:'CostCenterName',t:'Text'},{n:'OrgID',t:'Lookup'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_Config',cat:'Core',cols:[{n:'Value',t:'Text'}]},
+{n:'CCSD_ReferenceData',cat:'Core',cols:[
+{n:'Category',t:'Choice',c:['Rank','Grade','Status','Code Table','External System','Other']},
+{n:'Code',t:'Text'},{n:'Value',t:'Text'},{n:'Description',t:'Note'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_AppRoles',cat:'Core',cols:[
+{n:'Role',t:'Choice',c:['HR','Security','IT','Facilities','Training','Admin','Supervisor','App Admin','Personnel Admin','Reports']},
+{n:'Member',t:'User'},{n:'IsActive',t:'Boolean'},
+{n:'PrincipalType',t:'Text'},{n:'Principal',t:'Text'},{n:'ScopeType',t:'Text'},
+{n:'ScopeOrgID',t:'Lookup'},{n:'ScopeFacilityID',t:'Lookup'},{n:'ScopeSystemID',t:'Lookup'},
+{n:'EffectiveFrom',t:'DateTime'},{n:'EffectiveTo',t:'DateTime'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_Vendors',cat:'Core',cols:[
+{n:'VendorStreetNo',t:'Text'},{n:'VendorStreet',t:'Text'},{n:'VendorCity',t:'Text'},
+{n:'VendorState',t:'Text'},{n:'VendorZip',t:'Text'},{n:'VendorPhone',t:'Number'},
+{n:'VendorEmail',t:'Text'},{n:'VendorWebsite',t:'Text'},{n:'VendorPOC',t:'Text'},
+{n:'VendorType',t:'Choice',c:['Training','Facilities','Supplies']}
+]},
+{n:'CCSD_PaySeries',cat:'Core',cols:[
+{n:'JobSeries',t:'Text'},
+{n:'JobCategory',t:'Choice',c:['N/A','Administrative and Management','Clerical and Administrative Support','Professional and Scientific','Technical and Medical Support']},
+{n:'StartingPayGrade',t:'Choice',c:['N/A','GS-1','GS-4','GS-6']},
+{n:'MaximumPayGrade',t:'Choice',c:['N/A','GS-9','GS-15']},
+{n:'SeriesURl',t:'URL'}
+]},
+// ===== K. SPA PLATFORM SUPPORT =====
+{n:'CCSD_AppTelemetry',cat:'Core',cols:[
+{n:'CorrelationID',t:'Text'},{n:'SessionID',t:'Text'},{n:'UserDisplayName',t:'Text'},
+{n:'UserEmail',t:'Text'},{n:'UserClaims',t:'Note'},{n:'RoleSnapshot',t:'Note'},
+{n:'AppModule',t:'Text'},{n:'Operation',t:'Text'},{n:'DataSource',t:'Text'},
+{n:'ItemID',t:'Number'},{n:'HttpStatus',t:'Number'},{n:'ErrorMessage',t:'Note'},
+{n:'ErrorDetail',t:'Note'},{n:'RequestUrl',t:'Text'},{n:'RequestPayload',t:'Note'},
+{n:'ResponsePayload',t:'Note'},{n:'ElapsedMs',t:'Number'},{n:'PageUrl',t:'Text'},
+{n:'ClientInfo',t:'Text'},{n:'IsResolved',t:'Boolean'}
+]},
+{n:'CCSD_AppAuditLog',cat:'Core',cols:[
+{n:'CorrelationID',t:'Text'},{n:'AuditEvent',t:'Text'},{n:'EntityType',t:'Text'},
+{n:'ItemID',t:'Number'},{n:'DataBefore',t:'Note'},{n:'DataAfter',t:'Note'},
+{n:'ChangedBy',t:'User'},{n:'ChangedOn',t:'DateTime'},{n:'Reason',t:'Note'}
+]},
+{n:'CCSD_AppRequests',cat:'Core',cols:[
+{n:'RequestID',t:'Text'},
+{n:'RequestType',t:'Choice',c:['Administrative','Training','SF182','Facilities','IT','Security','HR','Hardware','Software']},
+{n:'Status',t:'Choice',c:['Submitted','In Progress','On Hold','Completed','Closed','Cancelled']},
+{n:'Priority',t:'Choice',c:['Routine','High','Urgent']},
+{n:'SubmittedOn',t:'DateTime'},{n:'DueDate',t:'DateTime'},{n:'CompletedOn',t:'DateTime'},
+{n:'Details',t:'Note'},{n:'WorkflowStep',t:'Text'},{n:'WorkflowJson',t:'Note'},
+{n:'CorrelationID',t:'Text'},
+{n:'Requester',t:'User'},{n:'RequestingOrgID',t:'Lookup'},{n:'PersonID',t:'Lookup'},
+{n:'SeatID',t:'Lookup'},{n:'InOutID',t:'Lookup'},{n:'DutyID',t:'Lookup'},
+{n:'HardwareAssetID',t:'Lookup'},{n:'SoftwareID',t:'Lookup'},{n:'ChangeID',t:'Lookup'},
+{n:'AssignedOrgID',t:'Lookup'},{n:'AssignedTo',t:'User'}
+]},
+{n:'CCSD_Workflows',cat:'Core',cols:[
+{n:'RequestType',t:'Text'},{n:'IsActive',t:'Boolean'},{n:'SlaDays',t:'Number'},
+{n:'StepsJson',t:'Note'},{n:'EscalationJson',t:'Note'},{n:'Notes',t:'Note'},
+{n:'DefaultAssignedOrgID',t:'Lookup'}
+]},
+{n:'CCSD_Templates',cat:'Core',cols:[]},
+{n:'CCSD_HowTo',cat:'Core',cols:[
+{n:'Module',t:'Text'},{n:'Audience',t:'Text'},{n:'Summary',t:'Note'},
+{n:'Steps',t:'Note'},{n:'Links',t:'Note'},{n:'Tags',t:'Note'},
+{n:'IsActive',t:'Boolean'},{n:'DisplayOrder',t:'Number'}
+]},
+{n:'CCSD_DataQualityRules',cat:'Core',cols:[]},
+{n:'CCSD_PersonnelDataCall_Staging',cat:'Core',cols:[
+{n:'FirstName',t:'Text'},{n:'LastName',t:'Text'},{n:'MiddleName',t:'Text'},
+{n:'Suffix',t:'Choice'},{n:'Grade',t:'Choice'},{n:'Rank',t:'Choice'},
+{n:'Component',t:'Choice'},{n:'Category',t:'Choice'},{n:'Email',t:'Text'},
+{n:'OrgCode',t:'Text'},{n:'PositionTitle',t:'Text'},{n:'SeatLabel',t:'Text'},
+{n:'SupervisorEmailConfirmed',t:'Text'},
+{n:'Status',t:'Choice'},{n:'DateArrived',t:'DateTime'},{n:'ProjectedDeparture',t:'DateTime'},
+{n:'OfficePhone',t:'Text'},{n:'CellPhone',t:'Text'},{n:'AltPhone',t:'Text'},
+{n:'IsSupervisor',t:'Boolean'},{n:'Step',t:'Number'},{n:'AFSC',t:'Text'},
+{n:'EducationLevel',t:'Choice'},{n:'Notes',t:'Note'},
+{n:'BuildingNumber',t:'Text'},{n:'RoomNumber',t:'Text'},{n:'DataCallStatus',t:'Choice'}
+]},
+// ===== NEW LISTS - CALENDAR & NOTIFICATIONS =====
+{n:'CCSD_TimeOff',cat:'Calendar',cols:[
+{n:'PersonID',t:'Lookup'},{n:'OrgID',t:'Lookup'},
+{n:'StartDate',t:'DateTime'},{n:'EndDate',t:'DateTime'},
+{n:'TimeOffType',t:'Choice',c:['Annual Leave','Sick Leave','TDY','Training','Comp Time','Telework','LWOP','Other']},
+{n:'Status',t:'Choice',c:['Approved','Pending','Denied','Cancelled']},
+{n:'Hours',t:'Number'},{n:'Notes',t:'Note'},{n:'ApprovedBy',t:'User'},{n:'CreatedBy',t:'User'},
+{n:'RequestedDate',t:'DateTime'},{n:'SupervisorDecisionDate',t:'DateTime'},{n:'DecisionNotes',t:'Note'}
+]},
+{n:'CCSD_ConferenceRooms',cat:'Calendar',cols:[
+{n:'RoomName',t:'Text'},{n:'FacilityID',t:'Lookup'},{n:'Floor',t:'Number'},{n:'Capacity',t:'Number'},
+{n:'HasProjector',t:'Boolean'},{n:'HasVTC',t:'Boolean'},{n:'HasPhone',t:'Boolean'},
+{n:'HasWhiteboard',t:'Boolean'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_RoomReservations',cat:'Calendar',cols:[
+{n:'ConferenceRoomID',t:'Lookup'},{n:'ReservedBy',t:'User'},
+{n:'StartTime',t:'DateTime'},{n:'EndTime',t:'DateTime'},
+{n:'Subject',t:'Text'},{n:'Notes',t:'Note'},{n:'IsRecurring',t:'Boolean'},
+{n:'RecurrencePattern',t:'Text'},
+{n:'Status',t:'Choice',c:['Confirmed','Cancelled']}
+]},
+{n:'CCSD_Announcements',cat:'Dashboard',cols:[
+{n:'Body',t:'Note'},{n:'StartDate',t:'DateTime'},{n:'EndDate',t:'DateTime'},
+{n:'Priority',t:'Choice',c:['Normal','Important','Critical']},
+{n:'Audience',t:'Choice',c:['All','Admin','Supervisors']},
+{n:'IsActive',t:'Boolean'}
+]},
+{n:'CCSD_Notifications',cat:'Notifications',cols:[
+{n:'NotificationType',t:'Choice',c:['Security','SF86 Reminder','Incident Update','Training Reminder','Request Update','Supervisor Alert','System','Broadcast','General']},
+{n:'SourceModule',t:'Choice',c:['Security','Training','Requests','Calendar','Assets','Facilities','SupervisorHub','System','Admin']},
+{n:'Body',t:'Note'},
+{n:'SensitivityLevel',t:'Choice',c:['Public','Internal','Sensitive']},
+{n:'AudienceType',t:'Choice',c:['Individual','Organization','Role','All']},
+{n:'RecipientPersonID',t:'Lookup'},{n:'RecipientOrgID',t:'Lookup'},{n:'RecipientRole',t:'Text'},
+{n:'SentBy',t:'Lookup'},{n:'SentDate',t:'DateTime'},{n:'ExpiresDate',t:'DateTime'},
+{n:'RelatedEntityType',t:'Choice',c:['SecurityIncident','SecurityRecord','TrainingRecord','Request','Asset','Announcement','Other']},
+{n:'RelatedEntityID',t:'Number'},{n:'RelatedCaseNumber',t:'Text'},
+{n:'ActionURL',t:'Text'},{n:'IsSystemGenerated',t:'Boolean'},{n:'TemplateID',t:'Text'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_NotificationReceipts',cat:'Notifications',cols:[
+{n:'NotificationID',t:'Lookup'},{n:'RecipientPersonID',t:'Lookup'},
+{n:'IsRead',t:'Boolean'},{n:'ReadDate',t:'DateTime'},
+{n:'IsDismissed',t:'Boolean'},{n:'DismissedDate',t:'DateTime'},
+{n:'DeliveryChannel',t:'Choice',c:['InApp','Email','Both']},
+{n:'EmailSentDate',t:'DateTime'}
+]},
+// ===== SECURITY MODULE PHASE 1 & 2 =====
+{n:'CCSD_SecurityRecords',cat:'Security P1',cols:[
+{n:'PersonID',t:'Lookup'},
+{n:'ClearanceLevel',t:'Choice',c:['None','Confidential','Secret','Top Secret']},
+{n:'ClearanceStatus',t:'Choice',c:['Active','Interim','Expired','Suspended','Revoked','Denied','Not Cleared','Administrative Withdrawal']},
+{n:'PositionSensitivity',t:'Choice',c:['Non-sensitive','Noncritical-Sensitive','Critical-Sensitive','Special-Sensitive']},
+{n:'InvestigationType',t:'Choice',c:['T1','T2','T3','T4','T5','T5R','CV']},
+{n:'InvestigationOpenDate',t:'DateTime'},{n:'InvestigationDate',t:'DateTime'},
+{n:'EligibilityDate',t:'DateTime'},{n:'LastSF86Date',t:'DateTime'},{n:'NextSF86DueDate',t:'DateTime'},
+{n:'CVEnrolled',t:'Boolean'},
+{n:'CVAlertStatus',t:'Choice',c:['No Alerts','Alert Pending Review','Alert Resolved']},
+{n:'NIPRAccess',t:'Boolean'},{n:'SIPRAccess',t:'Boolean'},{n:'JWICSAccess',t:'Boolean'},
+{n:'SCIAccess',t:'Boolean'},{n:'SAPAccess',t:'Boolean'},
+{n:'NDASignedDate',t:'DateTime'},{n:'NDAOnFile',t:'Boolean'},
+{n:'InitialBriefingDate',t:'DateTime'},{n:'AnnualRefresherDate',t:'DateTime'},
+{n:'DerivedClassDate',t:'DateTime'},{n:'CIAwarenessDate',t:'DateTime'},
+{n:'InsiderThreatDate',t:'DateTime'},{n:'CUITrainingDate',t:'DateTime'},
+{n:'DoDID',t:'Text'},{n:'SMOCode',t:'Text'},{n:'SourceFile',t:'Text'},
+{n:'LastImportDate',t:'DateTime'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_SecurityIncidents',cat:'Security P2',cols:[
+{n:'CaseNumber',t:'Text'},{n:'PersonID',t:'Lookup'},{n:'ReportedByPersonID',t:'Lookup'},
+{n:'ReporterRole',t:'Choice',c:['Self','Supervisor','Security Manager','Commander','Other']},
+{n:'IncidentCategory',t:'Choice',c:['Foreign Travel','Foreign Contacts','Foreign Activities and Interests','Financial Issues','Criminal Conduct and Legal Issues','Substance Abuse or Illegal Drugs','Alcohol-Related Events','Mental Health','Unauthorized Disclosure','Security Violations and Infractions','Change in Personal Status','Associations or Memberships','Technology and Cyber','Subversion of Adjudicative Process','Outside Activities or Employment','Information Security Incident','Physical Security Incident','Other or Uncategorized']},
+{n:'IncidentSubType',t:'Text'},{n:'SEAD4Guidelines',t:'Text'},
+{n:'IncidentDate',t:'DateTime'},{n:'DiscoveredDate',t:'DateTime'},{n:'ReportedDate',t:'DateTime'},
+{n:'ReportingDeadline',t:'DateTime'},
+{n:'TimelinessFlag',t:'Choice',c:['On Time','Late','Significantly Late']},
+{n:'Status',t:'Choice',c:['Reported','Preliminary Inquiry','Reported to DISS','Interim Action Taken','Under Investigation','Investigation Complete','Adjudication','SOR Issued','Response/Appeal','Resolved','Closed - No Action Required','Closed - Favorable','Closed - Adverse Action','Referred to External Agency','Referred to AFOSI','Administrative Withdrawal']},
+{n:'PriorStatus',t:'Text'},
+{n:'Severity',t:'Choice',c:['Infraction','Violation','Compromise','Low','Medium','High','Critical']},
+{n:'ReportingSource',t:'Choice',c:['Self-Report','Supervisor','Commander','CV Alert','AFOSI','External Agency','Anonymous','SF-702 Discrepancy']},
+{n:'AssignedTo',t:'Lookup'},{n:'Description',t:'Note'},{n:'InvestigationNotes',t:'Note'},
+{n:'DamageAssessment',t:'Note'},{n:'ContainmentActions',t:'Note'},
+{n:'CommanderNotifiedDate',t:'DateTime'},
+{n:'CommanderAction',t:'Choice',c:['None','Access Suspended','Duty Reassignment','Commanders Inquiry Directed','Other']},
+{n:'DISSReportedDate',t:'DateTime'},{n:'DISSIncidentNumber',t:'Text'},
+{n:'ExternalReferralAgency',t:'Text'},{n:'ExternalReferralDate',t:'DateTime'},
+{n:'SORIssuedDate',t:'DateTime'},{n:'SORGuidelines',t:'Text'},
+{n:'SORResponseDeadline',t:'DateTime'},{n:'SORExtensionGranted',t:'Boolean'},
+{n:'SORExtendedDeadline',t:'DateTime'},{n:'SORResponseDate',t:'DateTime'},
+{n:'SORResult',t:'Choice',c:['Pending','Sustained','Modified','Reversed']},
+{n:'AppealFiledDate',t:'DateTime'},{n:'AppealBody',t:'Text'},
+{n:'PersonalAppearance',t:'Boolean'},
+{n:'AppealOutcome',t:'Choice',c:['Pending','Upheld','Overturned','Modified']},
+{n:'AppealClosedDate',t:'DateTime'},{n:'ResolutionDate',t:'DateTime'},
+{n:'Outcome',t:'Choice',c:['No Action','Letter of Caution','Security Education','Clearance Retained with Conditions','Corrective Action','Access Suspended','Eligibility Suspended','Eligibility Revoked','Eligibility Denied','Referred to External','Administrative Withdrawal']},
+{n:'Conditions',t:'Note'},{n:'DebriefingDate',t:'DateTime'},
+{n:'OrgID',t:'Lookup'},{n:'IsArchived',t:'Boolean'},{n:'ArchivedDate',t:'DateTime'},{n:'Notes',t:'Note'}
+]},
+// Security P2 continued
+{n:'CCSD_IncidentStatusHistory',cat:'Security P2',cols:[
+{n:'IncidentID',t:'Lookup'},{n:'CaseNumber',t:'Text'},
+{n:'FromStatus',t:'Choice',c:['Reported','Preliminary Inquiry','Reported to DISS','Interim Action Taken','Under Investigation','Investigation Complete','Adjudication','SOR Issued','Response/Appeal','Resolved','Closed - No Action Required','Closed - Favorable','Closed - Adverse Action','Referred to External Agency','Referred to AFOSI','Administrative Withdrawal']},
+{n:'ToStatus',t:'Choice',c:['Reported','Preliminary Inquiry','Reported to DISS','Interim Action Taken','Under Investigation','Investigation Complete','Adjudication','SOR Issued','Response/Appeal','Resolved','Closed - No Action Required','Closed - Favorable','Closed - Adverse Action','Referred to External Agency','Referred to AFOSI','Administrative Withdrawal']},
+{n:'TransitionDate',t:'DateTime'},{n:'ChangedBy',t:'Lookup'},{n:'Notes',t:'Note'},
+{n:'DaysInPriorStatus',t:'Number'},{n:'DeadlineWasMet',t:'Boolean'}
+]},
+{n:'CCSD_IncidentActions',cat:'Security P2',cols:[
+{n:'IncidentID',t:'Lookup'},{n:'CaseNumber',t:'Text'},
+{n:'ActionType',t:'Choice',c:['Required','Recommended','Optional']},
+{n:'ActionCategory',t:'Choice',c:['Notification','Investigation','Documentation','Containment','DISS Update','Commander Action','Subject Communication','External Referral','Training','Follow-Up','Other']},
+{n:'AssignedTo',t:'Lookup'},{n:'DueDate',t:'DateTime'},
+{n:'Priority',t:'Choice',c:['Immediate','Urgent','Normal','Low']},
+{n:'Status',t:'Choice',c:['Pending','In Progress','Completed','Cancelled','Blocked']},
+{n:'CompletedDate',t:'DateTime'},{n:'CompletedBy',t:'Lookup'},{n:'CompletionNotes',t:'Note'},
+{n:'IsAutoGenerated',t:'Boolean'},{n:'TriggeringStatus',t:'Text'}
+]},
+{n:'CCSD_IncidentNotifications',cat:'Security P2',cols:[
+{n:'IncidentID',t:'Lookup'},{n:'CaseNumber',t:'Text'},
+{n:'SentBy',t:'Lookup'},{n:'RecipientPersonID',t:'Lookup'},
+{n:'RecipientRole',t:'Choice',c:['Subject','Supervisor','Commander','Security Manager','External']},
+{n:'NotificationType',t:'Choice',c:['Initial Notification','Status Update','Action Required','Reminder','SOR Delivery','Appeal Notice','Resolution Notice','Debriefing Notice','General']},
+{n:'BodyText',t:'Note'},{n:'ContainsCaseNumber',t:'Boolean'},{n:'ContainsPII',t:'Boolean'},
+{n:'SentDate',t:'DateTime'},
+{n:'DeliveryMethod',t:'Choice',c:['In-App','In-App + Email','Verbal (Logged)','Written (External)']},
+{n:'AcknowledgedDate',t:'DateTime'},{n:'MirroredToGeneralNotifications',t:'Boolean'}
+]},
+{n:'CCSD_IncidentParties',cat:'Security P2',cols:[
+{n:'IncidentID',t:'Lookup'},{n:'CaseNumber',t:'Text'},
+{n:'PersonID',t:'Lookup'},{n:'ExternalName',t:'Text'},{n:'ExternalOrg',t:'Text'},
+{n:'PartyRole',t:'Choice',c:['Witness','Reporting Official','Investigating Officer','Commander','First Sergeant','Legal Counsel','Subject Representative','AFOSI Agent','DCSA Investigator','Adjudicator','Other']},
+{n:'InvolvedDate',t:'DateTime'},{n:'Notes',t:'Note'}
+]},
+// ===== SUPERVISOR HUB =====
+{n:'CCSD_PerformanceTracking',cat:'Supervisor Hub',cols:[
+{n:'PersonID',t:'Lookup'},{n:'CycleYear',t:'Number'},
+{n:'PlanEstablished',t:'Boolean'},{n:'PlanDate',t:'DateTime'},
+{n:'MidpointCompleted',t:'Boolean'},{n:'MidpointDate',t:'DateTime'},
+{n:'AnnualCompleted',t:'Boolean'},{n:'AnnualDate',t:'DateTime'},
+{n:'RatingSubmitted',t:'Boolean'},{n:'ProbStartDate',t:'DateTime'},{n:'ProbEndDate',t:'DateTime'}
+]},
+{n:'CCSD_TeleworkAgreements',cat:'Supervisor Hub',cols:[
+{n:'PersonID',t:'Lookup'},
+{n:'AgreementType',t:'Choice',c:['Routine','Situational','Emergency']},
+{n:'ApprovedDate',t:'DateTime'},{n:'ExpirationDate',t:'DateTime'},
+{n:'TeleworkDays',t:'Text'},
+{n:'Status',t:'Choice',c:['Active','Expired','Pending','Terminated']},
+{n:'ApprovedBy',t:'Lookup'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_Awards',cat:'Supervisor Hub',cols:[
+{n:'PersonID',t:'Lookup'},
+{n:'AwardType',t:'Choice',c:['Time-Off Award','Quality Step Increase','On-the-Spot Award','Special Act Award','Performance Award','Quarterly Award','Annual Award','Commanders Coin','Letter of Appreciation']},
+{n:'NominationDate',t:'DateTime'},{n:'SubmittedDate',t:'DateTime'},{n:'DecisionDate',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Draft','Submitted','Approved','Denied','Presented']},
+{n:'Amount',t:'Number'},{n:'Hours',t:'Number'},{n:'ApprovedBy',t:'Lookup'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_TaskAssignments',cat:'Supervisor Hub',cols:[
+{n:'Description',t:'Note'},{n:'AssignedTo',t:'Lookup'},{n:'Originator',t:'Lookup'},
+{n:'SuspenseDate',t:'DateTime'},
+{n:'Priority',t:'Choice',c:['Routine','High','Urgent']},
+{n:'Status',t:'Choice',c:['Open','In Progress','Complete','Cancelled']},
+{n:'Category',t:'Choice',c:['Tasker','Suspense','Action Item','Follow-Up','Other']},
+{n:'CompletionDate',t:'DateTime'},{n:'IsRecurring',t:'Boolean'},{n:'RecurrencePattern',t:'Text'},
+{n:'Notes',t:'Note'}
+]},
+// ===== FUTURE LISTS =====
+{n:'CCSD_DisciplinaryActions',cat:'Future',cols:[
+{n:'PersonID',t:'Lookup'},
+{n:'ActionType',t:'Choice',c:['Letter of Counseling','Letter of Admonishment','Letter of Reprimand','Suspension','Removal Action','Performance Improvement Plan']},
+{n:'DateIssued',t:'DateTime'},{n:'ExpirationDate',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Active','Expired','Rescinded']},
+{n:'IssuedBy',t:'Lookup'},{n:'Notes',t:'Note'},{n:'IsArchived',t:'Boolean'}
+]},
+{n:'CCSD_OvertimeAuthorization',cat:'Future',cols:[
+{n:'PersonID',t:'Lookup'},{n:'Date',t:'DateTime'},{n:'Hours',t:'Number'},
+{n:'Type',t:'Choice',c:['Overtime','Comp Time','Credit Hours']},
+{n:'ApprovedBy',t:'Lookup'},{n:'Reason',t:'Note'},{n:'PayPeriod',t:'Text'},{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_SecurityContainers',cat:'Security P3',cols:[
+{n:'SerialNumber',t:'Text'},{n:'Manufacturer',t:'Text'},{n:'LockType',t:'Text'},
+{n:'GSARating',t:'Text'},{n:'Location',t:'Text'},{n:'AssignedOrgID',t:'Lookup'},
+{n:'DatePlacedInService',t:'DateTime'},{n:'LastCombinationChange',t:'DateTime'},
+{n:'PersonsWithAccess',t:'Note'},{n:'Notes',t:'Note'},{n:'IsActive',t:'Boolean'}
+]},
+{n:'CCSD_ContainerChecks',cat:'Security P3',cols:[
+{n:'ContainerID',t:'Lookup'},{n:'CheckDate',t:'DateTime'},{n:'CheckTime',t:'Text'},
+{n:'CheckedBy',t:'Lookup'},
+{n:'Status',t:'Choice',c:['Secured','Found Unsecured']},
+{n:'Comments',t:'Note'}
+]},
+{n:'CCSD_AreaChecks',cat:'Security P3',cols:[
+{n:'AreaName',t:'Text'},{n:'CheckDate',t:'DateTime'},{n:'CheckTime',t:'Text'},
+{n:'CheckedBy',t:'Lookup'},{n:'AllClear',t:'Boolean'},{n:'Discrepancies',t:'Note'},
+{n:'TPIWitness',t:'Lookup'}
+]},
+{n:'CCSD_VisitorLog',cat:'Security P3',cols:[
+{n:'VisitorName',t:'Text'},{n:'VisitorOrg',t:'Text'},{n:'VisitDate',t:'DateTime'},
+{n:'TimeIn',t:'Text'},{n:'TimeOut',t:'Text'},{n:'Purpose',t:'Text'},
+{n:'Sponsor',t:'Lookup'},{n:'ClearanceVerified',t:'Boolean'},
+{n:'ClearanceVerifiedBy',t:'Lookup'},{n:'BadgeNumber',t:'Text'}
+]},
+{n:'CCSD_RestrictedAreas',cat:'Security P3',cols:[
+{n:'AreaType',t:'Choice',c:['Restricted Area','Controlled Area','Exclusion Area']},
+{n:'Location',t:'Text'},{n:'OwningOrgID',t:'Lookup'},
+{n:'MaxClassification',t:'Choice',c:['Unclassified','Confidential','Secret','Top Secret','TS/SCI']},
+{n:'AccessRequirements',t:'Note'},{n:'Notes',t:'Note'},{n:'IsActive',t:'Boolean'}
+]},
+{n:'CCSD_AreaAccessRoster',cat:'Security P3',cols:[
+{n:'AreaID',t:'Lookup'},{n:'PersonID',t:'Lookup'},
+{n:'AuthorizationDate',t:'DateTime'},{n:'ExpirationDate',t:'DateTime'},
+{n:'AuthorizingOfficial',t:'Lookup'},{n:'Basis',t:'Text'}
+]},
+{n:'CCSD_ClassifiedDocuments',cat:'Security P4',cols:[
+{n:'ControlNumber',t:'Text'},
+{n:'ClassificationLevel',t:'Choice',c:['Confidential','Secret','Top Secret','TS/SCI']},
+{n:'DateOfDocument',t:'DateTime'},{n:'DateReceived',t:'DateTime'},{n:'ReceivedFrom',t:'Text'},
+{n:'CopyNumber',t:'Text'},{n:'CurrentCustodian',t:'Lookup'},{n:'StorageLocation',t:'Text'},
+{n:'LastInventoryDate',t:'DateTime'},{n:'NextInventoryDue',t:'DateTime'}
+]},
+{n:'CCSD_DestructionRecords',cat:'Security P4',cols:[
+{n:'DocumentID',t:'Lookup'},
+{n:'ClassificationLevel',t:'Choice',c:['Confidential','Secret','Top Secret','TS/SCI']},
+{n:'DateDestroyed',t:'DateTime'},{n:'Method',t:'Text'},
+{n:'DestroyingOfficial',t:'Lookup'},{n:'Witness1',t:'Lookup'},{n:'Witness2',t:'Lookup'},
+{n:'Notes',t:'Note'}
+]},
+{n:'CCSD_DD254Registry',cat:'Security P5',cols:[
+{n:'ContractNumber',t:'Text'},{n:'ContractorName',t:'Text'},{n:'IssuingOffice',t:'Text'},
+{n:'DateIssued',t:'DateTime'},{n:'LastRevision',t:'DateTime'},
+{n:'ClassificationLevel',t:'Choice',c:['Confidential','Secret','Top Secret']},
+{n:'SAPRequired',t:'Boolean'},{n:'ExpirationDate',t:'DateTime'},
+{n:'Status',t:'Choice',c:['Active','Expired','Revised']},
+{n:'LastReviewDate',t:'DateTime'},{n:'NextReviewDue',t:'DateTime'}
+]},
+{n:'CCSD_ContractorPersonnel',cat:'Security P5',cols:[
+{n:'ContractorName',t:'Text'},{n:'Company',t:'Text'},{n:'ContractNumber',t:'Text'},
+{n:'DD254Reference',t:'Lookup'},
+{n:'ClearanceLevel',t:'Choice',c:['None','Confidential','Secret','Top Secret']},
+{n:'ClearanceVerifiedDate',t:'DateTime'},{n:'ClearanceVerifiedBy',t:'Lookup'},
+{n:'VerificationMethod',t:'Text'},{n:'AccessStartDate',t:'DateTime'},{n:'AccessEndDate',t:'DateTime'},
+{n:'EscortRequired',t:'Boolean'},{n:'Notes',t:'Note'}
+]}
+];
+
+// ===== AUDIT ENGINE =====
+var siteUrl=(typeof _spPageContextInfo!=='undefined'&&_spPageContextInfo.webAbsoluteUrl)
+  ||window.location.origin+window.location.pathname.split('/').slice(0,4).join('/');
+
+function spGet(url){
+  return fetch(url,{headers:{Accept:'application/json;odata=verbose'},credentials:'include'})
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});
+}
+
+function matchCol(expected,fields){
+  var el=expected.toLowerCase();
+  var noSp=el.replace(/[^a-z0-9]/g,'');
+  var enc=expected.replace(/ /g,'_x0020_').toLowerCase();
+  for(var i=0;i<fields.length;i++){
+    var f=fields[i];
+    var tl=f.Title.toLowerCase(), il=f.InternalName.toLowerCase();
+    var tlc=tl.replace(/[^a-z0-9]/g,''), ilc=il.replace(/[^a-z0-9]/g,'');
+    if(tl===el||il===el)return f;
+    if(il===enc)return f;
+    if(tlc===noSp||ilc===noSp)return f;
+    if(il===el+'id'||il===el.replace(/id$/,'')+'id')return f;
+  }
+  return null;
+}
+
+var typeMap={'Text':'Text','Note':'Note','Choice':'Choice','MultiChoice':'MultiChoice',
+  'Number':'Number','Currency':'Currency','DateTime':'DateTime','Boolean':'Boolean',
+  'Lookup':'Lookup','User':'User','UserMulti':'UserMulti','URL':'URL','Computed':'Computed'};
+var typeAliases={'User':['User','UserMulti'],'Lookup':['Lookup','LookupMulti'],
+  'Note':['Note','Text'],'URL':['URL','Text'],'Text':['Text','Note','Computed']};
+
+function typeOk(expected,actual){
+  if(!expected||!actual)return true;
+  if(expected===actual)return true;
+  var aliases=typeAliases[expected];
+  if(aliases&&aliases.indexOf(actual)>=0)return true;
+  return false;
+}
+
+function auditList(def){
+  var url=siteUrl+"/_api/web/lists/getbytitle('"+encodeURIComponent(def.n)+"')/fields?$filter=Hidden eq false&$top=500";
+  return spGet(url).then(function(data){
+    var fields=data.d.results;
+    var results=[];
+    def.cols.forEach(function(col){
+      var f=matchCol(col.n,fields);
+      var r={expected:col.n,expectedType:col.t,expectedChoices:col.c||null};
+      if(f){
+        r.found=true;r.actualTitle=f.Title;r.actualInternal=f.InternalName;r.actualType=f.TypeAsString;
+        r.typeOk=typeOk(col.t,f.TypeAsString);
+        if(col.c&&col.c.length&&f.Choices&&f.Choices.results){
+          var actual=f.Choices.results;
+          r.actualChoices=actual;
+          r.missingChoices=col.c.filter(function(v){return actual.indexOf(v)<0;});
+          r.extraChoices=actual.filter(function(v){return col.c.indexOf(v)<0;});
+        } else if(col.c&&col.c.length&&(!f.Choices||!f.Choices.results)){
+          r.missingChoices=col.c;r.extraChoices=[];r.actualChoices=[];
+        } else {
+          r.missingChoices=[];r.extraChoices=[];
+        }
+      } else {
+        r.found=false;r.typeOk=false;r.missingChoices=col.c||[];r.extraChoices=[];
+      }
+      results.push(r);
+    });
+    return {name:def.n,cat:def.cat,exists:true,columns:results};
+  }).catch(function(){
+    return {name:def.n,cat:def.cat,exists:false,columns:def.cols.map(function(col){
+      return {expected:col.n,expectedType:col.t,expectedChoices:col.c||null,found:false,typeOk:false,missingChoices:col.c||[],extraChoices:[]};
+    })};
+  });
+}
+
+// ===== RENDERER =====
+function render(results){
+  var missingLists=results.filter(function(r){return !r.exists;});
+  var partialLists=results.filter(function(r){return r.exists&&r.columns.some(function(c){return !c.found||!c.typeOk||(c.missingChoices&&c.missingChoices.length);});});
+  var okLists=results.filter(function(r){return r.exists&&!r.columns.some(function(c){return !c.found||!c.typeOk||(c.missingChoices&&c.missingChoices.length);});});
+  var totalCols=0,foundCols=0,missingCols=0,typeMismatch=0,choiceIssues=0;
+  results.forEach(function(r){r.columns.forEach(function(c){
+    totalCols++;if(c.found)foundCols++;else missingCols++;
+    if(c.found&&!c.typeOk)typeMismatch++;
+    if(c.missingChoices&&c.missingChoices.length)choiceIssues++;
+  });});
+
+  var h='<div class="audit-header"><h1>CCSD Database Audit Report</h1>';
+  h+='<p>Site: '+siteUrl+' &bull; Scanned: '+new Date().toLocaleString()+' &bull; '+S.length+' lists checked</p></div>';
+
+  h+='<div class="summary-cards">';
+  h+='<div class="card card-blue"><h2>'+S.length+'</h2><p>Total Lists</p></div>';
+  h+='<div class="card '+(missingLists.length?'card-red':'card-green')+'"><h2>'+missingLists.length+'</h2><p>Missing Lists</p></div>';
+  h+='<div class="card '+(missingCols?'card-red':'card-green')+'"><h2>'+missingCols+'</h2><p>Missing Columns</p></div>';
+  h+='<div class="card '+(typeMismatch?'card-yellow':'card-green')+'"><h2>'+typeMismatch+'</h2><p>Type Mismatches</p></div>';
+  h+='<div class="card '+(choiceIssues?'card-yellow':'card-green')+'"><h2>'+choiceIssues+'</h2><p>Choice Issues</p></div>';
+  h+='<div class="card card-green"><h2>'+okLists.length+'</h2><p>Perfect Lists</p></div>';
+  h+='</div>';
+
+  // Filter bar
+  h+='<div class="filter-bar">';
+  h+='<button class="filter-btn active" onclick="filterAudit(\'all\',this)">All ('+S.length+')</button>';
+  h+='<button class="filter-btn" onclick="filterAudit(\'missing\',this)">Missing Lists ('+missingLists.length+')</button>';
+  h+='<button class="filter-btn" onclick="filterAudit(\'partial\',this)">Issues ('+partialLists.length+')</button>';
+  h+='<button class="filter-btn" onclick="filterAudit(\'ok\',this)">Perfect ('+okLists.length+')</button>';
+  h+='</div>';
+
+  // Missing lists
+  if(missingLists.length){
+    h+='<h3 style="color:#c62828;margin:20px 0 10px">Missing Lists ('+missingLists.length+')</h3>';
+    missingLists.forEach(function(r){
+      h+='<div class="section missing-list" data-status="missing">';
+      h+='<div class="section-header" onclick="toggleSection(this)"><span>'+r.name+'<span class="cat-label">'+r.cat+'</span></span><span>'+r.columns.length+' columns needed</span></div>';
+      h+='<div class="section-body"><p style="color:#c62828;font-weight:600">This entire list needs to be created.</p>';
+      if(r.columns.length){
+        h+='<table><tr><th>Column Name</th><th>Expected Type</th><th>Choice Values</th></tr>';
+        r.columns.forEach(function(c){
+          h+='<tr><td>'+c.expected+'</td><td><span class="tag tag-type">'+c.expectedType+'</span></td>';
+          h+='<td>'+(c.expectedChoices?c.expectedChoices.join(', '):'—')+'</td></tr>';
+        });
+        h+='</table>';
+      }
+      h+='</div></div>';
+    });
+  }
+
+  // Partial lists
+  if(partialLists.length){
+    h+='<h3 style="color:#f57f17;margin:20px 0 10px">Lists With Issues ('+partialLists.length+')</h3>';
+    partialLists.forEach(function(r){
+      var mc=r.columns.filter(function(c){return !c.found;}).length;
+      var tm=r.columns.filter(function(c){return c.found&&!c.typeOk;}).length;
+      var ci=r.columns.filter(function(c){return c.missingChoices&&c.missingChoices.length;}).length;
+      h+='<div class="section partial-list" data-status="partial">';
+      h+='<div class="section-header" onclick="toggleSection(this)"><span>'+r.name+'<span class="cat-label">'+r.cat+'</span></span>';
+      h+='<span>';
+      if(mc)h+=mc+' missing ';
+      if(tm)h+=tm+' type issues ';
+      if(ci)h+=ci+' choice issues';
+      h+='</span></div>';
+      h+='<div class="section-body"><table><tr><th>Column</th><th>Status</th><th>Expected Type</th><th>Actual Type</th><th>Choice Issues</th></tr>';
+      r.columns.forEach(function(c){
+        if(!c.found||!c.typeOk||(c.missingChoices&&c.missingChoices.length)){
+          h+='<tr><td><strong>'+c.expected+'</strong></td>';
+          h+='<td>'+(c.found?'<span class="tag tag-ok">Found</span>':'<span class="tag tag-missing">MISSING</span>')+'</td>';
+          h+='<td><span class="tag tag-type">'+c.expectedType+'</span></td>';
+          h+='<td>'+(c.found?(c.typeOk?'<span class="tag tag-ok">'+c.actualType+'</span>':'<span class="tag tag-warn">'+c.actualType+'</span>'):'—')+'</td>';
+          h+='<td>';
+          if(c.missingChoices&&c.missingChoices.length){
+            h+='<div class="choice-diff"><span class="choice-missing">Missing: '+c.missingChoices.join(', ')+'</span></div>';
+          }
+          if(c.extraChoices&&c.extraChoices.length){
+            h+='<div class="choice-diff"><span class="choice-extra">Extra: '+c.extraChoices.join(', ')+'</span></div>';
+          }
+          if(!c.missingChoices||!c.missingChoices.length)h+='—';
+          h+='</td></tr>';
+        }
+      });
+      h+='</table></div></div>';
+    });
+  }
+
+  // OK lists
+  if(okLists.length){
+    h+='<h3 style="color:#2e7d32;margin:20px 0 10px">Perfect Lists ('+okLists.length+')</h3>';
+    okLists.forEach(function(r){
+      h+='<div class="section ok-list" data-status="ok">';
+      h+='<div class="section-header" onclick="toggleSection(this)"><span>'+r.name+'<span class="cat-label">'+r.cat+'</span></span><span>'+r.columns.length+' columns OK</span></div>';
+      h+='<div class="section-body"><table><tr><th>Column</th><th>Type</th><th>Actual Name</th></tr>';
+      r.columns.forEach(function(c){
+        h+='<tr><td>'+c.expected+'</td><td><span class="tag tag-ok">'+c.actualType+'</span></td>';
+        h+='<td>'+(c.actualTitle||'')+(c.actualInternal&&c.actualInternal!==c.actualTitle?' ('+c.actualInternal+')':'')+'</td></tr>';
+      });
+      h+='</table></div></div>';
+    });
+  }
+
+  root.innerHTML=h;
+}
+
+window.toggleSection=function(el){
+  var body=el.nextElementSibling;
+  body.classList.toggle('open');
+};
+window.filterAudit=function(filter,btn){
+  var btns=document.querySelectorAll('.filter-btn');
+  for(var i=0;i<btns.length;i++)btns[i].classList.remove('active');
+  btn.classList.add('active');
+  var sections=document.querySelectorAll('.section');
+  for(var i=0;i<sections.length;i++){
+    var s=sections[i],st=s.getAttribute('data-status');
+    if(filter==='all')s.style.display='';
+    else if(filter==='missing')s.style.display=st==='missing'?'':'none';
+    else if(filter==='partial')s.style.display=st==='partial'?'':'none';
+    else if(filter==='ok')s.style.display=st==='ok'?'':'none';
+  }
+  // Also toggle section headers (h3)
+  var h3s=document.querySelectorAll('#ccsd-audit-root h3');
+  for(var i=0;i<h3s.length;i++)h3s[i].style.display=filter==='all'?'':'none';
+};
+
+// ===== RUN =====
+root.innerHTML='<div class="audit-header"><h1>CCSD Database Audit</h1><p>Scanning '+S.length+' lists...</p></div><div class="progress-bar"><div class="progress-fill" id="audit-progress" style="width:0%">0%</div></div>';
+
+var completed=0;
+var allResults=[];
+function runNext(i){
+  if(i>=S.length){render(allResults);return;}
+  auditList(S[i]).then(function(result){
+    allResults.push(result);
+    completed++;
+    var pct=Math.round(completed/S.length*100);
+    var pb=document.getElementById('audit-progress');
+    if(pb){pb.style.width=pct+'%';pb.textContent=pct+'% ('+completed+'/'+S.length+') — '+S[i].n;}
+    runNext(i+1);
+  });
+}
+// Run 3 at a time for speed
+var idx=0;
+function runBatch(){
+  if(idx>=S.length){
+    if(allResults.length>=S.length)render(allResults);
+    return;
+  }
+  var batch=[];
+  for(var b=0;b<3&&idx<S.length;b++,idx++){
+    batch.push(auditList(S[idx]));
+  }
+  Promise.all(batch).then(function(res){
+    res.forEach(function(r){allResults.push(r);});
+    completed+=res.length;
+    var pct=Math.round(completed/S.length*100);
+    var pb=document.getElementById('audit-progress');
+    if(pb){pb.style.width=pct+'%';pb.textContent=pct+'% ('+completed+'/'+S.length+')';}
+    runBatch();
+  });
+}
+runBatch();
+
+})();
+</script>
