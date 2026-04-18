@@ -2422,6 +2422,26 @@ function computeOverdueTeamCount(supervisorPersonId){
   return overdueCount;
 }
 
+/* ─── Active Announcements ─── */
+function getActiveAnnouncements(){
+  var all = APP.state.data.announcements || [];
+  var now = new Date();
+  var nowStr = now.toISOString().slice(0,10);
+  var roles = APP.state.roleNames || [];
+  return all.filter(function(a){
+    if (!normalizeBoolean(a.IsActive)) return false;
+    if (a.StartDate && a.StartDate.slice(0,10) > nowStr) return false;
+    if (a.EndDate && a.EndDate.slice(0,10) < nowStr) return false;
+    var audience = a.Audience || 'All';
+    if (audience === 'Admin' && !hasRole('App Admin')) return false;
+    if (audience === 'Supervisors' && !hasAnyRole(['Supervisor','App Admin'])) return false;
+    return true;
+  }).sort(function(a,b){
+    var pOrder = { Critical: 0, Important: 1, Normal: 2 };
+    return (pOrder[a.Priority] || 2) - (pOrder[b.Priority] || 2);
+  }).slice(0, 5);
+}
+
 /* ─── Notification Center ─── */
 function getNotifications(){
   var items = [];
@@ -2828,6 +2848,18 @@ function ensureTimeOffLoaded(force){
   if (APP.state.data.timeOff && !force) { return Promise.resolve(APP.state.data.timeOff); }
   return queryList(APP.lists.TimeOff, ['Title','PersonID/Id','PersonID/Title','OrgID/Id','OrgID/Title','StartDate','EndDate','TimeOffType','Status','Hours','Notes','ApprovedBy/Id','ApprovedBy/Title','CreatedBy/Id','CreatedBy/Title'], { top: 2000, orderby: 'StartDate desc' }, 'ensureTimeOffLoaded').then(function(rows){ APP.state.data.timeOff = rows || []; return rows || []; }).catch(function(){ APP.state.data.timeOff = []; return []; });
 }
+function ensureAnnouncementsLoaded(force){
+  if (APP.state.data.announcements && !force) { return Promise.resolve(APP.state.data.announcements); }
+  return queryList(APP.lists.Announcements, ['Title','Body','StartDate','EndDate','Priority','Audience','IsActive'], { top: 100, orderby: 'Created desc' }, 'ensureAnnouncementsLoaded').then(function(rows){ APP.state.data.announcements = rows || []; return rows; }).catch(function(){ APP.state.data.announcements = []; return []; });
+}
+function ensureConferenceRoomsLoaded(force){
+  if (APP.state.data.conferenceRooms && !force) { return Promise.resolve(APP.state.data.conferenceRooms); }
+  return queryList(APP.lists.ConferenceRooms, ['Title','RoomName','FacilityID/Id','FacilityID/Title','Floor','Capacity','HasProjector','HasVTC','HasPhone','HasWhiteboard','Notes'], { top: 500 }, 'ensureConferenceRoomsLoaded').then(function(rows){ APP.state.data.conferenceRooms = rows || []; return rows; }).catch(function(){ APP.state.data.conferenceRooms = []; return []; });
+}
+function ensureRoomReservationsLoaded(force){
+  if (APP.state.data.roomReservations && !force) { return Promise.resolve(APP.state.data.roomReservations); }
+  return queryList(APP.lists.RoomReservations, ['Title','ConferenceRoomID/Id','ConferenceRoomID/Title','ReservedBy/Id','ReservedBy/Title','StartTime','EndTime','Subject','Notes','IsRecurring','RecurrencePattern','Status'], { top: 2000, orderby: 'StartTime desc' }, 'ensureRoomReservationsLoaded').then(function(rows){ APP.state.data.roomReservations = rows || []; return rows; }).catch(function(){ APP.state.data.roomReservations = []; return []; });
+}
 
 /* ─── Federal Holidays (US OPM schedule) ─── */
 function getFederalHolidays(year){
@@ -3104,7 +3136,8 @@ function renderHome(){
     ensurePeopleLoaded().catch(function(){ return []; }),
     ensureOrganizationsLoaded().catch(function(){ return []; }),
     ensureMyNotificationReceiptsLoaded().catch(function(){ return []; }),
-    ensureAssetsLoaded().catch(function(){ return []; })
+    ensureAssetsLoaded().catch(function(){ return []; }),
+    ensureAnnouncementsLoaded().catch(function(){ return []; })
   ]).then(function(){
     /* NF-13: fire threshold-based notification checks once per session,
      * non-blocking so the dashboard renders immediately. */
@@ -3176,6 +3209,41 @@ function renderHome(){
     html += '<button class="btn" data-action="nav" data-route="calendar">Calendar</button>';
     html += '<button class="btn subtle" data-action="keyboard-shortcuts">Shortcuts</button>';
     html += '</div></div>';
+
+    /* ─ Announcements banner ─ */
+    var announcements = getActiveAnnouncements();
+    if (announcements.length > 0) {
+      html += '<div style="margin:8px 0">';
+      announcements.forEach(function(a){
+        var borderColor = a.Priority === 'Critical' ? 'var(--danger,#e74c3c)' : a.Priority === 'Important' ? 'var(--warning,#f39c12)' : 'var(--primary,#2980b9)';
+        var icon = a.Priority === 'Critical' ? '🚨' : a.Priority === 'Important' ? '⚠️' : '📢';
+        html += '<div style="padding:10px 14px;margin-bottom:6px;border-left:4px solid ' + borderColor + ';background:var(--bg-card);border-radius:4px;display:flex;align-items:flex-start;gap:8px">';
+        html += '<span style="flex-shrink:0">' + icon + '</span>';
+        html += '<div style="flex:1;min-width:0"><strong style="font-size:12px">' + escHtml(a.Title) + '</strong>';
+        if (a.Body) html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + escHtml(trimText(a.Body, 200)) + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    /* ─ Quick links ─ */
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px">';
+    var quickLinks = [
+      { label: 'New Request', action: 'open-create-request', icon: '📝' },
+      { label: 'Calendar', route: 'calendar', icon: '📅' },
+      { label: 'Training', route: 'training', icon: '📋' },
+      { label: 'My Assets', route: 'assets', icon: '💻' },
+      { label: 'Facilities', route: 'facilities', icon: '🏢' }
+    ];
+    if (canSeeSupervisorHub()) quickLinks.push({ label: 'Supervisor Hub', route: 'supervisor', icon: '👥' });
+    quickLinks.forEach(function(lnk){
+      if (lnk.route) {
+        html += '<button class="btn subtle" data-action="nav" data-route="' + lnk.route + '" style="padding:4px 10px;font-size:11px">' + lnk.icon + ' ' + lnk.label + '</button>';
+      } else {
+        html += '<button class="btn subtle" data-action="' + lnk.action + '" style="padding:4px 10px;font-size:11px">' + lnk.icon + ' ' + lnk.label + '</button>';
+      }
+    });
+    html += '</div>';
 
     /* ─ KPI strip ─ */
     html += '<div class="dash-kpis">';
@@ -6641,26 +6709,35 @@ function ensureCalendarUi(){
 
 function renderCalendar(){
   renderLoading('Loading calendar...');
-  Promise.all([
+  var loads = [
     ensureTimeOffLoaded(),
     ensurePeopleLoaded(),
     ensureOrganizationsLoaded(),
     ensurePositionsLoaded()
-  ]).then(function(){
+  ];
+  var ui = ensureCalendarUi();
+  if (ui.view === 'rooms') {
+    loads.push(ensureConferenceRoomsLoaded());
+    loads.push(ensureRoomReservationsLoaded());
+  }
+  Promise.all(loads).then(function(){
     var host = document.getElementById('viewHost');
     if (!host || APP.state.route !== 'calendar') { return; }
-    var ui = ensureCalendarUi();
     var html = '<div class="section-panel">';
     html += renderCalendarHeader(ui);
-    html += renderCalendarLegend();
-    if (ui.view === 'leaders') {
-      html += renderSeniorLeadersView(ui);
-    } else if (ui.view === 'week') {
-      html += renderCalendarWeek(ui);
-    } else if (ui.view === 'list') {
-      html += renderCalendarList(ui);
+    if (ui.view === 'rooms') {
+      html += renderRoomSchedulingView(ui);
     } else {
-      html += renderCalendarMonth(ui);
+      html += renderCalendarLegend();
+      if (ui.view === 'leaders') {
+        html += renderSeniorLeadersView(ui);
+      } else if (ui.view === 'week') {
+        html += renderCalendarWeek(ui);
+      } else if (ui.view === 'list') {
+        html += renderCalendarList(ui);
+      } else {
+        html += renderCalendarMonth(ui);
+      }
     }
     html += '</div>';
     host.innerHTML = html;
@@ -6687,8 +6764,8 @@ function renderCalendarHeader(ui){
   html += '<div class="cal-header-right">';
   /* View toggle */
   html += '<div class="cal-view-toggle">';
-  ['month','week','list','leaders'].forEach(function(v){
-    var label = v === 'leaders' ? 'Leaders' : v.charAt(0).toUpperCase() + v.slice(1);
+  ['month','week','list','leaders','rooms'].forEach(function(v){
+    var label = v === 'leaders' ? 'Leaders' : v === 'rooms' ? 'Rooms' : v.charAt(0).toUpperCase() + v.slice(1);
     html += '<button data-action="cal-set-view" data-view="' + v + '"' + (ui.view === v ? ' class="active"' : '') + '>' + label + '</button>';
   });
   html += '</div>';
@@ -6720,6 +6797,287 @@ function renderCalendarHeader(ui){
   }
   html += '</div></div>';
   return html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ *  CONFERENCE ROOM SCHEDULING
+ * ═══════════════════════════════════════════════════════════════════════ */
+function renderRoomSchedulingView(ui){
+  var rooms = (APP.state.data.conferenceRooms || []).slice();
+  var reservations = (APP.state.data.roomReservations || []).filter(function(r){ return String(r.Status || '').toLowerCase() !== 'cancelled'; });
+  var html = '';
+  var viewDate = new Date(ui.year, ui.month, 1);
+  var today = new Date(); today.setHours(0,0,0,0);
+  var selectedDate = APP.state.roomViewDate || today;
+  var selStr = selectedDate.toISOString().slice(0,10);
+
+  /* Room filter controls */
+  var capacityFilter = APP.state.roomCapacityFilter || 0;
+  var equipFilter = APP.state.roomEquipFilter || '';
+  html += '<div style="display:flex;gap:8px;align-items:center;margin:12px 0;flex-wrap:wrap">';
+  html += '<label style="font-size:12px;font-weight:600">Date:</label>';
+  html += '<input type="date" id="roomViewDate" value="' + selStr + '" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)" />';
+  html += '<label style="font-size:12px;font-weight:600;margin-left:12px">Min Capacity:</label>';
+  html += '<input type="number" id="roomCapacityFilter" value="' + (capacityFilter || '') + '" min="0" max="999" placeholder="Any" style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)" />';
+  html += '<label style="font-size:12px;font-weight:600;margin-left:12px">Equipment:</label>';
+  html += '<select id="roomEquipFilter" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)">';
+  html += '<option value="">Any</option>';
+  html += '<option value="Projector"' + (equipFilter === 'Projector' ? ' selected' : '') + '>Projector</option>';
+  html += '<option value="VTC"' + (equipFilter === 'VTC' ? ' selected' : '') + '>VTC</option>';
+  html += '<option value="Phone"' + (equipFilter === 'Phone' ? ' selected' : '') + '>Phone</option>';
+  html += '<option value="Whiteboard"' + (equipFilter === 'Whiteboard' ? ' selected' : '') + '>Whiteboard</option>';
+  html += '</select>';
+  html += '<button class="btn subtle" data-action="room-apply-filters" style="padding:4px 12px;font-size:11px">Apply</button>';
+  html += '<button class="btn primary" data-action="room-book-new" style="padding:6px 12px;font-size:11px;margin-left:auto">+ Book Room</button>';
+  html += '</div>';
+
+  /* Filter rooms */
+  var filtered = rooms.filter(function(rm){
+    if (capacityFilter > 0 && (rm.Capacity || 0) < capacityFilter) return false;
+    if (equipFilter === 'Projector' && !normalizeBoolean(rm.HasProjector)) return false;
+    if (equipFilter === 'VTC' && !normalizeBoolean(rm.HasVTC)) return false;
+    if (equipFilter === 'Phone' && !normalizeBoolean(rm.HasPhone)) return false;
+    if (equipFilter === 'Whiteboard' && !normalizeBoolean(rm.HasWhiteboard)) return false;
+    return true;
+  });
+  filtered.sort(function(a,b){ return (a.RoomName || a.Title || '').localeCompare(b.RoomName || b.Title || ''); });
+
+  if (filtered.length === 0) {
+    html += '<div class="empty">No conference rooms found' + (rooms.length > 0 ? ' matching your filters' : '') + '.</div>';
+    return html;
+  }
+
+  /* Build time grid: 7 AM to 6 PM in 30-min slots */
+  var slots = [];
+  for (var h = 7; h < 18; h++) {
+    slots.push({ h: h, m: 0, label: (h > 12 ? (h-12) : h) + ':00' + (h >= 12 ? 'p' : 'a') });
+    slots.push({ h: h, m: 30, label: (h > 12 ? (h-12) : h) + ':30' + (h >= 12 ? 'p' : 'a') });
+  }
+
+  /* Build reservations index by room + date */
+  var resByRoom = {};
+  reservations.forEach(function(r){
+    var rid = r.ConferenceRoomID ? (r.ConferenceRoomID.Id || r.ConferenceRoomID) : null;
+    if (!rid) return;
+    var sdt = r.StartTime ? new Date(r.StartTime) : null;
+    var edt = r.EndTime ? new Date(r.EndTime) : null;
+    if (!sdt || !edt) return;
+    var rDateStr = sdt.toISOString().slice(0,10);
+    if (rDateStr !== selStr) return;
+    if (!resByRoom[rid]) resByRoom[rid] = [];
+    resByRoom[rid].push({ id: r.Id, start: sdt, end: edt, subject: r.Subject || r.Title || '', by: r.ReservedBy ? (r.ReservedBy.Title || '') : '' });
+  });
+
+  /* Render availability grid */
+  html += '<div style="overflow-x:auto"><table class="data-table" style="font-size:11px;white-space:nowrap">';
+  html += '<thead><tr><th style="min-width:160px;position:sticky;left:0;background:var(--bg-card);z-index:2">Room</th>';
+  slots.forEach(function(s,i){
+    if (i % 2 === 0) { html += '<th colspan="2" style="text-align:center;border-left:1px solid var(--border)">' + s.label + '</th>'; }
+  });
+  html += '</tr></thead><tbody>';
+
+  filtered.forEach(function(rm){
+    var roomId = rm.Id;
+    var roomRes = resByRoom[roomId] || [];
+    var equipment = [];
+    if (normalizeBoolean(rm.HasProjector)) equipment.push('📽');
+    if (normalizeBoolean(rm.HasVTC)) equipment.push('📹');
+    if (normalizeBoolean(rm.HasPhone)) equipment.push('📞');
+    if (normalizeBoolean(rm.HasWhiteboard)) equipment.push('📝');
+    html += '<tr><td style="position:sticky;left:0;background:var(--bg-card);z-index:1;font-weight:600">';
+    html += escHtml(rm.RoomName || rm.Title || 'Room') + ' <span style="font-weight:normal;color:var(--text-muted);font-size:10px">(' + (rm.Capacity || '?') + ' cap) ' + equipment.join('') + '</span></td>';
+
+    slots.forEach(function(s){
+      var slotStart = new Date(selectedDate); slotStart.setHours(s.h, s.m, 0, 0);
+      var slotEnd = new Date(slotStart.getTime() + 30 * 60000);
+      var booked = null;
+      roomRes.some(function(res){
+        if (slotStart >= res.start && slotStart < res.end) { booked = res; return true; }
+        return false;
+      });
+      if (booked) {
+        html += '<td style="background:var(--danger-bg,#e74c3c22);cursor:pointer;text-align:center;border-left:1px solid var(--border-light,#333)" title="' + escAttr(booked.subject + ' — ' + booked.by) + '" data-action="room-reservation-detail" data-id="' + booked.id + '">';
+        var isStart = (slotStart.getTime() === booked.start.getTime());
+        html += (isStart ? '<span style="font-size:10px;color:var(--danger,#e74c3c)">' + escHtml(trimText(booked.subject, 12)) + '</span>' : '');
+        html += '</td>';
+      } else {
+        html += '<td style="background:var(--success-bg,#2ecc7111);cursor:pointer;border-left:1px solid var(--border-light,#333)" title="Available — click to book" data-action="room-book-slot" data-room-id="' + roomId + '" data-date="' + selStr + '" data-hour="' + s.h + '" data-min="' + s.m + '"></td>';
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  /* Upcoming reservations list */
+  var upcoming = reservations.filter(function(r){
+    var sdt = r.StartTime ? new Date(r.StartTime) : null;
+    return sdt && sdt >= today;
+  }).sort(function(a,b){ return new Date(a.StartTime) - new Date(b.StartTime); }).slice(0, 15);
+
+  if (upcoming.length > 0) {
+    html += '<div class="card" style="margin-top:16px"><div class="card-header">Upcoming Reservations</div>';
+    html += '<div class="card-body"><table class="data-table"><thead><tr>';
+    html += '<th>Room</th><th>Date</th><th>Time</th><th>Subject</th><th>Reserved By</th><th>Actions</th>';
+    html += '</tr></thead><tbody>';
+    upcoming.forEach(function(r){
+      var sdt = new Date(r.StartTime);
+      var edt = new Date(r.EndTime);
+      var timeStr = formatTime12(sdt) + ' – ' + formatTime12(edt);
+      html += '<tr>';
+      html += '<td>' + escHtml(r.ConferenceRoomID ? (r.ConferenceRoomID.Title || '') : '') + '</td>';
+      html += '<td>' + formatDate(r.StartTime) + '</td>';
+      html += '<td>' + timeStr + '</td>';
+      html += '<td>' + escHtml(r.Subject || r.Title || '') + '</td>';
+      html += '<td>' + escHtml(r.ReservedBy ? (r.ReservedBy.Title || '') : '') + '</td>';
+      html += '<td><button class="btn subtle danger" data-action="room-cancel-reservation" data-id="' + r.Id + '" style="padding:2px 8px;font-size:10px">Cancel</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  return html;
+}
+function formatTime12(dt){
+  var h = dt.getHours(); var m = dt.getMinutes();
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  if (h > 12) h -= 12; if (h === 0) h = 12;
+  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+}
+function getRoomConflicts(roomId, startDt, endDt, excludeId){
+  var reservations = (APP.state.data.roomReservations || []).filter(function(r){ return String(r.Status || '').toLowerCase() !== 'cancelled'; });
+  return reservations.filter(function(r){
+    if (excludeId && String(r.Id) === String(excludeId)) return false;
+    var rid = r.ConferenceRoomID ? (r.ConferenceRoomID.Id || r.ConferenceRoomID) : null;
+    if (String(rid) !== String(roomId)) return false;
+    var rs = new Date(r.StartTime); var re = new Date(r.EndTime);
+    return startDt < re && endDt > rs;
+  });
+}
+function openBookRoomModal(defaults){
+  defaults = defaults || {};
+  var rooms = (APP.state.data.conferenceRooms || []).slice();
+  rooms.sort(function(a,b){ return (a.RoomName || a.Title || '').localeCompare(b.RoomName || b.Title || ''); });
+  var today = new Date();
+  var defDate = defaults.date || today.toISOString().slice(0,10);
+  var defHour = defaults.hour != null ? defaults.hour : 9;
+  var defMin = defaults.min != null ? defaults.min : 0;
+  var defEndHour = defHour + 1;
+  if (defEndHour > 18) defEndHour = 18;
+  var body = '<div class="form-grid">';
+  body += '<label>Room</label><select id="bookRoomId">';
+  rooms.forEach(function(rm){
+    var sel = defaults.roomId && String(rm.Id) === String(defaults.roomId) ? ' selected' : '';
+    var cap = rm.Capacity ? ' (' + rm.Capacity + ' cap)' : '';
+    body += '<option value="' + rm.Id + '"' + sel + '>' + escHtml(rm.RoomName || rm.Title || 'Room') + cap + '</option>';
+  });
+  body += '</select>';
+  body += '<label>Date</label><input type="date" id="bookDate" value="' + defDate + '" />';
+  body += '<label>Start Time</label><select id="bookStartTime">';
+  for (var h = 7; h < 18; h++) {
+    for (var m = 0; m < 60; m += 30) {
+      var val = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+      var lbl = (h > 12 ? (h-12) : h) + ':' + (m < 10 ? '0' : '') + m + (h >= 12 ? ' PM' : ' AM');
+      var sel = (h === defHour && m === defMin) ? ' selected' : '';
+      body += '<option value="' + val + '"' + sel + '>' + lbl + '</option>';
+    }
+  }
+  body += '</select>';
+  body += '<label>End Time</label><select id="bookEndTime">';
+  for (var h2 = 7; h2 < 19; h2++) {
+    for (var m2 = 0; m2 < 60; m2 += 30) {
+      if (h2 === 18 && m2 > 0) continue;
+      var val2 = (h2 < 10 ? '0' : '') + h2 + ':' + (m2 < 10 ? '0' : '') + m2;
+      var lbl2 = (h2 > 12 ? (h2-12) : h2) + ':' + (m2 < 10 ? '0' : '') + m2 + (h2 >= 12 ? ' PM' : ' AM');
+      var sel2 = (h2 === defEndHour && m2 === defMin) ? ' selected' : '';
+      body += '<option value="' + val2 + '"' + sel2 + '>' + lbl2 + '</option>';
+    }
+  }
+  body += '</select>';
+  body += '<label>Subject</label><input type="text" id="bookSubject" placeholder="Meeting subject" maxlength="255" />';
+  body += '<label>Notes</label><textarea id="bookNotes" rows="2" placeholder="Optional notes"></textarea>';
+  body += '</div>';
+  body += '<div id="bookConflictWarning" style="display:none;margin-top:8px;padding:8px;background:var(--danger-bg,#e74c3c22);border-radius:4px;color:var(--danger,#e74c3c);font-size:12px"></div>';
+  var footer = '<button class="btn" data-action="close-modal">Cancel</button>';
+  footer += '<button class="btn primary" data-action="room-save-booking">Book Room</button>';
+  openModal('Book Conference Room', body, footer, 'Reserve a conference room');
+}
+function saveRoomBooking(){
+  var roomIdEl = document.getElementById('bookRoomId');
+  var dateEl = document.getElementById('bookDate');
+  var startEl = document.getElementById('bookStartTime');
+  var endEl = document.getElementById('bookEndTime');
+  var subjectEl = document.getElementById('bookSubject');
+  var notesEl = document.getElementById('bookNotes');
+  var roomId = roomIdEl ? roomIdEl.value : '';
+  var date = dateEl ? dateEl.value : '';
+  var startTime = startEl ? startEl.value : '';
+  var endTime = endEl ? endEl.value : '';
+  var subject = sanitizeInput(subjectEl ? subjectEl.value.trim() : '');
+  var notes = sanitizeInput(notesEl ? notesEl.value.trim() : '');
+  if (!roomId || !date || !startTime || !endTime) { toast('Please fill in all required fields.', 'danger'); return; }
+  if (!subject.trim()) { toast('Subject is required.', 'danger'); return; }
+  var startDt = new Date(date + 'T' + startTime + ':00');
+  var endDt = new Date(date + 'T' + endTime + ':00');
+  if (endDt <= startDt) { toast('End time must be after start time.', 'danger'); return; }
+  if ((endDt - startDt) > 8 * 3600000) { toast('Reservations cannot exceed 8 hours.', 'danger'); return; }
+  var conflicts = getRoomConflicts(roomId, startDt, endDt);
+  if (conflicts.length > 0) {
+    var warnEl = document.getElementById('bookConflictWarning');
+    if (warnEl) { warnEl.style.display = 'block'; warnEl.innerHTML = '<strong>Conflict detected:</strong> This room is already booked during the selected time (' + conflicts.length + ' overlapping reservation' + (conflicts.length > 1 ? 's' : '') + '). Please choose a different time or room.'; }
+    toast('Booking conflict — room is not available at that time.', 'danger');
+    return;
+  }
+  toast('Booking room...', 'ok');
+  var payload = {
+    Title: subject,
+    Subject: subject,
+    ConferenceRoomID: roomId,
+    StartTime: startDt.toISOString(),
+    EndTime: endDt.toISOString(),
+    Notes: notes || '',
+    IsRecurring: false,
+    Status: 'Confirmed'
+  };
+  createListItem(APP.lists.RoomReservations, payload, { entityType: 'RoomReservation', reason: 'Book conference room' }).then(function(){
+    closeModal();
+    return ensureRoomReservationsLoaded(true);
+  }).then(function(){
+    toast('Room booked successfully.', 'ok');
+    if (APP.state.route === 'calendar') renderCalendar();
+  }).catch(function(err){
+    toast(extractSpErrorMessage(err) || 'Booking failed.', 'danger');
+  });
+}
+function cancelRoomReservation(resId){
+  if (!window.confirm('Cancel this reservation?')) return;
+  toast('Cancelling...', 'ok');
+  updateListItem(APP.lists.RoomReservations, resId, { Status: 'Cancelled' }, { entityType: 'RoomReservation', reason: 'Cancel reservation' }).then(function(){
+    return ensureRoomReservationsLoaded(true);
+  }).then(function(){
+    toast('Reservation cancelled.', 'ok');
+    if (APP.state.route === 'calendar') renderCalendar();
+  }).catch(function(err){
+    toast(extractSpErrorMessage(err) || 'Cancellation failed.', 'danger');
+  });
+}
+function openRoomReservationDetail(resId){
+  var res = (APP.state.data.roomReservations || []).filter(function(r){ return String(r.Id) === String(resId); })[0];
+  if (!res) { toast('Reservation not found.', 'danger'); return; }
+  var body = '<div class="kv">';
+  body += '<div class="k">Room</div><div class="v">' + escHtml(res.ConferenceRoomID ? (res.ConferenceRoomID.Title || '') : '') + '</div>';
+  body += '<div class="k">Subject</div><div class="v">' + escHtml(res.Subject || res.Title || '') + '</div>';
+  body += '<div class="k">Date</div><div class="v">' + formatDate(res.StartTime) + '</div>';
+  body += '<div class="k">Time</div><div class="v">' + formatTime12(new Date(res.StartTime)) + ' – ' + formatTime12(new Date(res.EndTime)) + '</div>';
+  body += '<div class="k">Reserved By</div><div class="v">' + escHtml(res.ReservedBy ? (res.ReservedBy.Title || '') : '') + '</div>';
+  body += '<div class="k">Status</div><div class="v">' + escHtml(res.Status || '') + '</div>';
+  if (res.Notes) body += '<div class="k">Notes</div><div class="v">' + escHtml(res.Notes) + '</div>';
+  body += '</div>';
+  var footer = '<button class="btn" data-action="close-modal">Close</button>';
+  if (String(res.Status || '').toLowerCase() !== 'cancelled') {
+    footer += '<button class="btn danger" data-action="room-cancel-reservation" data-id="' + resId + '">Cancel Reservation</button>';
+  }
+  openModal('Reservation Details', body, footer, 'Room reservation details');
 }
 
 function renderCalendarLegend(){
@@ -7252,7 +7610,7 @@ function renderAssets(){
     html += metricCard('Portable Devices', portableCount, 'Laptops and other portable equipment', Math.min(100, portableCount / 3));
     html += metricCard('Software Titles Near ATO Attention', atoSoon, 'Titles with ATO expiry within 90 days', Math.min(100, atoSoon * 12));
     html += '</div>';
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button><button class="btn subtle" data-action="approved-sw-catalog">SW Catalog</button><button class="btn subtle" data-action="warranty-tracking">Warranties</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
     if (ui.personId) {
       var focusPerson = findPersonById(ui.personId);
       if (focusPerson) {
@@ -7312,6 +7670,83 @@ function renderLicenseUtilizationCard(idx){
   });
   html += '</tbody></table></div></div></div>';
   return html;
+}
+
+function renderApprovedSoftwareCatalog(){
+  var sw = APP.state.data.softwareAssets || [];
+  var approved = sw.filter(function(s){
+    var status = String(s.ApprovalStatus || '').toLowerCase();
+    return !status || status.indexOf('approved') >= 0 || status.indexOf('standard') >= 0;
+  }).sort(function(a,b){ return (a.Title || '').localeCompare(b.Title || ''); });
+
+  var html = '<div class="card"><div class="card-header">Approved Software Catalog <span style="color:var(--text-muted);font-weight:normal">(' + approved.length + ' titles)</span></div>';
+  html += '<div class="card-body">';
+  html += '<div style="margin-bottom:8px"><input id="swCatalogSearch" placeholder="Search titles..." style="width:260px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)" /></div>';
+  html += '<table class="data-table" id="swCatalogTable"><thead><tr>';
+  html += '<th>Title</th><th>Vendor</th><th>Version</th><th>License Type</th><th>Network</th><th>Requires ATO</th><th>Requestable</th></tr></thead><tbody>';
+  approved.forEach(function(s){
+    var nets = s.AllowedNetworkEnvironments || '';
+    var reqAto = normalizeBoolean(s.RequiresATO) ? 'Yes' : 'No';
+    var requestable = normalizeBoolean(s.Requestable) ? '<span style="color:var(--success,#27ae60)">Yes</span>' : 'No';
+    html += '<tr>';
+    html += '<td><strong>' + escHtml(s.Title || '') + '</strong></td>';
+    html += '<td>' + escHtml(s.Vendor || '') + '</td>';
+    html += '<td>' + escHtml(s.SoftwareVersion || s.ApprovedVersion || '') + '</td>';
+    html += '<td>' + escHtml(s.LicenseType || '') + '</td>';
+    html += '<td>' + escHtml(nets) + '</td>';
+    html += '<td>' + reqAto + '</td>';
+    html += '<td>' + requestable + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+  var host = document.getElementById('viewHost');
+  if (host) {
+    openModal('Approved Software Catalog', html, '<button class="btn" data-action="close-modal">Close</button>', 'View approved software titles');
+  }
+}
+
+function renderWarrantyTrackingView(){
+  var hw = APP.state.data.hardwareAssets || [];
+  var now = new Date(); var nowMs = now.getTime();
+  var items = hw.filter(function(a){ return a.WarrantyExpiration; }).map(function(a){
+    var exp = new Date(a.WarrantyExpiration);
+    var daysLeft = Math.round((exp.getTime() - nowMs) / 86400000);
+    return { asset: a, expDate: exp, daysLeft: daysLeft };
+  }).sort(function(a,b){ return a.daysLeft - b.daysLeft; });
+
+  var expired = items.filter(function(i){ return i.daysLeft < 0; });
+  var expiringSoon = items.filter(function(i){ return i.daysLeft >= 0 && i.daysLeft <= 90; });
+  var active = items.filter(function(i){ return i.daysLeft > 90; });
+
+  var html = '<div style="display:flex;gap:12px;margin-bottom:12px">';
+  html += '<div style="padding:8px 14px;border-radius:4px;background:var(--danger-bg,#e74c3c22);flex:1;text-align:center"><strong style="font-size:18px;color:var(--danger,#e74c3c)">' + expired.length + '</strong><div style="font-size:11px">Expired</div></div>';
+  html += '<div style="padding:8px 14px;border-radius:4px;background:var(--warning-bg,#f39c1222);flex:1;text-align:center"><strong style="font-size:18px;color:var(--warning,#f39c12)">' + expiringSoon.length + '</strong><div style="font-size:11px">Expiring &le;90 days</div></div>';
+  html += '<div style="padding:8px 14px;border-radius:4px;background:var(--success-bg,#27ae6022);flex:1;text-align:center"><strong style="font-size:18px;color:var(--success,#27ae60)">' + active.length + '</strong><div style="font-size:11px">Active</div></div>';
+  html += '</div>';
+
+  html += '<table class="data-table"><thead><tr>';
+  html += '<th>Asset</th><th>Type</th><th>Serial</th><th>Warranty Expires</th><th>Days Left</th><th>Status</th>';
+  html += '</tr></thead><tbody>';
+  items.forEach(function(i){
+    var a = i.asset;
+    var statusCls = i.daysLeft < 0 ? 'danger' : i.daysLeft <= 90 ? 'warn' : 'ok';
+    var statusLbl = i.daysLeft < 0 ? 'Expired' : i.daysLeft <= 90 ? 'Expiring Soon' : 'Active';
+    html += '<tr>';
+    html += '<td>' + escHtml(a.Title || a.AssetID || '') + '</td>';
+    html += '<td>' + escHtml(a.AssetType || '') + '</td>';
+    html += '<td>' + escHtml(a.SerialNumber || '') + '</td>';
+    html += '<td>' + formatDate(a.WarrantyExpiration) + '</td>';
+    html += '<td>' + i.daysLeft + '</td>';
+    html += '<td><span class="badge badge-' + statusCls + '">' + statusLbl + '</span></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  if (items.length === 0) {
+    html = '<div class="empty">No hardware assets have warranty dates set. Add <code>WarrantyExpiration</code> data to <code>CCSD_HardwareAssets</code> to see tracking here.</div>';
+  }
+
+  openModal('Warranty Tracking', html, '<button class="btn" data-action="close-modal">Close</button>', 'Hardware warranty status overview');
 }
 
 function renderSimpleAssetTable(title, rows){
@@ -8665,6 +9100,30 @@ function renderSupervisorHubContent(){
   }
   html += '</div></div>';
 
+  /* SH-15: Cross-module quick navigation */
+  html += '<div class="card" style="margin-top:16px"><div class="card-header">Quick Navigation</div>';
+  html += '<div class="card-body"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">';
+  var hubLinks = [
+    { icon: '📅', label: 'Team Calendar', route: 'calendar', desc: 'View team time-off' },
+    { icon: '📋', label: 'Team Training', route: 'training', desc: 'Training compliance' },
+    { icon: '📨', label: 'Team Requests', route: 'requests', desc: 'Open requests' },
+    { icon: '🔄', label: 'In/Out Processing', route: 'inout', desc: 'In/out cases' },
+    { icon: '💻', label: 'Team Assets', route: 'assets', desc: 'Equipment assignments' },
+    { icon: '🏢', label: 'Facilities', route: 'facilities', desc: 'Rooms and seats' }
+  ];
+  if (hasAnyRole(['Security', 'App Admin'])) {
+    hubLinks.push({ icon: '🔒', label: 'Security', route: 'security', desc: 'Security module' });
+  }
+  hubLinks.push({ icon: '📊', label: 'Reports', route: 'reporting', desc: 'Generate reports' });
+  hubLinks.forEach(function(lnk){
+    html += '<button class="btn" data-action="nav" data-route="' + lnk.route + '" style="padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px">';
+    html += '<span style="font-size:16px">' + lnk.icon + '</span>';
+    html += '<strong style="font-size:12px">' + escHtml(lnk.label) + '</strong>';
+    html += '<span style="font-size:10px;color:var(--text-muted)">' + escHtml(lnk.desc) + '</span>';
+    html += '</button>';
+  });
+  html += '</div></div></div>';
+
   setView(html);
 }
 
@@ -9250,7 +9709,7 @@ function handleClick(e){
   if (action === 'cal-prev') { calNavigate('prev'); return; }
   if (action === 'cal-next') { calNavigate('next'); return; }
   if (action === 'cal-today') { calToday(); return; }
-  if (action === 'cal-set-view') { var v = el.getAttribute('data-view'); ensureCalendarUi().view = v; if (v === 'week') { var n = new Date(); n.setHours(0,0,0,0); ensureCalendarUi().weekStart = new Date(n); ensureCalendarUi().weekStart.setDate(n.getDate() - n.getDay()); } renderCalendar(); return; }
+  if (action === 'cal-set-view') { var v = el.getAttribute('data-view'); ensureCalendarUi().view = v; if (v === 'week') { var n = new Date(); n.setHours(0,0,0,0); ensureCalendarUi().weekStart = new Date(n); ensureCalendarUi().weekStart.setDate(n.getDate() - n.getDay()); } if (v === 'rooms') { ensureConferenceRoomsLoaded().then(function(){ return ensureRoomReservationsLoaded(); }).then(function(){ renderCalendar(); }); return; } renderCalendar(); return; }
   if (action === 'cal-entry-detail') { openCalEntryDetail(el.getAttribute('data-entry-id')); return; }
   if (action === 'cal-add-entry') { openAddTimeOffModal(); return; }
   if (action === 'cal-save-entry') { saveTimeOffEntry(); return; }
@@ -9259,6 +9718,13 @@ function handleClick(e){
   if (action === 'cal-export-ics') { exportCalendarICS(); return; }
   if (action === 'cal-bulk-import') { openBulkTimeOffImportModal(); return; }
   if (action === 'save-bulk-timeoff') { saveBulkTimeOff(); return; }
+  /* Conference room scheduling actions */
+  if (action === 'room-apply-filters') { var dv = document.getElementById('roomViewDate'); var cf = document.getElementById('roomCapacityFilter'); var ef = document.getElementById('roomEquipFilter'); if (dv && dv.value) { APP.state.roomViewDate = new Date(dv.value + 'T00:00:00'); } APP.state.roomCapacityFilter = cf ? parseInt(cf.value) || 0 : 0; APP.state.roomEquipFilter = ef ? ef.value : ''; renderCalendar(); return; }
+  if (action === 'room-book-new') { ensureConferenceRoomsLoaded().then(function(){ openBookRoomModal(); }); return; }
+  if (action === 'room-book-slot') { ensureConferenceRoomsLoaded().then(function(){ openBookRoomModal({ roomId: el.getAttribute('data-room-id'), date: el.getAttribute('data-date'), hour: parseInt(el.getAttribute('data-hour')), min: parseInt(el.getAttribute('data-min')) }); }); return; }
+  if (action === 'room-save-booking') { saveRoomBooking(); return; }
+  if (action === 'room-cancel-reservation') { cancelRoomReservation(el.getAttribute('data-id')); return; }
+  if (action === 'room-reservation-detail') { openRoomReservationDetail(el.getAttribute('data-id')); return; }
   if (action === 'export-facilities') { exportTableToCSV('.table-wrap table', 'facilities_export'); return; }
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
   if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
@@ -9301,6 +9767,8 @@ function handleClick(e){
   if (action === 'confirm-transfer-sw') { confirmTransferSw(); return; }
   if (action === 'asset-depreciation') { renderAssetDepreciation(); return; }
   if (action === 'asset-discrepancies') { renderInventoryDiscrepancies(); return; }
+  if (action === 'approved-sw-catalog') { ensureAssetsLoaded().then(function(){ renderApprovedSoftwareCatalog(); }); return; }
+  if (action === 'warranty-tracking') { ensureAssetsLoaded().then(function(){ renderWarrantyTrackingView(); }); return; }
   if (action === 'asset-timeline') { renderAssignmentTimeline(el.getAttribute('data-id')); return; }
   if (action === 'bulk-asset-import') { openBulkAssetImportModal(); return; }
   if (action === 'save-bulk-assets') { saveBulkAssets(); return; }

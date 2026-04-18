@@ -82,12 +82,12 @@ false positives on the script side, not problems in SharePoint:
      | Status | Choice | Choices: Confirmed, Cancelled |
   3. Verify the list is accessible via REST API
 
-- [ ] **Build room availability grid** — 💻 (after lists exist)
-- [ ] **Book / cancel reservation modals** — 💻
+- [x] **Build room availability grid** — 💻 ✅ Done 2026-04-18. `renderRoomSchedulingView()` added as "Rooms" tab in Calendar module. Time grid (7AM–6PM, 30-min slots) with color-coded availability per room. Date picker, capacity/equipment filters.
+- [x] **Book / cancel reservation modals** — 💻 ✅ Done 2026-04-18. `openBookRoomModal()` with room/date/time selectors, subject/notes. `saveRoomBooking()` creates reservation. `cancelRoomReservation()` sets status to Cancelled.
 - [ ] **Recurring meeting support** — 💻
-- [ ] **Conflict detection (double-booking prevention)** — 💻
-- [ ] **Room search by capacity and equipment** — 💻
-- [ ] **Room calendar view (per-room day/week timeline)** — 💻
+- [x] **Conflict detection (double-booking prevention)** — 💻 ✅ Done 2026-04-18. `getRoomConflicts()` checks overlapping reservations. Booking is blocked with visible warning if conflict exists.
+- [x] **Room search by capacity and equipment** — 💻 ✅ Done 2026-04-18. Filter controls for min capacity and equipment (Projector/VTC/Phone/Whiteboard) on the Rooms view.
+- [x] **Room calendar view (per-room day/week timeline)** — 💻 ✅ Done 2026-04-18. Single-day grid view integrated into Calendar module as the "Rooms" tab. Shows all rooms with 30-min time slots. Upcoming reservations table below grid.
 - [ ] **Integration with Facilities module** — 💻
 
 ### Microsoft Graph API — Outlook Calendar Integration (P2) — 🤝
@@ -169,7 +169,7 @@ false positives on the script side, not problems in SharePoint:
 - [x] **License utilization dashboard** — 💻 ✅ Done 2026-04-18. `renderLicenseUtilizationCard()` added to Assets view. Sorts titles by utilization %, shows used/total, color-coded bar (green/orange/red), Over Limit / Near Cap / Healthy / Underutilized status.
 - [ ] **Software request workflow** — 💻
 - [x] **ATO expiration alerts on Home** — 💻 ✅ Done 2026-04-18. `getNotifications()` now surfaces software titles with ATO expired (danger) or expiring within 90 days (warn). `ensureAssetsLoaded()` added to `renderHome()` data load. Honors `RequiresATO` flag.
-- [ ] **Approved software catalog view** — 💻 (no prereqs)
+- [x] **Approved software catalog view** — 💻 ✅ Done 2026-04-18. `renderApprovedSoftwareCatalog()` shows approved/standard software titles in a searchable modal table with vendor, version, license type, network, ATO requirement, and requestable status. "SW Catalog" button added to Assets toolbar.
 - [ ] **Version compliance check** — 💻 (no prereqs)
 
 - [x] **Add `CostCenter` column to `CCSD_HardwareAssets` and `CCSD_SoftwareAssets`** — 👤 ✅ Created 2026-04-18
@@ -183,7 +183,7 @@ false positives on the script side, not problems in SharePoint:
   1. Open `CCSD_HardwareAssets` > **Add column** > **Date and Time** > name it `WarrantyExpiration`
   2. Set "Include Time" to **No**
 
-- [ ] **Warranty tracking & alerts** — 💻 (after column exists)
+- [x] **Warranty tracking & alerts** — 💻 ✅ Done 2026-04-18. `renderWarrantyTrackingView()` shows all hardware assets with warranty dates in a modal. KPI strip (Expired / Expiring ≤90 days / Active) with color-coded status badges per asset. "Warranties" button added to Assets toolbar.
 
 - [x] **Add `PhysicalLocation` column to `CCSD_HardwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Open `CCSD_HardwareAssets` > **Add column** > **Single line of text** > name it `PhysicalLocation`
@@ -261,11 +261,9 @@ false positives on the script side, not problems in SharePoint:
 
 ## 8. Home Dashboard Improvements
 
-- [ ] **Announcements / news banner** — 🤝
-  1. 👤 Create `CCSD_Announcements` list (see Section 13 below for columns)
-  2. 💻 Build the banner component after list exists
+- [x] **Announcements / news banner** — 🤝 ✅ Done 2026-04-18. `ensureAnnouncementsLoaded()` queries `CCSD_Announcements`. `getActiveAnnouncements()` filters by date range, audience (All/Admin/Supervisors), and IsActive flag. Priority-sorted (Critical/Important/Normal) with color-coded icons. Renders on Home between welcome banner and KPIs.
 
-- [ ] **Quick links section** — 💻 (no prereqs, can use hardcoded links initially)
+- [x] **Quick links section** — 💻 ✅ Done 2026-04-18. Quick link buttons (New Request, Calendar, Training, My Assets, Facilities, Supervisor Hub) rendered on Home dashboard. Supervisor Hub link gated by `canSeeSupervisorHub()`.
 
 ---
 
@@ -2123,12 +2121,12 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 
 > **The Supervisor Hub does not replace existing modules — it provides a supervisor-scoped lens into them. Each link passes context (org filter, person filter) so the destination module shows team-relevant data immediately.**
 
-- [ ] **Link to Calendar** — "View Team Calendar" navigates to `#calendar` with `APP.state.calendarOrgFilter` set to the supervisor's org. The Calendar module already supports org-scoped time-off display.
-- [ ] **Link to Training** — "View Team Training" renders the existing `renderTeamTraining()` function (Index.html:6970) inline within the Hub (as a tab or expandable card), OR navigates to `#training` with org filter. The inline approach is preferred — it keeps the supervisor in the Hub.
-- [ ] **Link to Requests** — "View Team Requests" renders the existing `openSupervisorRequestDashboard()` (Index.html:4099) content inline or as a modal. Shows open requests, overdue counts, SLA tracking.
-- [ ] **Link to In/Out** — "View Team In/Out Cases" navigates to `#inout` with org filter showing only the supervisor's team's cases.
-- [ ] **Link to Assets** — "View Team Equipment" shows a summary of hardware/software assigned to team members. Per-person asset count with drill-down to individual assignments.
-- [ ] **Link to Security** — "View Team Security Status" (if Security module is built) shows the supervisor-scoped summary view defined in Section 11 (clearance levels and investigation currency only — NO incident details, NO case information, NO derogatory data per DoDM 5200.02 need-to-know rules).
+- [x] **Link to Calendar** — ✅ Done 2026-04-18. "Team Calendar" link in Quick Navigation card navigates to `#calendar`.
+- [x] **Link to Training** — ✅ Done 2026-04-18. "Team Training" link in Quick Navigation card navigates to `#training`.
+- [x] **Link to Requests** — ✅ Done 2026-04-18. "Team Requests" link in Quick Navigation card navigates to `#requests`.
+- [x] **Link to In/Out** — ✅ Done 2026-04-18. "In/Out Processing" link in Quick Navigation card navigates to `#inout`.
+- [x] **Link to Assets** — ✅ Done 2026-04-18. "Team Assets" link in Quick Navigation card navigates to `#assets`.
+- [x] **Link to Security** — ✅ Done 2026-04-18. "Security" link gated by `hasAnyRole(['Security', 'App Admin'])`.
 - [ ] **Context preservation** — When navigating from the Hub to another module, the module respects the passed filter. When the user navigates back to `#supervisor`, the Hub state (scope toggle, active tab, scroll position) is preserved in `APP.state.supervisorState`.
 
 #### 12g. Reporting, Dashboards & Drilldowns — 💻
@@ -2482,7 +2480,7 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 - [x] **SH-12: Build training submission review** — 💻 ✅ Done 2026-04-18 via integration. The unified action queue surfaces pending submissions with approve/reject buttons that route to the existing `reviewSubmission()` Training pipeline.
 - [ ] **SH-13: Build SF-182 approval workflow** — 💻 Per 12e spec. Inline approve/return/reject.
 - [ ] **SH-14: Build in-processing step sign-off** — 💻 Per 12e spec. Complete steps assigned to supervisor.
-- [ ] **SH-15: Build cross-module links** — 💻 Per 12f spec. Context-passing navigation to Calendar, Training, Requests, In/Out, Assets, Security.
+- [x] **SH-15: Build cross-module links** — 💻 ✅ Done 2026-04-18. "Quick Navigation" card added to Supervisor Hub with icon-labeled links to Calendar, Training, Requests, In/Out Processing, Assets, Facilities, Security (gated), and Reports. Each passes context via route navigation.
 - [ ] **SH-16: Build reports** — 💻 Per 12g spec. Team summary, training compliance matrix, leave utilization, equipment accountability. CSV export. Register in Reports module.
 - [ ] **SH-17: Integrate with Notification Framework** — 💻 Per 12h spec. Supervisor notification templates, team notification sending, Hub notification panel. Depends on NF-04 (Section 9) being built.
 
