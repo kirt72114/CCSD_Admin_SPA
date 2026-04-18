@@ -2900,6 +2900,22 @@ function getHolidayMap(year){
   return map;
 }
 
+function ensurePerformanceTrackingLoaded(force){
+  if (APP.state.data.performanceTracking && !force) { return Promise.resolve(APP.state.data.performanceTracking); }
+  return queryList(APP.lists.PerformanceTracking, ['Title','PersonID/Id','PersonID/Title','CycleYear','PlanEstablished','PlanDate','MidpointCompleted','MidpointDate','AnnualCompleted','AnnualDate','RatingSubmitted','ProbationaryStatus','ProbStartDate','ProbEndDate'], { top: 1000, orderby: 'CycleYear desc' }, 'ensurePerformanceTrackingLoaded').then(function(rows){ APP.state.data.performanceTracking = rows || []; return rows; }).catch(function(){ APP.state.data.performanceTracking = []; return []; });
+}
+function ensureTeleworkAgreementsLoaded(force){
+  if (APP.state.data.teleworkAgreements && !force) { return Promise.resolve(APP.state.data.teleworkAgreements); }
+  return queryList(APP.lists.TeleworkAgreements, ['Title','PersonID/Id','PersonID/Title','AgreementType','ApprovedDate','ExpirationDate','TeleworkDays','Status','ApprovedBy/Id','ApprovedBy/Title','Notes'], { top: 1000, orderby: 'Id desc' }, 'ensureTeleworkAgreementsLoaded').then(function(rows){ APP.state.data.teleworkAgreements = rows || []; return rows; }).catch(function(){ APP.state.data.teleworkAgreements = []; return []; });
+}
+function ensureAwardsLoaded(force){
+  if (APP.state.data.awards && !force) { return Promise.resolve(APP.state.data.awards); }
+  return queryList(APP.lists.Awards, ['Title','PersonID/Id','PersonID/Title','AwardType','NominationDate','SubmittedDate','DecisionDate','Status','Amount','Hours','ApprovedBy/Id','ApprovedBy/Title','Notes'], { top: 1000, orderby: 'Id desc' }, 'ensureAwardsLoaded').then(function(rows){ APP.state.data.awards = rows || []; return rows; }).catch(function(){ APP.state.data.awards = []; return []; });
+}
+function ensureTaskAssignmentsLoaded(force){
+  if (APP.state.data.taskAssignments && !force) { return Promise.resolve(APP.state.data.taskAssignments); }
+  return queryList(APP.lists.TaskAssignments, ['Title','Description','AssignedTo/Id','AssignedTo/Title','Originator/Id','Originator/Title','SuspenseDate','Priority','Status','Category','CompletionDate','IsRecurring','RecurrencePattern','Notes'], { top: 1000, orderby: 'SuspenseDate asc' }, 'ensureTaskAssignmentsLoaded').then(function(rows){ APP.state.data.taskAssignments = rows || []; return rows; }).catch(function(){ APP.state.data.taskAssignments = []; return []; });
+}
 function ensureHowToLoaded(force){
   if (APP.state.data.howto && !force) { return Promise.resolve(APP.state.data.howto); }
   return queryList(APP.lists.HowTo, ['Title','Module','Audience','Summary','Steps','Links','Tags','IsActive','DisplayOrder'], { top: 200, orderby: 'DisplayOrder asc' }, 'ensureHowToLoaded').then(function(rows){ APP.state.data.howto = rows || []; return rows || []; }).catch(function(){ APP.state.data.howto = []; return []; });
@@ -2912,6 +2928,8 @@ function renderNav(){
   }).map(function(item){
     return '<button class="nav-link' + (APP.state.route === item.key ? ' active' : '') + '" role="tab" aria-selected="' + (APP.state.route === item.key ? 'true' : 'false') + '" data-action="nav" data-route="' + escAttr(item.key) + '">' + escHtml(item.label) + '</button>';
   }).join('');
+  var unreadCount = getUnreadNotificationCount();
+  html += '<button class="nav-link' + (unreadCount ? ' notif-badge' : '') + '" data-action="toggle-notifications" title="Notifications" aria-label="Notifications" style="font-size:16px"' + (unreadCount ? ' data-count="' + (unreadCount > 99 ? '99+' : unreadCount) + '"' : '') + '>&#128276;</button>';
   html += '<button class="nav-link" data-action="keyboard-shortcuts" title="Keyboard Shortcuts" aria-label="Keyboard Shortcuts" style="font-size:16px">&#9000;</button>';
   document.getElementById('moduleTabs').innerHTML = html;
   var diagBtn = document.getElementById('btnDiagHeader');
@@ -7610,7 +7628,7 @@ function renderAssets(){
     html += metricCard('Portable Devices', portableCount, 'Laptops and other portable equipment', Math.min(100, portableCount / 3));
     html += metricCard('Software Titles Near ATO Attention', atoSoon, 'Titles with ATO expiry within 90 days', Math.min(100, atoSoon * 12));
     html += '</div>';
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button><button class="btn subtle" data-action="inventory-audit-mode">Audit</button><button class="btn subtle" data-action="approved-sw-catalog">SW Catalog</button><button class="btn subtle" data-action="warranty-tracking">Warranties</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button><button class="btn subtle" data-action="inventory-audit-mode">Audit</button><button class="btn subtle" data-action="approved-sw-catalog">SW Catalog</button><button class="btn subtle" data-action="warranty-tracking">Warranties</button><button class="btn subtle" data-action="version-compliance">Versions</button><button class="btn subtle" data-action="cost-center-report">Cost Centers</button><button class="btn subtle" data-action="location-tracking">Locations</button><button class="btn subtle" data-action="sw-request">Request SW</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
     if (ui.personId) {
       var focusPerson = findPersonById(ui.personId);
       if (focusPerson) {
@@ -7747,6 +7765,139 @@ function renderWarrantyTrackingView(){
   }
 
   openModal('Warranty Tracking', html, '<button class="btn" data-action="close-modal">Close</button>', 'Hardware warranty status overview');
+}
+
+/* Section 2: Version compliance check — flags software assignments running non-current versions */
+function renderVersionComplianceView(){
+  var sw = APP.state.data.softwareAssets || [];
+  var assignments = APP.state.data.softwareAssignments || [];
+  var issues = [];
+  var currentVersions = {};
+  sw.forEach(function(s){ if (s.CurrentVersion) { currentVersions[s.Id] = String(s.CurrentVersion).trim(); } });
+  assignments.forEach(function(a){
+    if (!isActiveSoftwareAssignment(a)) { return; }
+    var swId = a.SoftwareID && a.SoftwareID.Id ? a.SoftwareID.Id : null;
+    if (!swId || !currentVersions[swId]) { return; }
+    var installed = String(a.InstalledVersion || '').trim();
+    if (!installed) { return; }
+    if (installed !== currentVersions[swId]) {
+      issues.push({
+        person: (a.PersonID && a.PersonID.Title) || 'Unassigned',
+        software: (a.SoftwareID && a.SoftwareID.Title) || '',
+        installed: installed,
+        current: currentVersions[swId],
+        assignmentId: a.Id
+      });
+    }
+  });
+  var html = '<p>Compares <code>InstalledVersion</code> on assignments against <code>CurrentVersion</code> on software titles.</p>';
+  if (!issues.length) {
+    html += '<div class="empty">All assignments are running current versions (or no version data is set).</div>';
+  } else {
+    html += '<p><strong>' + issues.length + '</strong> non-compliant assignment(s) found.</p>';
+    html += '<table class="data-table"><thead><tr><th>Person</th><th>Software</th><th>Installed</th><th>Current</th></tr></thead><tbody>';
+    issues.forEach(function(i){
+      html += '<tr><td>' + escHtml(i.person) + '</td><td>' + escHtml(i.software) + '</td><td style="color:var(--danger)">' + escHtml(i.installed) + '</td><td>' + escHtml(i.current) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+  openModal('Version Compliance Check', html, '<button class="btn" data-action="close-modal">Close</button>', 'Software version compliance');
+}
+
+/* Section 2: Cost center reporting — aggregates assets by CostCenter */
+function renderCostCenterReport(){
+  var hw = APP.state.data.hardwareAssets || [];
+  var sw = APP.state.data.softwareAssets || [];
+  var centers = {};
+  hw.forEach(function(a){
+    var cc = a.CostCenter || 'Unassigned';
+    if (!centers[cc]) { centers[cc] = { hw: 0, sw: 0, totalCost: 0 }; }
+    centers[cc].hw++;
+    if (a.PurchasePrice) { centers[cc].totalCost += Number(a.PurchasePrice) || 0; }
+  });
+  sw.forEach(function(a){
+    var cc = a.CostCenter || 'Unassigned';
+    if (!centers[cc]) { centers[cc] = { hw: 0, sw: 0, totalCost: 0 }; }
+    centers[cc].sw++;
+    if (a.CostPerLicense) { centers[cc].totalCost += (Number(a.CostPerLicense) || 0) * (Number(a.TotalLicenses) || 1); }
+  });
+  var keys = Object.keys(centers).sort();
+  var html = '<p>Assets grouped by <code>CostCenter</code> column. Set this field on <code>CCSD_HardwareAssets</code> and <code>CCSD_SoftwareAssets</code>.</p>';
+  if (keys.length <= 1 && keys[0] === 'Unassigned') {
+    html += '<div class="empty">No cost center data set. Add values to the CostCenter column on your asset lists.</div>';
+  } else {
+    html += '<table class="data-table"><thead><tr><th>Cost Center</th><th>Hardware</th><th>Software</th><th>Est. Cost</th></tr></thead><tbody>';
+    keys.forEach(function(k){
+      var c = centers[k];
+      html += '<tr><td>' + escHtml(k) + '</td><td>' + c.hw + '</td><td>' + c.sw + '</td><td>' + formatCurrencySafe(c.totalCost) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+  openModal('Cost Center Report', html, '<button class="btn" data-action="close-modal">Close</button>', 'Asset cost center breakdown');
+}
+
+/* Section 2: Location tracking display — shows hardware assets by physical location */
+function renderLocationTrackingView(){
+  var hw = APP.state.data.hardwareAssets || [];
+  var locations = {};
+  hw.forEach(function(a){
+    var loc = a.PhysicalLocation || 'Not Set';
+    if (!locations[loc]) { locations[loc] = []; }
+    locations[loc].push(a);
+  });
+  var keys = Object.keys(locations).sort();
+  var html = '<p>Hardware assets grouped by <code>PhysicalLocation</code>.</p>';
+  if (keys.length <= 1 && keys[0] === 'Not Set') {
+    html += '<div class="empty">No location data set. Add values to the PhysicalLocation column on CCSD_HardwareAssets.</div>';
+  } else {
+    html += '<table class="data-table"><thead><tr><th>Location</th><th>Count</th><th>Assets</th></tr></thead><tbody>';
+    keys.forEach(function(k){
+      var items = locations[k];
+      var names = items.map(function(a){ return a.Title || a.AssetID || ''; }).join(', ');
+      html += '<tr><td><strong>' + escHtml(k) + '</strong></td><td>' + items.length + '</td><td>' + escHtml(trimText(names, 120)) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+  openModal('Location Tracking', html, '<button class="btn" data-action="close-modal">Close</button>', 'Asset physical location summary');
+}
+
+/* Section 2: Software request workflow — employee requests software, supervisor approves */
+function openSoftwareRequestModal(){
+  var sw = APP.state.data.softwareAssets || [];
+  var requestable = sw.filter(function(s){ return normalizeBoolean(s.IsRequestable); });
+  if (!requestable.length) {
+    toast('No software titles marked as requestable. Set IsRequestable = Yes on titles in CCSD_SoftwareAssets.', 'warn');
+    return;
+  }
+  var opts = requestable.map(function(s){ return '<option value="' + escAttr(s.Id) + '">' + escHtml(s.Title || s.SoftwareID || '') + ' (' + escHtml(s.Vendor || '') + ')</option>'; }).join('');
+  var body = '<div class="form-grid">'
+    + '<label>Software Title</label><select id="swReqTitleId">' + opts + '</select>'
+    + '<label>Justification</label><textarea id="swReqJustification" rows="3" placeholder="Why do you need this software?"></textarea>'
+    + '<label>System / Computer Name</label><input id="swReqSystem" placeholder="Optional — which machine is this for?">'
+    + '</div>';
+  openModal('Request Software', body, '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="submit-sw-request">Submit Request</button>');
+}
+
+function submitSoftwareRequest(){
+  var swId = Number(document.getElementById('swReqTitleId').value);
+  var justification = (document.getElementById('swReqJustification').value || '').trim();
+  var system = (document.getElementById('swReqSystem').value || '').trim();
+  if (!swId) { toast('Select a software title.', 'warn'); return; }
+  if (!justification) { toast('Justification is required.', 'warn'); return; }
+  var personnel = APP.state.currentPersonnel;
+  if (!personnel) { toast('No personnel record found.', 'danger'); return; }
+  var payload = {
+    Title: 'Software Request',
+    RequestType: 'Software',
+    Description: justification,
+    RequestedBy: personnel.Id,
+    Status: 'Open'
+  };
+  if (system) { payload.Notes = 'System: ' + system; }
+  createListItem(APP.lists.Requests, payload, { entityType: 'Request', reason: 'Software request for title #' + swId }).then(function(){
+    closeModal();
+    toast('Software request submitted.', 'ok');
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to submit request.', 'danger'); });
 }
 
 function openInventoryAuditMode(){
@@ -9048,55 +9199,291 @@ function applyIncidentStatusTransition(){
   });
 }
 
+var INCIDENT_STAGE_DURATIONS = {
+  'Reported': 5, 'Preliminary Inquiry': 10, 'Investigation': 30,
+  'Adjudication': 15, 'SOR Issued': 30, 'SOR Response Review': 10,
+  'Commander Review': 10, 'Appeal': 30
+};
+
+function getIncidentStagePct(row){
+  var status = String(row.Status || '');
+  var expected = INCIDENT_STAGE_DURATIONS[status];
+  if (!expected) { return null; }
+  var entered = parseDate(row.StatusChangedDate || row.Modified);
+  if (!entered) { return null; }
+  var days = Math.max(0, Math.round((Date.now() - entered.getTime()) / 86400000));
+  return { days: days, expected: expected, pct: Math.round((days / expected) * 100) };
+}
+
+function getSORCountdown(row){
+  if (String(row.Status || '').indexOf('SOR') < 0) { return null; }
+  var deadline = parseDate(row.SORResponseDeadline);
+  if (!deadline) { return null; }
+  var daysLeft = Math.round((deadline.getTime() - Date.now()) / 86400000);
+  return { deadline: deadline, daysLeft: daysLeft };
+}
+
 function renderSecurityAdmin(){
   var html = '';
   var rows = APP.state.data.securityIncidents || [];
-  var openCount = rows.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('admin') < 0; }).length;
-  var sorIssued = rows.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('sor') >= 0; }).length;
+  var now = new Date();
+  var openRows = rows.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('admin') < 0; });
+  var openCount = openRows.length;
+  var sorRows = rows.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('sor') >= 0; });
+  var sorIssued = sorRows.length;
   var resolved = rows.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('closed') >= 0; }).length;
+  var thisMonth = rows.filter(function(r){ var d = parseDate(r.ReportedDate); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
+  var closedThisMonth = rows.filter(function(r){ var d = parseDate(r.ClosedDate || r.ResolutionDate); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
+  var overdueActions = 0;
+  var pendingSOR = sorRows.filter(function(r){ var c = getSORCountdown(r); return c && c.daysLeft >= 0; }).length;
 
   html += '<div class="section-header"><h2>Security Administration</h2>';
   html += '<div class="quick-actions">';
   html += '<button class="btn primary" data-action="open-create-incident">Create Incident</button> ';
   html += '<button class="btn" data-action="open-notification-composer" data-source="Security">Send Notification</button> ';
-  html += '<button class="btn" data-action="export-incidents-csv">Export Incidents (CSV)</button>';
+  html += '<button class="btn" data-action="incident-batch-reminders">Batch Reminders</button> ';
+  html += '<button class="btn" data-action="incident-print-view">Print View</button> ';
+  html += '<button class="btn" data-action="export-incidents-csv">Export CSV</button>';
   html += '</div></div>';
 
+  /* IM-23: Dashboard widgets */
   html += '<div class="kpi-grid" style="margin-bottom:14px">';
   html += '<div class="kpi"><div class="k">Total Cases</div><div class="v">' + rows.length + '</div></div>';
   html += '<div class="kpi"><div class="k">Open</div><div class="v">' + openCount + '</div></div>';
-  html += '<div class="kpi"><div class="k">SOR Issued</div><div class="v">' + sorIssued + '</div></div>';
+  html += '<div class="kpi"><div class="k">SOR Pending</div><div class="v">' + pendingSOR + '</div></div>';
   html += '<div class="kpi"><div class="k">Closed</div><div class="v">' + resolved + '</div></div>';
+  html += '<div class="kpi"><div class="k">Opened This Month</div><div class="v">' + thisMonth + '</div></div>';
+  html += '<div class="kpi"><div class="k">Closed This Month</div><div class="v">' + closedThisMonth + '</div></div>';
   html += '</div>';
 
+  /* IM-23: Open cases by status bar */
+  var statusCounts = {};
+  openRows.forEach(function(r){ var s = r.Status || 'Open'; statusCounts[s] = (statusCounts[s] || 0) + 1; });
+  if (Object.keys(statusCounts).length) {
+    html += '<div class="card" style="margin-bottom:14px"><div class="card-header">Open Cases by Status</div><div class="card-body">';
+    var maxBarCount = Math.max.apply(null, Object.keys(statusCounts).map(function(k){ return statusCounts[k]; })) || 1;
+    Object.keys(statusCounts).sort().forEach(function(s){
+      var cnt = statusCounts[s];
+      var pct = Math.round((cnt / maxBarCount) * 100);
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
+      html += '<div style="width:140px;font-size:12px">' + statusBadge(s) + '</div>';
+      html += '<div style="flex:1;background:var(--bg-alt,#eee);border-radius:4px;height:18px">';
+      html += '<div style="width:' + pct + '%;background:var(--accent);height:100%;border-radius:4px;min-width:2px"></div>';
+      html += '</div><div style="width:30px;text-align:right;font-size:12px;font-weight:700">' + cnt + '</div></div>';
+    });
+    html += '</div></div>';
+  }
+
+  /* IM-23: Average days by category */
+  var closedRows = rows.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('closed') >= 0; });
+  if (closedRows.length) {
+    var catDays = {};
+    closedRows.forEach(function(r){
+      var cat = r.Category || 'Other';
+      var rd = parseDate(r.ReportedDate);
+      var cd = parseDate(r.ClosedDate || r.ResolutionDate);
+      if (rd && cd) {
+        if (!catDays[cat]) { catDays[cat] = []; }
+        catDays[cat].push(Math.max(0, Math.round((cd.getTime() - rd.getTime()) / 86400000)));
+      }
+    });
+    if (Object.keys(catDays).length) {
+      html += '<div class="card" style="margin-bottom:14px"><div class="card-header">Avg Days to Close by Category</div><div class="card-body">';
+      html += '<div class="table-wrap"><table><thead><tr><th>Category</th><th>Cases</th><th>Avg Days</th></tr></thead><tbody>';
+      Object.keys(catDays).sort().forEach(function(cat){
+        var arr = catDays[cat];
+        var avg = Math.round(arr.reduce(function(a, b){ return a + b; }, 0) / arr.length);
+        html += '<tr><td>' + escHtml(cat) + '</td><td>' + arr.length + '</td><td>' + avg + '</td></tr>';
+      });
+      html += '</tbody></table></div></div></div>';
+    }
+  }
+
+  /* IM-21: SOR deadline alerts */
+  var sorAlerts = [];
+  sorRows.forEach(function(r){
+    var c = getSORCountdown(r);
+    if (c) { sorAlerts.push({ row: r, countdown: c }); }
+  });
+  if (sorAlerts.length) {
+    sorAlerts.sort(function(a, b){ return a.countdown.daysLeft - b.countdown.daysLeft; });
+    html += '<div class="card" style="margin-bottom:14px"><div class="card-header">SOR Deadline Tracking</div><div class="card-body">';
+    html += '<div class="table-wrap"><table><thead><tr><th>Case #</th><th>Subject</th><th>Deadline</th><th>Days Left</th><th>Status</th></tr></thead><tbody>';
+    sorAlerts.forEach(function(item){
+      var r = item.row;
+      var c = item.countdown;
+      var color = c.daysLeft < 0 ? 'var(--danger,#c00)' : c.daysLeft <= 7 ? 'var(--warning,#e67e22)' : '';
+      html += '<tr style="cursor:pointer;' + (color ? 'color:' + color + ';font-weight:700' : '') + '" data-action="open-incident-detail" data-id="' + escAttr(r.Id) + '">'
+        + '<td>' + escHtml(r.CaseNumber || '') + '</td>'
+        + '<td>' + escHtml((r.PersonID && r.PersonID.Title) || '') + '</td>'
+        + '<td>' + escHtml(formatDate(c.deadline)) + '</td>'
+        + '<td>' + (c.daysLeft < 0 ? '<strong>OVERDUE (' + Math.abs(c.daysLeft) + 'd)</strong>' : c.daysLeft + ' day(s)') + '</td>'
+        + '<td>' + statusBadge(r.Status) + '</td></tr>';
+    });
+    html += '</tbody></table></div></div></div>';
+  }
+
+  /* IM-10: Filterable incident table */
   html += '<div class="card"><div class="card-header">Incident Cases</div><div class="card-body">';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">';
+  html += '<select id="incFilterStatus" onchange="filterIncidentTable()" style="padding:4px 8px"><option value="">All Statuses</option>';
+  var allStatuses = {};
+  rows.forEach(function(r){ allStatuses[r.Status || 'Open'] = true; });
+  Object.keys(allStatuses).sort().forEach(function(s){ html += '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>'; });
+  html += '</select>';
+  html += '<select id="incFilterCategory" onchange="filterIncidentTable()" style="padding:4px 8px"><option value="">All Categories</option>';
+  INCIDENT_CATEGORIES.forEach(function(c){ html += '<option value="' + escAttr(c.name) + '">' + escHtml(c.name) + '</option>'; });
+  html += '</select>';
+  html += '<select id="incFilterSeverity" onchange="filterIncidentTable()" style="padding:4px 8px"><option value="">All Severities</option>';
+  INCIDENT_SEVERITIES.forEach(function(s){ html += '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>'; });
+  html += '</select>';
+  html += '<input id="incFilterSearch" placeholder="Search case # or subject..." oninput="filterIncidentTable()" style="padding:4px 8px;min-width:180px">';
+  html += '</div>';
+
   if (!rows.length) {
     html += '<div class="empty">No incidents recorded yet. Use <strong>Create Incident</strong> to log a new case.</div>';
   } else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Case #</th><th>Subject</th><th>Category</th><th>Status</th><th>Severity</th><th>Reported</th><th>Days Open</th></tr></thead><tbody>';
-    rows.slice(0, 200).forEach(function(r){
+    html += '<div class="table-wrap"><table id="incidentTable"><thead><tr>'
+      + '<th data-action="sort-incidents" data-col="CaseNumber" style="cursor:pointer">Case # ↕</th>'
+      + '<th data-action="sort-incidents" data-col="Subject" style="cursor:pointer">Subject ↕</th>'
+      + '<th data-action="sort-incidents" data-col="Category" style="cursor:pointer">Category ↕</th>'
+      + '<th data-action="sort-incidents" data-col="Status" style="cursor:pointer">Status ↕</th>'
+      + '<th data-action="sort-incidents" data-col="Severity" style="cursor:pointer">Severity ↕</th>'
+      + '<th>Assigned To</th>'
+      + '<th data-action="sort-incidents" data-col="ReportedDate" style="cursor:pointer">Reported ↕</th>'
+      + '<th data-action="sort-incidents" data-col="DaysOpen" style="cursor:pointer">Days Open ↕</th>'
+      + '<th>Stage</th>'
+      + '</tr></thead><tbody>';
+    rows.slice(0, 300).forEach(function(r){
       var subjectName = (r.PersonID && r.PersonID.Title) || '—';
+      var assignedTo = (r.AssignedTo && r.AssignedTo.Title) || '';
       var reported = parseDate(r.ReportedDate);
       var closed = parseDate(r.ClosedDate || r.ResolutionDate);
       var daysOpen = '';
-      if (reported) {
-        var endRef = closed || new Date();
-        daysOpen = Math.max(0, Math.round((endRef.getTime() - reported.getTime()) / 86400000));
+      if (reported) { daysOpen = Math.max(0, Math.round(((closed || new Date()).getTime() - reported.getTime()) / 86400000)); }
+      var stage = getIncidentStagePct(r);
+      var stageHtml = '';
+      if (stage) {
+        var barColor = stage.pct >= 100 ? 'var(--danger,#c00)' : stage.pct >= 75 ? 'var(--warning,#e67e22)' : 'var(--accent)';
+        stageHtml = '<div title="' + stage.days + '/' + stage.expected + ' days" style="width:60px;background:var(--bg-alt,#eee);border-radius:3px;height:10px;display:inline-block;vertical-align:middle">'
+          + '<div style="width:' + Math.min(stage.pct, 100) + '%;background:' + barColor + ';height:100%;border-radius:3px"></div></div>'
+          + '<span style="font-size:11px;margin-left:4px' + (stage.pct >= 100 ? ';color:var(--danger,#c00);font-weight:700' : '') + '">' + stage.days + 'd</span>';
       }
-      html += '<tr style="cursor:pointer" data-action="open-incident-detail" data-id="' + escAttr(r.Id) + '">'
+      html += '<tr style="cursor:pointer" data-action="open-incident-detail" data-id="' + escAttr(r.Id) + '"'
+        + ' data-status="' + escAttr(r.Status || '') + '" data-category="' + escAttr(r.Category || '') + '"'
+        + ' data-severity="' + escAttr(r.Severity || '') + '" data-search="' + escAttr((r.CaseNumber || '') + ' ' + subjectName).toLowerCase() + '">'
         + '<td><strong>' + escHtml(r.CaseNumber || ('#' + r.Id)) + '</strong></td>'
         + '<td>' + escHtml(subjectName) + '</td>'
         + '<td>' + escHtml(r.Category || '') + '</td>'
         + '<td>' + statusBadge(r.Status || 'Open') + '</td>'
         + '<td>' + escHtml(r.Severity || '') + '</td>'
+        + '<td>' + escHtml(assignedTo) + '</td>'
         + '<td>' + escHtml(formatDate(r.ReportedDate)) + '</td>'
-        + '<td>' + escHtml(String(daysOpen)) + '</td></tr>';
+        + '<td>' + escHtml(String(daysOpen)) + '</td>'
+        + '<td>' + stageHtml + '</td></tr>';
     });
     html += '</tbody></table></div>';
   }
   html += '</div></div>';
 
   setView(html);
+}
+
+function filterIncidentTable(){
+  var status = (document.getElementById('incFilterStatus') || {}).value || '';
+  var category = (document.getElementById('incFilterCategory') || {}).value || '';
+  var severity = (document.getElementById('incFilterSeverity') || {}).value || '';
+  var search = ((document.getElementById('incFilterSearch') || {}).value || '').toLowerCase().trim();
+  var table = document.getElementById('incidentTable');
+  if (!table) { return; }
+  var trs = table.querySelectorAll('tbody tr');
+  for (var i = 0; i < trs.length; i++){
+    var tr = trs[i];
+    var show = true;
+    if (status && tr.getAttribute('data-status') !== status) { show = false; }
+    if (category && tr.getAttribute('data-category') !== category) { show = false; }
+    if (severity && tr.getAttribute('data-severity') !== severity) { show = false; }
+    if (search && (tr.getAttribute('data-search') || '').indexOf(search) < 0) { show = false; }
+    tr.style.display = show ? '' : 'none';
+  }
+}
+
+function sortIncidentTable(col){
+  APP.state.incidentSortCol = APP.state.incidentSortCol === col ? col + '_desc' : col;
+  renderSecurity();
+}
+
+/* IM-20: Batch daily reminders */
+function openBatchRemindersModal(){
+  if (!canManageSecurity()) { return; }
+  var rows = APP.state.data.securityIncidents || [];
+  var open = rows.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('admin') < 0; });
+  var body = '<p>Select cases to send daily check-in reminders:</p>';
+  body += '<div style="max-height:300px;overflow:auto">';
+  open.forEach(function(r){
+    body += '<label style="display:block;padding:4px 0"><input type="checkbox" class="batch-reminder-case" value="' + escAttr(r.Id) + '"> '
+      + escHtml(r.CaseNumber || ('#' + r.Id)) + ' — ' + escHtml((r.PersonID && r.PersonID.Title) || 'Unknown') + ' (' + escHtml(r.Status || '') + ')</label>';
+  });
+  body += '</div>';
+  if (!open.length) { body = '<div class="empty">No open cases to send reminders for.</div>'; }
+  var footer = '<button class="btn" data-action="close-modal">Cancel</button>';
+  if (open.length) { footer += ' <button class="btn primary" data-action="send-batch-reminders">Send Reminders</button>'; }
+  openModal('Batch Daily Reminders', body, footer);
+}
+
+function sendBatchReminders(){
+  var checks = document.querySelectorAll('.batch-reminder-case:checked');
+  if (!checks.length) { toast('Select at least one case.', 'warn'); return; }
+  var rows = APP.state.data.securityIncidents || [];
+  var sent = 0;
+  var promises = [];
+  for (var i = 0; i < checks.length; i++){
+    var caseId = Number(checks[i].value);
+    var row = rows.filter(function(r){ return r.Id === caseId; })[0];
+    if (!row || !row.PersonID) { continue; }
+    promises.push(sendNotification({
+      title: 'Daily Check-In Reminder',
+      body: 'Regarding case ' + (row.CaseNumber || '#' + row.Id) + ': Please contact the security office. This is a routine follow-up.',
+      notificationType: 'Incident Update',
+      sensitivityLevel: 'Sensitive',
+      sourceModule: 'Security',
+      actionURL: '#security',
+      audienceType: 'Individual',
+      recipientPersonId: row.PersonID.Id,
+      relatedCaseNumber: row.CaseNumber || ''
+    }));
+    sent++;
+  }
+  Promise.all(promises).then(function(){
+    closeModal();
+    toast('Sent ' + sent + ' reminder(s).', 'ok');
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Error sending reminders.', 'danger'); });
+}
+
+/* IM-28: Incident print view */
+function openIncidentPrintView(){
+  if (!canManageSecurity()) { return; }
+  var rows = APP.state.data.securityIncidents || [];
+  var open = rows.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('admin') < 0; });
+  var printHtml = '<!DOCTYPE html><html><head><title>Security Incident Summary</title>';
+  printHtml += '<style>body{font-family:Arial,sans-serif;font-size:12px;margin:20px}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f0f0f0;font-weight:700}.header{text-align:center;margin-bottom:20px}.cui-banner{background:#c00;color:#fff;text-align:center;padding:4px;font-size:11px;font-weight:700}@media print{.no-print{display:none}}</style></head><body>';
+  printHtml += '<div class="cui-banner">CUI — CONTROLLED UNCLASSIFIED INFORMATION</div>';
+  printHtml += '<div class="header"><h2>CCSD Security Incident Summary</h2><p>Generated: ' + new Date().toLocaleDateString() + '</p></div>';
+  printHtml += '<h3>Open Cases (' + open.length + ')</h3>';
+  printHtml += '<table><thead><tr><th>Case #</th><th>Subject</th><th>Category</th><th>Status</th><th>Severity</th><th>Reported</th><th>Days Open</th></tr></thead><tbody>';
+  open.forEach(function(r){
+    var reported = parseDate(r.ReportedDate);
+    var daysOpen = reported ? Math.max(0, Math.round((Date.now() - reported.getTime()) / 86400000)) : '';
+    printHtml += '<tr><td>' + escHtml(r.CaseNumber || '') + '</td><td>' + escHtml((r.PersonID && r.PersonID.Title) || '') + '</td>'
+      + '<td>' + escHtml(r.Category || '') + '</td><td>' + escHtml(r.Status || '') + '</td>'
+      + '<td>' + escHtml(r.Severity || '') + '</td><td>' + escHtml(formatDate(r.ReportedDate)) + '</td><td>' + daysOpen + '</td></tr>';
+  });
+  printHtml += '</tbody></table>';
+  printHtml += '<div class="cui-banner">CUI — CONTROLLED UNCLASSIFIED INFORMATION</div>';
+  printHtml += '<div class="no-print" style="margin-top:10px;text-align:center"><button onclick="window.print()">Print</button> <button onclick="window.close()">Close</button></div>';
+  printHtml += '</body></html>';
+  var w = window.open('', '_blank', 'width=900,height=700');
+  if (w) { w.document.write(printHtml); w.document.close(); }
 }
 
 function renderSecurityMember(){
@@ -9253,14 +9640,14 @@ function renderSupervisorHubContent(){
   });
 
   /* SH-13: SF-182 pending supervisor approval */
-  var pendingSF182 = (APP.state.data.sf182Requests || []).filter(function(r){
-    var pid = r.PersonID && r.PersonID.Id ? r.PersonID.Id : null;
+  var pendingSF182 = (APP.state.data.sf182 || []).filter(function(r){
+    var pid = r.Requestor && r.Requestor.Id ? r.Requestor.Id : (r.PersonID && r.PersonID.Id ? r.PersonID.Id : null);
     var status = String(r.Status || '').toLowerCase();
     return pid && teamIds[pid] && (status === 'submitted' || status === 'pending');
   });
 
   /* SH-14: In-processing steps assigned to supervisor */
-  var myInOutSteps = (APP.state.data.inOutSteps || []).filter(function(step){
+  var myInOutSteps = (APP.state.data.inoutSteps || []).filter(function(step){
     var assignedTo = step.AssignedTo && step.AssignedTo.Id ? String(step.AssignedTo.Id) : '';
     var owningOrg = step.OwningOrgID && step.OwningOrgID.Id ? String(step.OwningOrgID.Id) : '';
     var myOrgId = getCurrentOrgId() ? String(getCurrentOrgId()) : '';
@@ -9304,6 +9691,22 @@ function renderSupervisorHubContent(){
   }
   html += '</div></div>';
 
+  /* SH-09: Team calendar / availability grid */
+  html += renderTeamAvailabilityGrid(teamMembers, teamIds, timeOffData);
+
+  /* SH-16: Supervisor reports */
+  html += '<div class="card" style="margin-top:16px"><div class="card-header">Reports</div>';
+  html += '<div class="card-body"><div style="display:flex;flex-wrap:wrap;gap:8px">';
+  html += '<button class="btn" data-action="sup-report-team-summary">Team Summary</button>';
+  html += '<button class="btn" data-action="sup-report-training-matrix">Training Compliance Matrix</button>';
+  html += '<button class="btn" data-action="sup-report-leave-util">Leave Utilization</button>';
+  html += '<button class="btn" data-action="sup-report-equipment">Equipment Accountability</button>';
+  html += '<button class="btn" data-action="sup-dpmap-tracker">DPMAP Tracker</button>';
+  html += '<button class="btn" data-action="sup-manning-visibility">Manning/Positions</button>';
+  html += '<button class="btn" data-action="sup-telework-tracker">Telework Agreements</button>';
+  html += '<button class="btn" data-action="sup-awards-tracker">Awards</button>';
+  html += '</div></div></div>';
+
   /* SH-15: Cross-module quick navigation */
   html += '<div class="card" style="margin-top:16px"><div class="card-header">Quick Navigation</div>';
   html += '<div class="card-body"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">';
@@ -9329,6 +9732,394 @@ function renderSupervisorHubContent(){
   html += '</div></div></div>';
 
   setView(html);
+}
+
+/* SH-09: Team calendar / availability grid — week view with color-coded cells */
+function renderTeamAvailabilityGrid(teamMembers, teamIds, timeOffData){
+  if (!teamMembers || !teamMembers.length) { return ''; }
+  var weekStart = new Date();
+  weekStart.setHours(0,0,0,0);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  var days = [];
+  for (var d = 0; d < 14; d++){
+    var dt = new Date(weekStart);
+    dt.setDate(weekStart.getDate() + d);
+    days.push(dt);
+  }
+  var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var typeColors = { 'annual': '#2980b9', 'sick': '#e67e22', 'tdy': '#8e44ad', 'telework': '#27ae60', 'training': '#d35400', 'comp': '#16a085', 'holiday': '#7f8c8d' };
+  var memberLeave = {};
+  timeOffData.forEach(function(t){
+    var pid = t.PersonID && t.PersonID.Id ? t.PersonID.Id : null;
+    if (!pid || !teamIds[pid]) return;
+    if (String(t.Status || '').toLowerCase() !== 'approved') return;
+    var start = parseDate(t.StartDate);
+    var end = parseDate(t.EndDate);
+    if (!start || !end) return;
+    if (!memberLeave[pid]) { memberLeave[pid] = []; }
+    memberLeave[pid].push({ start: start, end: end, type: String(t.TimeOffType || 'leave').toLowerCase(), title: t.Title || t.TimeOffType || 'Leave' });
+  });
+
+  var html = '<div class="card" style="margin-top:16px"><div class="card-header">Team Availability — 2 Week View</div>';
+  html += '<div class="card-body" style="overflow-x:auto">';
+  html += '<table class="data-table" style="font-size:11px"><thead><tr><th style="min-width:120px">Name</th>';
+  days.forEach(function(dt){
+    var isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+    html += '<th style="text-align:center;min-width:40px;' + (isWeekend ? 'background:var(--bg-alt,#f5f5f5)' : '') + '">'
+      + dayNames[dt.getDay()] + '<br>' + (dt.getMonth() + 1) + '/' + dt.getDate() + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  var sorted = teamMembers.slice().sort(function(a,b){ return (a.LastName || '').localeCompare(b.LastName || ''); });
+  var manning = { present: 0, total: sorted.length };
+  var todayStr = new Date().toISOString().split('T')[0];
+
+  sorted.forEach(function(p){
+    var leaves = memberLeave[p.Id] || [];
+    html += '<tr><td style="white-space:nowrap">' + escHtml(formatPerson(p)) + '</td>';
+    days.forEach(function(dt){
+      var dayMs = dt.getTime();
+      var isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+      var match = null;
+      leaves.some(function(lv){
+        var s = new Date(lv.start); s.setHours(0,0,0,0);
+        var e = new Date(lv.end); e.setHours(0,0,0,0);
+        if (dayMs >= s.getTime() && dayMs <= e.getTime()) { match = lv; return true; }
+        return false;
+      });
+      var bg = isWeekend ? 'var(--bg-alt,#f5f5f5)' : '';
+      var label = '';
+      if (match) {
+        bg = typeColors[match.type] || '#999';
+        label = match.type.charAt(0).toUpperCase();
+        if (dt.toISOString().split('T')[0] === todayStr) { manning.present--; }
+      }
+      html += '<td style="text-align:center;background:' + bg + ';color:' + (match ? '#fff' : '') + ';font-weight:' + (match ? '700' : 'normal') + '" title="' + escAttr(match ? match.title : 'Present') + '">' + label + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  html += '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:10px;font-size:11px">';
+  Object.keys(typeColors).forEach(function(k){
+    html += '<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:12px;height:12px;border-radius:2px;background:' + typeColors[k] + ';display:inline-block"></span>' + k.charAt(0).toUpperCase() + k.slice(1) + '</span>';
+  });
+  html += '</div></div></div>';
+  return html;
+}
+
+/* SH-16: Supervisor reports */
+function openSupTeamSummaryReport(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var body = '<h3>Team Summary Report</h3>';
+  body += '<p>Generated: ' + new Date().toLocaleDateString() + '</p>';
+  body += '<div class="kv">';
+  body += '<div class="k">Total Members</div><div class="v">' + team.length + '</div>';
+  var grades = {};
+  team.forEach(function(p){ var g = p.Rank || p.Grade || 'Unspecified'; grades[g] = (grades[g] || 0) + 1; });
+  body += '<div class="k">By Grade</div><div class="v">' + Object.keys(grades).sort().map(function(g){ return g + ': ' + grades[g]; }).join(', ') + '</div>';
+  var orgs = {};
+  team.forEach(function(p){ var o = (p.OrgID && p.OrgID.Title) || 'No Org'; orgs[o] = (orgs[o] || 0) + 1; });
+  body += '<div class="k">By Org</div><div class="v">' + Object.keys(orgs).sort().map(function(o){ return o + ': ' + orgs[o]; }).join(', ') + '</div>';
+  body += '</div>';
+  body += '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Grade</th><th>Position</th><th>Org</th><th>Status</th></tr></thead><tbody>';
+  team.sort(function(a,b){ return (a.LastName || '').localeCompare(b.LastName || ''); }).forEach(function(p){
+    body += '<tr><td>' + escHtml(formatPerson(p)) + '</td><td>' + escHtml(p.Rank || p.Grade || '') + '</td><td>' + escHtml(p.PositionTitle || '') + '</td><td>' + escHtml((p.OrgID && p.OrgID.Title) || '') + '</td><td>' + escHtml(p.Status || 'Active') + '</td></tr>';
+  });
+  body += '</tbody></table></div>';
+  openModal('Team Summary Report', body, '<button class="btn" data-action="close-modal">Close</button>', 'Team Summary Report');
+}
+
+function openSupTrainingMatrix(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var catalog = APP.state.data.trainingCatalog || [];
+  var mandatory = catalog.filter(function(t){ return normalizeBoolean(t.IsMandatory); });
+  var records = APP.state.data.trainingRecords || [];
+  var body = '<h3>Training Compliance Matrix</h3>';
+  body += '<p>Generated: ' + new Date().toLocaleDateString() + ' | Team: ' + team.length + ' members | Mandatory Courses: ' + mandatory.length + '</p>';
+  if (!mandatory.length) { body += '<div class="empty">No mandatory training defined.</div>'; }
+  else {
+    body += '<div style="overflow-x:auto"><table style="font-size:11px;border-collapse:collapse"><thead><tr><th style="position:sticky;left:0;background:var(--bg);z-index:1">Name</th>';
+    mandatory.forEach(function(t){ body += '<th style="writing-mode:vertical-lr;text-align:left;padding:4px;max-width:30px" title="' + escAttr(t.TrainingName || t.Title || '') + '">' + escHtml(trimText(t.TrainingName || t.Title || '', 15)) + '</th>'; });
+    body += '<th>%</th></tr></thead><tbody>';
+    var sorted = team.slice().sort(function(a,b){ return (a.LastName || '').localeCompare(b.LastName || ''); });
+    sorted.forEach(function(p){
+      var myRecs = records.filter(function(r){ return r.PersonID && r.PersonID.Id && String(r.PersonID.Id) === String(p.Id); });
+      body += '<tr><td style="position:sticky;left:0;background:var(--bg);z-index:1;white-space:nowrap">' + escHtml(formatPerson(p)) + '</td>';
+      var compliant = 0;
+      mandatory.forEach(function(t){
+        var rec = myRecs.filter(function(r){ return r.TrainingID && String(r.TrainingID.Id) === String(t.Id) && String(r.Status || '').toLowerCase() === 'approved'; });
+        var latest = rec.length ? rec.sort(function(a,b){ return (parseDate(b.CompletionDate) || new Date(0)).getTime() - (parseDate(a.CompletionDate) || new Date(0)).getTime(); })[0] : null;
+        var current = false;
+        if (latest) {
+          if (t.FrequencyMonths) {
+            var exp = parseDate(latest.ExpirationDate || latest.CompletionDate);
+            current = exp && exp.getTime() > Date.now();
+          } else { current = true; }
+        }
+        if (current) { compliant++; }
+        var bg = current ? '#2ecc71' : '#e74c3c';
+        body += '<td style="text-align:center;background:' + bg + ';color:#fff;font-size:10px;padding:2px" title="' + escAttr((t.TrainingName || t.Title || '') + ': ' + (current ? 'Current' : 'Not Current')) + '">' + (current ? '✓' : '✗') + '</td>';
+      });
+      var pct = mandatory.length ? Math.round((compliant / mandatory.length) * 100) : 0;
+      body += '<td style="text-align:center;font-weight:700;' + (pct < 80 ? 'color:var(--danger)' : '') + '">' + pct + '%</td></tr>';
+    });
+    body += '</tbody></table></div>';
+  }
+  openModal('Training Compliance Matrix', body, '<button class="btn" data-action="close-modal">Close</button>', 'Training Compliance Matrix');
+}
+
+function openSupLeaveUtilization(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var timeOff = APP.state.data.timeOff || [];
+  var year = new Date().getFullYear();
+  var body = '<h3>Leave Utilization — ' + year + '</h3>';
+  var memberDays = {};
+  team.forEach(function(p){ memberDays[p.Id] = { name: formatPerson(p), annual: 0, sick: 0, comp: 0, other: 0 }; });
+  timeOff.forEach(function(t){
+    var pid = t.PersonID && t.PersonID.Id ? t.PersonID.Id : null;
+    if (!pid || !teamIds[pid] || !memberDays[pid]) return;
+    if (String(t.Status || '').toLowerCase() !== 'approved') return;
+    var start = parseDate(t.StartDate);
+    var end = parseDate(t.EndDate);
+    if (!start || !end || start.getFullYear() !== year) return;
+    var days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+    var type = String(t.TimeOffType || '').toLowerCase();
+    if (type === 'annual') { memberDays[pid].annual += days; }
+    else if (type === 'sick') { memberDays[pid].sick += days; }
+    else if (type === 'comp' || type === 'compensatory') { memberDays[pid].comp += days; }
+    else { memberDays[pid].other += days; }
+  });
+  body += '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Annual</th><th>Sick</th><th>Comp</th><th>Other</th><th>Total</th></tr></thead><tbody>';
+  var sorted = Object.keys(memberDays).map(function(k){ return memberDays[k]; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  sorted.forEach(function(m){
+    var total = m.annual + m.sick + m.comp + m.other;
+    body += '<tr><td>' + escHtml(m.name) + '</td><td>' + m.annual + '</td><td>' + m.sick + '</td><td>' + m.comp + '</td><td>' + m.other + '</td><td><strong>' + total + '</strong></td></tr>';
+  });
+  body += '</tbody></table></div>';
+  openModal('Leave Utilization', body, '<button class="btn" data-action="close-modal">Close</button>', 'Leave Utilization Report');
+}
+
+function openSupEquipmentReport(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var hwAssignments = APP.state.data.hardwareAssignments || [];
+  var body = '<h3>Equipment Accountability</h3>';
+  body += '<p>Generated: ' + new Date().toLocaleDateString() + '</p>';
+  var memberHw = {};
+  team.forEach(function(p){ memberHw[p.Id] = { name: formatPerson(p), items: [] }; });
+  hwAssignments.forEach(function(a){
+    var pid = a.PersonID && a.PersonID.Id ? a.PersonID.Id : null;
+    if (!pid || !teamIds[pid] || !memberHw[pid]) return;
+    if (String(a.Status || '').toLowerCase() === 'returned') return;
+    memberHw[pid].items.push(a);
+  });
+  body += '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Items</th><th>Equipment</th></tr></thead><tbody>';
+  var sorted = Object.keys(memberHw).map(function(k){ return memberHw[k]; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  sorted.forEach(function(m){
+    var eqList = m.items.map(function(a){ return (a.HardwareAssetID && a.HardwareAssetID.Title) || 'Unknown'; }).join(', ') || '—';
+    body += '<tr><td>' + escHtml(m.name) + '</td><td>' + m.items.length + '</td><td>' + escHtml(trimText(eqList, 80)) + '</td></tr>';
+  });
+  body += '</tbody></table></div>';
+  openModal('Equipment Accountability', body, '<button class="btn" data-action="close-modal">Close</button>', 'Equipment Accountability Report');
+}
+
+function getTeamForScope(scope, currentPersonId, people){
+  if (hasRole('App Admin') && !currentPersonId) { return people; }
+  if (scope === 'direct') {
+    return people.filter(function(p){
+      return p.SupervisorID && p.SupervisorID.Id && String(p.SupervisorID.Id) === String(currentPersonId)
+        && String(p.Status || '').toLowerCase() !== 'departed';
+    });
+  }
+  var orgId = getCurrentOrgId();
+  if (!orgId) { return []; }
+  var orgIds = {};
+  try { var orgsInScope = getOrgAndDescendants(orgId); orgsInScope.forEach(function(o){ orgIds[o.Id] = true; }); } catch(e){ orgIds[orgId] = true; }
+  return people.filter(function(p){
+    return p.OrgID && p.OrgID.Id && orgIds[p.OrgID.Id]
+      && String(p.Status || '').toLowerCase() !== 'departed';
+  });
+}
+
+/* SH-20: DPMAP cycle tracker */
+function openDPMAPTracker(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var perfData = APP.state.data.performanceTracking || [];
+  var year = new Date().getFullYear();
+  var body = '<h3>DPMAP Cycle Tracker — FY' + year + '</h3>';
+  body += '<table class="data-table"><thead><tr><th>Name</th><th>Plan Est.</th><th>Midpoint</th><th>Annual</th><th>Rating</th><th>Probationary</th></tr></thead><tbody>';
+  var sorted = team.slice().sort(function(a,b){ return (a.LastName || '').localeCompare(b.LastName || ''); });
+  sorted.forEach(function(p){
+    var rec = perfData.filter(function(r){ return r.PersonID && String(r.PersonID.Id) === String(p.Id) && String(r.CycleYear) === String(year); })[0];
+    var planDone = rec && normalizeBoolean(rec.PlanEstablished);
+    var midDone = rec && normalizeBoolean(rec.MidpointCompleted);
+    var annualDone = rec && normalizeBoolean(rec.AnnualCompleted);
+    var ratingDone = rec && normalizeBoolean(rec.RatingSubmitted);
+    var probStatus = rec && rec.ProbationaryStatus ? rec.ProbationaryStatus : '';
+    var icon = function(done, date){ return done ? '<span style="color:var(--success,#27ae60)">✓</span> ' + (date ? '<span style="font-size:10px">' + formatDate(date) + '</span>' : '') : '<span style="color:var(--danger,#c00)">✗</span>'; };
+    body += '<tr><td>' + escHtml(formatPerson(p)) + '</td>'
+      + '<td>' + icon(planDone, rec && rec.PlanDate) + '</td>'
+      + '<td>' + icon(midDone, rec && rec.MidpointDate) + '</td>'
+      + '<td>' + icon(annualDone, rec && rec.AnnualDate) + '</td>'
+      + '<td>' + icon(ratingDone, null) + '</td>'
+      + '<td>' + (probStatus ? escHtml(probStatus) + (rec && rec.ProbEndDate ? ' (ends ' + formatDate(rec.ProbEndDate) + ')' : '') : '—') + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  var complete = sorted.filter(function(p){
+    var rec = perfData.filter(function(r){ return r.PersonID && String(r.PersonID.Id) === String(p.Id) && String(r.CycleYear) === String(year); })[0];
+    return rec && normalizeBoolean(rec.PlanEstablished) && normalizeBoolean(rec.MidpointCompleted) && normalizeBoolean(rec.AnnualCompleted);
+  }).length;
+  body += '<p style="margin-top:8px"><strong>Compliance:</strong> ' + complete + '/' + sorted.length + ' (' + (sorted.length ? Math.round((complete / sorted.length) * 100) : 0) + '%) have all milestones complete for FY' + year + '.</p>';
+  openModal('DPMAP Cycle Tracker', body, '<button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* SH-21: Manning / position visibility */
+function openManningVisibility(){
+  var people = APP.state.data.people || [];
+  var positions = APP.state.data.positions || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var orgId = getCurrentOrgId();
+  var orgIds = {};
+  if (scope === 'org' && orgId) {
+    try { getOrgAndDescendants(orgId).forEach(function(o){ orgIds[o.Id] = true; }); } catch(e){ orgIds[orgId] = true; }
+  }
+  var teamPositions = positions.filter(function(pos){
+    if (scope === 'direct') { return true; }
+    return pos.OrgID && pos.OrgID.Id && orgIds[pos.OrgID.Id];
+  });
+  var filledMap = {};
+  people.filter(function(p){ return String(p.Status || '').toLowerCase() !== 'departed'; }).forEach(function(p){
+    if (p.PositionID && p.PositionID.Id) { filledMap[p.PositionID.Id] = p; }
+  });
+  var body = '<h3>Manning Roster</h3>';
+  var filled = 0; var vacant = 0;
+  teamPositions.forEach(function(pos){ if (filledMap[pos.Id]) { filled++; } else { vacant++; } });
+  body += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+  body += '<div style="padding:6px 12px;background:var(--success-bg,#27ae6022);border-radius:4px"><strong>' + filled + '</strong> Filled</div>';
+  body += '<div style="padding:6px 12px;background:var(--danger-bg,#e74c3c22);border-radius:4px"><strong>' + vacant + '</strong> Vacant</div>';
+  body += '<div style="padding:6px 12px;background:var(--bg-alt);border-radius:4px"><strong>' + teamPositions.length + '</strong> Total Positions</div>';
+  body += '</div>';
+  body += '<table class="data-table"><thead><tr><th>Position</th><th>Grade</th><th>Org</th><th>Incumbent</th><th>Status</th></tr></thead><tbody>';
+  teamPositions.sort(function(a,b){ return (a.Title || '').localeCompare(b.Title || ''); }).forEach(function(pos){
+    var person = filledMap[pos.Id];
+    var status = person ? 'Filled' : (pos.PositionStatus || 'Vacant');
+    var color = person ? '' : 'color:var(--danger,#c00)';
+    body += '<tr><td>' + escHtml(pos.PositionTitle || pos.Title || '') + '</td>'
+      + '<td>' + escHtml(pos.GradeBand || '') + '</td>'
+      + '<td>' + escHtml((pos.OrgID && pos.OrgID.Title) || '') + '</td>'
+      + '<td>' + (person ? escHtml(formatPerson(person)) : '<em>Vacant</em>') + '</td>'
+      + '<td style="' + color + '">' + escHtml(status) + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Manning / Position Visibility', body, '<button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* SH-23: Telework agreement tracker */
+function openTeleworkTracker(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var agreements = APP.state.data.teleworkAgreements || [];
+  var teamAgreements = agreements.filter(function(a){ return a.PersonID && a.PersonID.Id && teamIds[a.PersonID.Id]; });
+  var body = '<h3>Telework Agreements</h3>';
+  var active = teamAgreements.filter(function(a){ return String(a.Status || '').toLowerCase() === 'active'; });
+  var expiring = active.filter(function(a){ var d = daysUntil(a.ExpirationDate); return d != null && d <= 30; });
+  body += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+  body += '<div style="padding:6px 12px;background:var(--success-bg,#27ae6022);border-radius:4px"><strong>' + active.length + '</strong> Active</div>';
+  body += '<div style="padding:6px 12px;background:var(--warning-bg,#f39c1222);border-radius:4px"><strong>' + expiring.length + '</strong> Expiring in 30d</div>';
+  body += '<div style="padding:6px 12px;background:var(--bg-alt);border-radius:4px"><strong>' + teamAgreements.length + '</strong> Total</div>';
+  body += '</div>';
+  body += '<table class="data-table"><thead><tr><th>Name</th><th>Type</th><th>Days</th><th>Approved</th><th>Expires</th><th>Status</th></tr></thead><tbody>';
+  teamAgreements.sort(function(a,b){ return ((a.PersonID && a.PersonID.Title) || '').localeCompare((b.PersonID && b.PersonID.Title) || ''); }).forEach(function(a){
+    var d = daysUntil(a.ExpirationDate);
+    var expWarn = d != null && d <= 30 && d >= 0;
+    var expired = d != null && d < 0;
+    body += '<tr><td>' + escHtml((a.PersonID && a.PersonID.Title) || '') + '</td>'
+      + '<td>' + escHtml(a.AgreementType || '') + '</td>'
+      + '<td>' + escHtml(a.TeleworkDays || '') + '</td>'
+      + '<td>' + escHtml(formatDate(a.ApprovedDate)) + '</td>'
+      + '<td style="' + (expired ? 'color:var(--danger)' : expWarn ? 'color:var(--warning)' : '') + '">' + escHtml(formatDate(a.ExpirationDate)) + (expired ? ' (EXPIRED)' : expWarn ? ' (' + d + 'd)' : '') + '</td>'
+      + '<td>' + statusBadge(a.Status || 'Pending') + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Telework Agreements', body, '<button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* SH-25: Awards tracker */
+function openAwardsTracker(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var awards = APP.state.data.awards || [];
+  var teamAwards = awards.filter(function(a){ return a.PersonID && a.PersonID.Id && teamIds[a.PersonID.Id]; });
+  var body = '<h3>Awards Tracker</h3>';
+  var pending = teamAwards.filter(function(a){ return String(a.Status || '').toLowerCase() === 'pending' || String(a.Status || '').toLowerCase() === 'submitted'; });
+  var approved = teamAwards.filter(function(a){ return String(a.Status || '').toLowerCase() === 'approved'; });
+  body += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+  body += '<div style="padding:6px 12px;background:var(--warning-bg,#f39c1222);border-radius:4px"><strong>' + pending.length + '</strong> Pending</div>';
+  body += '<div style="padding:6px 12px;background:var(--success-bg,#27ae6022);border-radius:4px"><strong>' + approved.length + '</strong> Approved</div>';
+  body += '<div style="padding:6px 12px;background:var(--bg-alt);border-radius:4px"><strong>' + teamAwards.length + '</strong> Total</div>';
+  body += '</div>';
+  /* Equity view: awards per person */
+  var personAwardCount = {};
+  team.forEach(function(p){ personAwardCount[p.Id] = { name: formatPerson(p), count: 0 }; });
+  teamAwards.filter(function(a){ return String(a.Status || '').toLowerCase() === 'approved'; }).forEach(function(a){
+    if (personAwardCount[a.PersonID.Id]) { personAwardCount[a.PersonID.Id].count++; }
+  });
+  var equityArr = Object.keys(personAwardCount).map(function(k){ return personAwardCount[k]; }).sort(function(a,b){ return b.count - a.count; });
+  if (equityArr.length) {
+    body += '<h4 style="margin-top:12px">Award Equity View</h4>';
+    var maxAward = Math.max.apply(null, equityArr.map(function(e){ return e.count; })) || 1;
+    equityArr.forEach(function(e){
+      var pct = Math.round((e.count / maxAward) * 100);
+      body += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">';
+      body += '<div style="width:120px;font-size:11px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap">' + escHtml(e.name) + '</div>';
+      body += '<div style="flex:1;background:var(--bg-alt);border-radius:3px;height:14px"><div style="width:' + pct + '%;background:var(--accent);height:100%;border-radius:3px;min-width:2px"></div></div>';
+      body += '<div style="width:25px;text-align:right;font-size:11px;font-weight:700">' + e.count + '</div></div>';
+    });
+  }
+  body += '<h4 style="margin-top:12px">All Awards</h4>';
+  body += '<table class="data-table"><thead><tr><th>Name</th><th>Type</th><th>Nominated</th><th>Decision</th><th>Amount</th><th>Status</th></tr></thead><tbody>';
+  teamAwards.sort(function(a,b){ return (parseDate(b.NominationDate) || new Date(0)).getTime() - (parseDate(a.NominationDate) || new Date(0)).getTime(); }).forEach(function(a){
+    body += '<tr><td>' + escHtml((a.PersonID && a.PersonID.Title) || '') + '</td>'
+      + '<td>' + escHtml(a.AwardType || '') + '</td>'
+      + '<td>' + escHtml(formatDate(a.NominationDate)) + '</td>'
+      + '<td>' + escHtml(formatDate(a.DecisionDate)) + '</td>'
+      + '<td>' + (a.Amount ? formatCurrencySafe(a.Amount) : (a.Hours ? a.Hours + 'h' : '—')) + '</td>'
+      + '<td>' + statusBadge(a.Status || 'Pending') + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Awards Tracker', body, '<button class="btn" data-action="close-modal">Close</button>');
 }
 
 /* SH-10: Unified action queue. Renders pending leave, requests, and training
@@ -9399,8 +10190,8 @@ function renderSupervisorActionQueue(input){
   });
   /* SH-13: SF-182 pending approval */
   pendingSF182.forEach(function(r){
-    var personName = (r.PersonID && r.PersonID.Title) || 'Unknown';
-    var trainingTitle = r.TrainingTitle || r.Title || 'SF-182 Request';
+    var personName = (r.Requestor && r.Requestor.Title) || (r.PersonID && r.PersonID.Title) || 'Unknown';
+    var trainingTitle = (r.Training && r.Training.Title) || r.Title || 'SF-182 Request';
     var cost = r.EstimatedCost ? ('$' + Number(r.EstimatedCost).toFixed(0)) : '';
     queue.push({
       kind: 'sf182',
@@ -9539,7 +10330,7 @@ function denyLeaveRequest(timeOffId){
 /* SH-13: SF-182 approval workflow */
 function sf182SupervisorAction(sf182Id, newStatus){
   if (!canSeeSupervisorHub()) { toast('Access restricted.', 'danger'); return; }
-  var rows = APP.state.data.sf182Requests || [];
+  var rows = APP.state.data.sf182 || [];
   var row = null;
   rows.some(function(r){ if (String(r.Id) === String(sf182Id)) { row = r; return true; } return false; });
   if (!row) { toast('SF-182 request not found.', 'danger'); return; }
@@ -9555,11 +10346,12 @@ function sf182SupervisorAction(sf182Id, newStatus){
   var payload = { Status: newStatus };
   if (notes) payload.SupervisorNotes = notes;
   updateListItem(APP.lists.SF182Requests, sf182Id, payload, { entityType: 'SF182Request', reason: 'Supervisor ' + newStatus.toLowerCase(), before: { Status: row.Status } }).then(function(){
-    var personId = row.PersonID && row.PersonID.Id;
+    var personId = (row.Requestor && row.Requestor.Id) || (row.PersonID && row.PersonID.Id);
     if (personId) {
+      var trainTitle = (row.Training && row.Training.Title) || row.Title || '';
       sendNotification({
         title: 'SF-182 request ' + newStatus.toLowerCase(),
-        body: 'Your SF-182 training request' + (row.TrainingTitle ? ' for ' + row.TrainingTitle : '') + ' has been ' + newStatus.toLowerCase() + '.' + (notes ? ' Note: ' + notes : ''),
+        body: 'Your SF-182 training request' + (trainTitle ? ' for ' + trainTitle : '') + ' has been ' + newStatus.toLowerCase() + '.' + (notes ? ' Note: ' + notes : ''),
         notificationType: 'General',
         sourceModule: 'SupervisorHub',
         sensitivityLevel: 'Public',
@@ -9581,7 +10373,7 @@ function sf182SupervisorAction(sf182Id, newStatus){
 /* SH-14: In-processing step sign-off */
 function completeInOutStep(stepId){
   if (!canSeeSupervisorHub()) { toast('Access restricted.', 'danger'); return; }
-  var steps = APP.state.data.inOutSteps || [];
+  var steps = APP.state.data.inoutSteps || [];
   var step = null;
   steps.some(function(s){ if (String(s.Id) === String(stepId)) { step = s; return true; } return false; });
   if (!step) { toast('Step not found.', 'danger'); return; }
@@ -10107,6 +10899,23 @@ function handleClick(e){
   if (action === 'sf182-return') { sf182SupervisorAction(el.getAttribute('data-id'), 'Returned'); return; }
   if (action === 'sf182-reject') { sf182SupervisorAction(el.getAttribute('data-id'), 'Rejected'); return; }
   if (action === 'complete-inout-step') { completeInOutStep(el.getAttribute('data-id')); return; }
+  if (action === 'sort-incidents') { sortIncidentTable(el.getAttribute('data-col')); return; }
+  if (action === 'incident-batch-reminders') { openBatchRemindersModal(); return; }
+  if (action === 'send-batch-reminders') { sendBatchReminders(); return; }
+  if (action === 'incident-print-view') { openIncidentPrintView(); return; }
+  if (action === 'sup-report-team-summary') { openSupTeamSummaryReport(); return; }
+  if (action === 'sup-report-training-matrix') { ensureTrainingCatalogLoaded().then(function(){ return ensureTrainingRecordsLoaded(); }).then(function(){ openSupTrainingMatrix(); }); return; }
+  if (action === 'sup-report-leave-util') { openSupLeaveUtilization(); return; }
+  if (action === 'sup-report-equipment') { ensureAssetsLoaded().then(function(){ openSupEquipmentReport(); }); return; }
+  if (action === 'version-compliance') { ensureAssetsLoaded().then(function(){ renderVersionComplianceView(); }); return; }
+  if (action === 'cost-center-report') { ensureAssetsLoaded().then(function(){ renderCostCenterReport(); }); return; }
+  if (action === 'location-tracking') { ensureAssetsLoaded().then(function(){ renderLocationTrackingView(); }); return; }
+  if (action === 'sw-request') { ensureAssetsLoaded().then(function(){ openSoftwareRequestModal(); }); return; }
+  if (action === 'submit-sw-request') { submitSoftwareRequest(); return; }
+  if (action === 'sup-dpmap-tracker') { ensurePerformanceTrackingLoaded().then(function(){ openDPMAPTracker(); }); return; }
+  if (action === 'sup-manning-visibility') { ensurePositionsLoaded().then(function(){ openManningVisibility(); }); return; }
+  if (action === 'sup-telework-tracker') { ensureTeleworkAgreementsLoaded().then(function(){ openTeleworkTracker(); }); return; }
+  if (action === 'sup-awards-tracker') { ensureAwardsLoaded().then(function(){ openAwardsTracker(); }); return; }
 }
 function detectEmbeddedMode(){
   var isEmbedded = false;

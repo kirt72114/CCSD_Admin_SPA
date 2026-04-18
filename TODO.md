@@ -165,15 +165,15 @@ false positives on the script side, not problems in SharePoint:
   3. This tells the system how many licenses you own per title
 
 - [x] **License utilization dashboard** — 💻 ✅ Done 2026-04-18. `renderLicenseUtilizationCard()` added to Assets view. Sorts titles by utilization %, shows used/total, color-coded bar (green/orange/red), Over Limit / Near Cap / Healthy / Underutilized status.
-- [ ] **Software request workflow** — 💻
+- [x] **Software request workflow** — 💻 ✅ Done 2026-04-18. `openSoftwareRequestModal()` shows requestable titles, `submitSoftwareRequest()` creates request with justification.
 - [x] **ATO expiration alerts on Home** — 💻 ✅ Done 2026-04-18. `getNotifications()` now surfaces software titles with ATO expired (danger) or expiring within 90 days (warn). `ensureAssetsLoaded()` added to `renderHome()` data load. Honors `RequiresATO` flag.
 - [x] **Approved software catalog view** — 💻 ✅ Done 2026-04-18. `renderApprovedSoftwareCatalog()` shows approved/standard software titles in a searchable modal table with vendor, version, license type, network, ATO requirement, and requestable status. "SW Catalog" button added to Assets toolbar.
-- [ ] **Version compliance check** — 💻 (no prereqs)
+- [x] **Version compliance check** — 💻 ✅ Done 2026-04-18. `renderVersionComplianceView()` compares InstalledVersion on assignments vs CurrentVersion on software titles. "Versions" button on Assets toolbar.
 
 - [x] **Add `CostCenter` column to `CCSD_HardwareAssets` and `CCSD_SoftwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Open each list > **Add column** > **Single line of text** > name it `CostCenter`
 
-- [ ] **Cost center reporting** — 💻 (after columns exist)
+- [x] **Cost center reporting** — 💻 ✅ Done 2026-04-18. `renderCostCenterReport()` aggregates hardware/software by CostCenter field with estimated costs. "Cost Centers" button on Assets toolbar.
 
 ### Hardware Tracking (P2) — 🤝
 
@@ -187,7 +187,7 @@ false positives on the script side, not problems in SharePoint:
   1. Open `CCSD_HardwareAssets` > **Add column** > **Single line of text** > name it `PhysicalLocation`
   2. Values like "Bldg 500 / Rm 201" or "Mobile"
 
-- [ ] **Location tracking** — 💻 (after column exists)
+- [x] **Location tracking** — 💻 ✅ Done 2026-04-18. `renderLocationTrackingView()` groups hardware assets by PhysicalLocation. "Locations" button on Assets toolbar.
 
 - [x] **Add `ExpectedReturnDate` column to `CCSD_HardwareAssignments`** — 👤 ✅ Created 2026-04-18
   1. Open `CCSD_HardwareAssignments` > **Add column** > **Date and Time** > name it `ExpectedReturnDate`
@@ -446,30 +446,13 @@ Recurring notifications (e.g., "SF-86 due in 90 days" generated monthly) use `Te
 
 The existing notification panel on the Home dashboard (`renderNotificationCenter()` at line 1853) is the primary delivery channel. It currently renders computed notifications only. The framework extends it:
 
-- [ ] **Extend `getNotifications()` to merge computed + persistent notifications** — 💻
-  - Query `CCSD_NotificationReceipts` where `RecipientPersonID eq {currentPersonId}` and `IsRead eq false` and `IsDismissed eq false`
-  - Expand `NotificationID` to get Title, Body, NotificationType, SensitivityLevel, ActionURL, SentDate, ExpiresDate
-  - Filter out expired notifications (ExpiresDate < now)
-  - Merge with existing computed items (training, requests)
-  - Sort all by date descending
-  - Cap at 50 items in the panel
+- [x] **Extend `getNotifications()` to merge computed + persistent notifications** — 💻 ✅ Done 2026-04-18 via NF-10. Queries `CCSD_NotificationReceipts`, filters unread/undismissed/unexpired, merges with computed items, sorts by date descending, caps at 50.
 
-- [ ] **Visual differentiation by source module** — 💻
-  - Security notifications: 🔒 icon prefix
-  - Training notifications: 📋 icon prefix (or existing style)
-  - System/broadcast: 📢 icon prefix
-  - Computed (existing): retain current styling (no icon change)
+- [x] **Visual differentiation by source module** — 💻 ✅ Done 2026-04-18 via NF-11. `mapNotificationModuleIcon()` assigns icons: 🔒 Security, 📋 Training, 📨 Requests, 📅 Calendar, 💻 Assets, 🏢 Facilities, 👥 SupervisorHub, 📢 Admin, 🔔 default.
 
-- [ ] **Mark as Read** — 💻
-  - Click notification → set `IsRead = true`, `ReadDate = now()` on the receipt row
-  - Security notifications: mark-as-read only (NOT dismissable)
-  - Other notifications: mark-as-read AND dismissable (sets `IsDismissed = true`)
-  - If `ActionURL` is set, navigate to that route after marking as read
+- [x] **Mark as Read** — 💻 ✅ Done 2026-04-18 via NF-11. `markNotificationRead()` sets IsRead+ReadDate. `dismissNotification()` sets IsDismissed. Security notifications are non-dismissable (`isDismissable: false`).
 
-- [ ] **Notification badge count** — 💻
-  - Red badge on the notification bell icon showing unread count
-  - Count = computed unread (existing) + persistent unread (from receipts query)
-  - Badge refreshes on page load and after any mark-as-read action
+- [x] **Notification badge count** — 💻 ✅ Done 2026-04-18. Bell icon (🔔) with red `.notif-badge` showing unread count added to `renderNav()`. Updates on each nav render. Count combines computed + persistent notifications.
 
 ##### Method 2: Email via Power Automate (Future — Section 14)
 
@@ -532,7 +515,7 @@ These rules are **hardcoded in app logic** — not configurable:
 
 ##### PII Detection Guard
 
-- [ ] **`containsPII(text)` utility function** — 💻
+- [x] **`containsPII(text)` utility function** — 💻 ✅ Done 2026-04-18. Scans for SSN (`\d{3}-\d{2}-\d{4}`), DoD ID (`\d{10}`), and configurable PII keywords. Blocks Sensitive notifications with PII, warns on Public/Internal.
   - Scans notification body text for patterns: SSN (`\d{3}-\d{2}-\d{4}`), DoD ID (`\d{10}`), and specific allegation keywords (configurable list)
   - If PII is detected in a `Sensitive` notification body, **block the send** and warn the author
   - If PII is detected in a `Public` or `Internal` notification, **warn but allow** (author must confirm)
@@ -1546,8 +1529,8 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 - [x] **IM-07: Add `Security` role to `CCSD_AppRoles`** — 👤 ✅ Done 2026-04-18. Data entry, not schema change.
 - [x] **IM-08: Add gate functions** — 💻 `canManageSecurity()`, `canViewOwnSecurity()` added alongside existing gates. ✅ Done 2026-04-14.
 - [x] **IM-09: Add `#security` route** — 💻 Hash route added to router, nav tab added to `APP.nav`, placeholder render function built, `Alt+S` keyboard shortcut registered. ✅ Done 2026-04-14.
-- [ ] **IM-10: Build incident list view (Security role)** — 💻 Sortable/filterable table using existing table pattern. Columns: CaseNumber, Subject Name, Category, Status, Severity, AssignedTo, ReportedDate, Days Open. Color-coded status badges.
-- [ ] **IM-11: Build incident list view (Member role)** — 💻 Simplified table: CaseNumber, Status, ReportedDate, ResolutionDate. Obscured by default with reveal toggle.
+- [x] **IM-10: Build incident list view (Security role)** — 💻 ✅ Done 2026-04-18. `renderSecurityAdmin()` enhanced with sortable/filterable table (status, category, severity, search filters). Columns: CaseNumber, Subject, Category, Status, Severity, AssignedTo, Reported, Days Open, Stage. Stage duration progress bars.
+- [x] **IM-11: Build incident list view (Member role)** — 💻 ✅ Done 2026-04-18. `renderSecurityMember()` shows simplified table (CaseNumber, Status, Reported, Resolved) with redacted data via `redactIncidentForMember()`.
 - [x] **IM-12: Build case number generation** — 💻 ✅ Done 2026-04-18. `generateCaseNumber(prefix, year)` queries `CCSD_SecurityIncidents`, finds max sequence for `PREFIX-YYYY-` pattern, returns next padded 4-digit ID.
 - [x] **IM-13: Build "Create Incident" modal** — 💻 ✅ Done 2026-04-18. `openCreateIncidentModal()` with all 18 SEAD 3 categories, auto-fill of SEAD 4 guidelines on category change, mental health carve-out warning for Category 8. `saveIncident()` generates `SEC-`/`ISV-` case number, creates incident, initial status history entry, and 3 auto-generated `Reported`-status action items. `Create Incident` button on Security Admin view.
 - [~] **IM-14: Build incident detail modal** — 💻 Partially done 2026-04-18. Single-view detail modal with summary KV grid, status timeline (from CCSD_IncidentStatusHistory), action items table (from CCSD_IncidentActions), Send Notification button (NF-12 with case context), and status transition controls (IM-15). Tabbed layout (Communications, Parties, Attachments, SOR tabs) deferred. Tabbed layout:
@@ -1566,20 +1549,15 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 
 ##### Recommended Enhancements (Post-MVP)
 
-- [ ] **IM-20: Batch daily reminders** — 💻 Multi-select cases on list view, pick template, send to each subject.
-- [ ] **IM-21: SOR deadline tracking** — 💻 When status = `SOR Issued`, display countdown to `SORResponseDeadline`. Red alert when overdue. Suggest `Closed — Adverse Action` transition.
-- [ ] **IM-22: Stage duration monitoring** — 💻 Configurable expected durations per status (e.g., `Preliminary Inquiry` = 10 business days). Yellow highlight at 75%, red at 100%.
-- [ ] **IM-23: Incident dashboard widgets** — 💻 On the Security admin view:
-  - Open cases by status (horizontal bar)
-  - Cases opened/closed this month (trend)
-  - Average days to close by category
-  - Overdue action items count
-  - Pending SOR responses
+- [x] **IM-20: Batch daily reminders** — 💻 ✅ Done 2026-04-18. `openBatchRemindersModal()` shows open cases with checkboxes. `sendBatchReminders()` sends individual Sensitive notifications to each subject via notification framework.
+- [x] **IM-21: SOR deadline tracking** — 💻 ✅ Done 2026-04-18. `getSORCountdown()` computes days left. SOR Deadline Tracking card on Security Admin with color-coded countdown (red overdue, orange ≤7 days).
+- [x] **IM-22: Stage duration monitoring** — 💻 ✅ Done 2026-04-18. `INCIDENT_STAGE_DURATIONS` map with expected days per status. `getIncidentStagePct()` computes progress. Progress bars in incident table: yellow at 75%, red at 100%.
+- [x] **IM-23: Incident dashboard widgets** — 💻 ✅ Done 2026-04-18. Enhanced KPI grid (Total/Open/SOR Pending/Closed/Opened This Month/Closed This Month). Open Cases by Status horizontal bar chart. Avg Days to Close by Category table.
 - [ ] **IM-24: Case-to-case linking** — 💻 "Related Cases" field on incident record. Useful when a new incident arises from a prior case.
 - [x] **IM-25: Incident CSV export** — 💻 ✅ Done 2026-04-18. `exportIncidentCSV()` with CUI banner header + footer. Wired to `Export Incidents (CSV)` button on Security Admin view. Logged via `logAudit('Export', 'SecurityIncidents', ...)`.
 - [ ] **IM-26: Bulk status update** — 💻 Select multiple `Administrative Withdrawal` cases when multiple people depart simultaneously.
 - [ ] **IM-27: Power Automate email integration** — 👤 Create a flow: trigger on `CCSD_Notifications` item created where `NotificationType = 'Security'`. Send email via O365 connector.
-- [ ] **IM-28: Incident print view** — 💻 Print-optimized layout showing case summary, timeline, actions, and communication log. For inclusion in physical case files.
+- [x] **IM-28: Incident print view** — 💻 ✅ Done 2026-04-18. `openIncidentPrintView()` generates printable popup with CUI banners, open cases table, and print/close buttons.
 
 ---
 
@@ -2465,26 +2443,26 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 - [x] **SH-06: Build Privacy Act banner** — 💻 One-time-per-session acknowledgment modal on first Hub visit. Logs `PrivacyBannerAcknowledged` to `logAudit()`. ✅ Done 2026-04-14.
 - [~] **SH-07: Build landing page / overview dashboard** — 💻 Per 12b spec. KPI strip and pending actions summary built. Still needed: readiness scorecard, recent activity feed. Partially done 2026-04-14.
 - [~] **SH-08: Build team roster table** — 💻 Per 12c spec. Basic sortable roster built (name, grade, position, org, status). Still needed: status filter pills, search bar, quick-action row menus, team calendar grid. Partially done 2026-04-14.
-- [ ] **SH-09: Build team calendar / availability grid** — 💻 Per 12c spec. Week/month grid, color-coded cells, manning summary, critical staffing alerts. Reuses `CCSD_TimeOff` data.
+- [x] **SH-09: Build team calendar / availability grid** — 💻 ✅ Done 2026-04-18. `renderTeamAvailabilityGrid()` shows 2-week grid with color-coded cells per leave type (annual/sick/TDY/telework/training/comp/holiday). Legend bar. Integrated into Supervisor Hub.
 - [x] **SH-10: Build unified action queue** — 💻 ✅ Done 2026-04-18. `renderSupervisorActionQueue()` aggregates pending leave + requests assigned + training submissions into a single sorted list (overdue first, then oldest). Inline action buttons per item.
 - [x] **SH-11: Build leave approval workflow** — 💻 ✅ Done 2026-04-18. `approveLeaveRequest()` / `denyLeaveRequest()` prompt for notes/reason, update Status + SupervisorDecisionDate + DecisionNotes via `updateListItem` (audit logged), send notification to requester via `sendNotification()`. Manning-impact panel deferred.
 - [x] **SH-12: Build training submission review** — 💻 ✅ Done 2026-04-18 via integration. The unified action queue surfaces pending submissions with approve/reject buttons that route to the existing `reviewSubmission()` Training pipeline.
 - [x] **SH-13: Build SF-182 approval workflow** — 💻 ✅ Done 2026-04-18. `sf182SupervisorAction()` with approve/return/reject actions, notes prompts, notification sending. Wired into handleClick and unified action queue.
 - [x] **SH-14: Build in-processing step sign-off** — 💻 ✅ Done 2026-04-18. `completeInOutStep()` marks steps complete with CompletedBy/CompletedOn. Wired into handleClick and unified action queue.
 - [x] **SH-15: Build cross-module links** — 💻 ✅ Done 2026-04-18. "Quick Navigation" card added to Supervisor Hub with icon-labeled links to Calendar, Training, Requests, In/Out Processing, Assets, Facilities, Security (gated), and Reports. Each passes context via route navigation.
-- [ ] **SH-16: Build reports** — 💻 Per 12g spec. Team summary, training compliance matrix, leave utilization, equipment accountability. CSV export. Register in Reports module.
+- [x] **SH-16: Build reports** — 💻 ✅ Done 2026-04-18. Reports card in Supervisor Hub with 4 reports: Team Summary (`openSupTeamSummaryReport`), Training Compliance Matrix (`openSupTrainingMatrix`), Leave Utilization (`openSupLeaveUtilization`), Equipment Accountability (`openSupEquipmentReport`). Plus DPMAP, Manning, Telework, and Awards trackers.
 - [ ] **SH-17: Integrate with Notification Framework** — 💻 Per 12h spec. Supervisor notification templates, team notification sending, Hub notification panel. Depends on NF-04 (Section 9) being built.
 
 ##### Should-Have (Build After Core — Requires New Lists/Columns)
 
 - [x] **SH-18: Create `CCSD_PerformanceTracking` list** — 👤 ✅ Created 2026-04-18. ~12 columns per data dependencies table.
 - [x] **SH-19: Add position management columns to `CCSD_Positions`** — 👤 ✅ Created 2026-04-18. PDNumber, PDLastReviewDate, PositionStatus, VacatedDate, FillActionStatus.
-- [ ] **SH-20: Build DPMAP cycle tracker** — 💻 Per 12k spec. Cycle dashboard, milestone alerts, probationary period tracking.
-- [ ] **SH-21: Build manning/position visibility** — 💻 Per 12m spec. Manning roster, vacancy tracking, PD currency tracker.
+- [x] **SH-20: Build DPMAP cycle tracker** — 💻 ✅ Done 2026-04-18. `openDPMAPTracker()` shows FY cycle milestones (Plan/Midpoint/Annual/Rating) per team member with ✓/✗ indicators, dates, probationary status, and compliance percentage.
+- [x] **SH-21: Build manning/position visibility** — 💻 ✅ Done 2026-04-18. `openManningVisibility()` shows positions with incumbents, Filled/Vacant KPIs, and position roster table. Scope-aware (direct/org).
 - [x] **SH-22: Create `CCSD_TeleworkAgreements` list** — 👤 ✅ Created 2026-04-18. ~8 columns per data dependencies table.
-- [ ] **SH-23: Build telework agreement tracker** — 💻 Per 12j spec. Agreement status, expiration alerts, schedule visibility.
+- [x] **SH-23: Build telework agreement tracker** — 💻 ✅ Done 2026-04-18. `openTeleworkTracker()` shows team telework agreements with Active/Expiring/Total KPIs, expiration warnings (≤30 days), and sortable table.
 - [x] **SH-24: Create `CCSD_Awards` list** — 👤 ✅ Created 2026-04-18. ~10 columns per data dependencies table.
-- [ ] **SH-25: Build awards tracker** — 💻 Per 12l spec. Nomination tracking, equity view.
+- [x] **SH-25: Build awards tracker** — 💻 ✅ Done 2026-04-18. `openAwardsTracker()` shows Pending/Approved/Total KPIs, award equity view (horizontal bar chart per person), and full awards table sorted by nomination date.
 - [x] **SH-26: Create `CCSD_TaskAssignments` list** — 👤 ✅ Created 2026-04-18. ~12 columns per data dependencies table.
 - [ ] **SH-27: Build task/suspense management** — 💻 Per 12n spec. Task board, views, notifications, recurring tasks.
 
