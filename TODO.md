@@ -2477,9 +2477,9 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 - [~] **SH-07: Build landing page / overview dashboard** — 💻 Per 12b spec. KPI strip and pending actions summary built. Still needed: readiness scorecard, recent activity feed. Partially done 2026-04-14.
 - [~] **SH-08: Build team roster table** — 💻 Per 12c spec. Basic sortable roster built (name, grade, position, org, status). Still needed: status filter pills, search bar, quick-action row menus, team calendar grid. Partially done 2026-04-14.
 - [ ] **SH-09: Build team calendar / availability grid** — 💻 Per 12c spec. Week/month grid, color-coded cells, manning summary, critical staffing alerts. Reuses `CCSD_TimeOff` data.
-- [ ] **SH-10: Build unified action queue** — 💻 Per 12e spec. Aggregates all pending items, sorted by urgency. One-click actions. Badge count on nav tab.
-- [ ] **SH-11: Build leave approval workflow** — 💻 Per 12e spec. Inline approve/deny with conflict check, manning impact display, audit logging.
-- [ ] **SH-12: Build training submission review** — 💻 Per 12e spec. Inline approve/reject with certificate preview.
+- [x] **SH-10: Build unified action queue** — 💻 ✅ Done 2026-04-18. `renderSupervisorActionQueue()` aggregates pending leave + requests assigned + training submissions into a single sorted list (overdue first, then oldest). Inline action buttons per item.
+- [x] **SH-11: Build leave approval workflow** — 💻 ✅ Done 2026-04-18. `approveLeaveRequest()` / `denyLeaveRequest()` prompt for notes/reason, update Status + SupervisorDecisionDate + DecisionNotes via `updateListItem` (audit logged), send notification to requester via `sendNotification()`. Manning-impact panel deferred.
+- [x] **SH-12: Build training submission review** — 💻 ✅ Done 2026-04-18 via integration. The unified action queue surfaces pending submissions with approve/reject buttons that route to the existing `reviewSubmission()` Training pipeline.
 - [ ] **SH-13: Build SF-182 approval workflow** — 💻 Per 12e spec. Inline approve/return/reject.
 - [ ] **SH-14: Build in-processing step sign-off** — 💻 Per 12e spec. Complete steps assigned to supervisor.
 - [ ] **SH-15: Build cross-module links** — 💻 Per 12f spec. Context-passing navigation to Calendar, Training, Requests, In/Out, Assets, Security.

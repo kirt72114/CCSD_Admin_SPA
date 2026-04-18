@@ -8514,7 +8514,19 @@ function renderSecurityMember(){
 
 function renderSupervisorHub(){
   if (!canSeeSupervisorHub()) { toast('Access restricted to supervisors.', 'danger'); return renderHome(); }
+  renderLoading('Loading Supervisor Hub...');
+  /* Ensure required data is loaded before rendering */
+  Promise.all([
+    ensureCurrentPersonnelLoaded(),
+    ensurePeopleLoaded().catch(function(){ return []; }),
+    ensureOrganizationsLoaded().catch(function(){ return []; }),
+    ensureTimeOffLoaded().catch(function(){ return []; }),
+    ensureRequestsLoaded().catch(function(){ return []; }),
+    ensureTrainingSubmissionsLoaded().catch(function(){ return []; })
+  ]).then(function(){ renderSupervisorHubInner(); });
+}
 
+function renderSupervisorHubInner(){
   /* Privacy Act banner — once per session */
   if (!APP.state.supervisorPrivacyAcknowledged) {
     var bannerHtml = '<div style="max-width:640px;margin:60px auto;text-align:center">';
@@ -8622,23 +8634,13 @@ function renderSupervisorHubContent(){
 
   var totalPending = pendingLeave.length + pendingRequests.length + pendingTrainingSubs.length;
 
-  html += '<div class="card' + (totalPending > 0 ? ' border-danger' : '') + '" style="margin-top:16px">';
-  html += '<div class="card-header">Pending Actions' + (totalPending > 0 ? ' <span class="badge badge-danger">' + totalPending + '</span>' : '') + '</div>';
-  html += '<div class="card-body">';
-  if (totalPending === 0) {
-    html += '<p style="color:var(--text-muted)">No pending actions at this time.</p>';
-  } else {
-    if (pendingLeave.length > 0) {
-      html += '<div style="margin-bottom:8px"><strong>Leave Requests:</strong> ' + pendingLeave.length + ' pending approval</div>';
-    }
-    if (pendingRequests.length > 0) {
-      html += '<div style="margin-bottom:8px"><strong>Requests Assigned to You:</strong> ' + pendingRequests.length + ' open</div>';
-    }
-    if (pendingTrainingSubs.length > 0) {
-      html += '<div style="margin-bottom:8px"><strong>Training Submissions:</strong> ' + pendingTrainingSubs.length + ' pending review</div>';
-    }
-  }
-  html += '</div></div>';
+  /* SH-10: unified action queue with inline actions */
+  html += renderSupervisorActionQueue({
+    pendingLeave: pendingLeave,
+    pendingRequests: pendingRequests,
+    pendingTrainingSubs: pendingTrainingSubs,
+    teamMembers: teamMembers
+  });
 
   /* Team roster */
   html += '<div class="card" style="margin-top:16px"><div class="card-header">Team Roster</div>';
@@ -8663,22 +8665,176 @@ function renderSupervisorHubContent(){
   }
   html += '</div></div>';
 
-  /* Setup guidance for lists not yet created */
-  html += '<div class="card" style="margin-top:16px"><div class="card-header">Module Status</div>';
-  html += '<div class="card-body">';
-  html += '<div class="alert alert-info">';
-  html += '<strong>Additional features available after SharePoint list setup:</strong>';
-  html += '<ul style="margin:8px 0 0 20px">';
-  html += '<li>Leave approval workflow — requires <code>RequestedDate</code>, <code>SupervisorDecisionDate</code>, <code>DecisionNotes</code> columns on <code>CCSD_TimeOff</code></li>';
-  html += '<li>DPMAP tracking — requires <code>CCSD_PerformanceTracking</code> list</li>';
-  html += '<li>Telework agreements — requires <code>CCSD_TeleworkAgreements</code> list</li>';
-  html += '<li>Awards tracking — requires <code>CCSD_Awards</code> list</li>';
-  html += '<li>Task/suspense management — requires <code>CCSD_TaskAssignments</code> list</li>';
-  html += '</ul>';
-  html += '<p style="margin-top:8px">See <code>SHAREPOINT_LISTS_AND_COLUMNS.txt</code> for complete column definitions.</p>';
-  html += '</div></div></div>';
-
   setView(html);
+}
+
+/* SH-10: Unified action queue. Renders pending leave, requests, and training
+ * submissions as a single sortable list with inline action buttons. Sorted
+ * with overdue items first. */
+function renderSupervisorActionQueue(input){
+  var pendingLeave = input.pendingLeave || [];
+  var pendingRequests = input.pendingRequests || [];
+  var pendingTrainingSubs = input.pendingTrainingSubs || [];
+  var totalPending = pendingLeave.length + pendingRequests.length + pendingTrainingSubs.length;
+
+  var html = '<div class="card' + (totalPending > 0 ? ' border-danger' : '') + '" style="margin-top:16px">';
+  html += '<div class="card-header">Action Queue' + (totalPending > 0 ? ' <span class="badge badge-danger">' + totalPending + '</span>' : '') + '</div>';
+  html += '<div class="card-body">';
+
+  if (totalPending === 0) {
+    html += '<div class="empty">No pending actions for your team. Inbox zero.</div>';
+    html += '</div></div>';
+    return html;
+  }
+
+  /* Build unified queue */
+  var queue = [];
+  pendingLeave.forEach(function(t){
+    var personName = (t.PersonID && t.PersonID.Title) || 'Unknown';
+    var typeLbl = t.TimeOffType || 'Leave';
+    var period = formatDate(t.StartDate) + (t.EndDate && t.EndDate !== t.StartDate ? ' – ' + formatDate(t.EndDate) : '');
+    queue.push({
+      kind: 'leave',
+      id: t.Id,
+      icon: '🏖',
+      title: typeLbl + ' — ' + personName,
+      detail: period + (t.Notes ? ' • ' + trimText(t.Notes, 60) : ''),
+      requestedTime: t.RequestedDate ? new Date(t.RequestedDate).getTime() : 0,
+      actions: '<button class="btn subtle success" data-action="approve-leave" data-id="' + escAttr(t.Id) + '">Approve</button> '
+        + '<button class="btn subtle danger" data-action="deny-leave" data-id="' + escAttr(t.Id) + '">Deny</button>'
+    });
+  });
+  pendingRequests.forEach(function(r){
+    var dueDays = daysUntil(r.DueDate);
+    var dueLbl = dueDays != null ? (dueDays < 0 ? 'OVERDUE ' + Math.abs(dueDays) + 'd' : 'due in ' + dueDays + 'd') : '';
+    queue.push({
+      kind: 'request',
+      id: r.Id,
+      icon: '📨',
+      title: (r.Title || r.RequestID || 'Request') + ' — ' + (r.RequestType || 'Request'),
+      detail: (dueLbl ? dueLbl + ' • ' : '') + (r.Status || 'Open'),
+      overdue: dueDays != null && dueDays < 0,
+      requestedTime: r.SubmittedOn ? new Date(r.SubmittedOn).getTime() : 0,
+      actions: '<button class="btn subtle" data-action="view-request" data-id="' + escAttr(r.Id) + '">Open</button>'
+    });
+  });
+  pendingTrainingSubs.forEach(function(s){
+    var personName = (s.PersonID && s.PersonID.Title) || (s.Person && s.Person.Title) || 'Unknown';
+    var trainingName = (s.TrainingID && s.TrainingID.Title) || 'Training';
+    queue.push({
+      kind: 'training',
+      id: s.Id,
+      icon: '📋',
+      title: 'Training submission — ' + personName,
+      detail: trainingName + (s.CompletionDate ? ' • completed ' + formatDate(s.CompletionDate) : ''),
+      requestedTime: s.Id || 0,
+      actions: '<button class="btn subtle success" data-action="review-submission-approve" data-id="' + escAttr(s.Id) + '">Approve</button> '
+        + '<button class="btn subtle danger" data-action="review-submission-reject" data-id="' + escAttr(s.Id) + '">Reject</button>'
+    });
+  });
+  /* Sort: overdue first, then oldest first */
+  queue.sort(function(a, b){
+    if (a.overdue && !b.overdue) { return -1; }
+    if (b.overdue && !a.overdue) { return 1; }
+    return (a.requestedTime || 0) - (b.requestedTime || 0);
+  });
+
+  html += '<div class="spotlight-list">';
+  queue.forEach(function(item){
+    html += '<div class="spotlight-item">'
+      + '<div><div class="l1">' + item.icon + ' ' + escHtml(item.title) + '</div><div class="l2">' + escHtml(item.detail) + '</div></div>'
+      + '<div>' + item.actions + '</div>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  html += '</div></div>';
+  return html;
+}
+
+/* SH-11: Leave approval workflow. Inline approve/deny with optional decision
+ * notes. Updates Status, SupervisorDecisionDate, DecisionNotes; logs audit. */
+function approveLeaveRequest(timeOffId){
+  if (!canSeeSupervisorHub()) { toast('Access restricted.', 'danger'); return; }
+  var rows = APP.state.data.timeOff || [];
+  var row = null;
+  rows.some(function(t){ if (String(t.Id) === String(timeOffId)) { row = t; return true; } return false; });
+  if (!row) { toast('Leave request not found.', 'danger'); return; }
+  var notes = window.prompt('Approval notes (optional):', '');
+  if (notes === null) { return; }
+  var personnel = APP.state.currentPersonnel;
+  var values = {
+    Status: 'Approved',
+    SupervisorDecisionDate: new Date().toISOString(),
+    DecisionNotes: notes || ''
+  };
+  if (personnel && personnel.Id && APP.state.currentUser && APP.state.currentUser.id) {
+    values.ApprovedBy = APP.state.currentUser.id;
+  }
+  toast('Approving...', 'ok');
+  updateListItem(APP.lists.TimeOff, timeOffId, values, { entityType: 'TimeOff', reason: 'Leave approval', before: { Status: row.Status } }).then(function(){
+    /* Notify the requester */
+    var personId = row.PersonID && row.PersonID.Id;
+    if (personId) {
+      sendNotification({
+        title: 'Leave request approved',
+        body: 'Your ' + (row.TimeOffType || 'leave') + ' request for ' + formatDate(row.StartDate) + (row.EndDate && row.EndDate !== row.StartDate ? ' to ' + formatDate(row.EndDate) : '') + ' has been approved.' + (notes ? ' Note: ' + notes : ''),
+        notificationType: 'General',
+        sourceModule: 'SupervisorHub',
+        sensitivityLevel: 'Public',
+        audienceType: 'Individual',
+        recipientPersonId: personId,
+        actionURL: '#calendar',
+        isSystemGenerated: true
+      }).catch(function(){});
+    }
+    return ensureTimeOffLoaded(true);
+  }).then(function(){
+    toast('Leave request approved.', 'ok');
+    if (APP.state.route === 'supervisor') { renderSupervisorHubContent(); }
+  }).catch(function(err){
+    toast(extractSpErrorMessage(err) || 'Approval failed.', 'danger');
+  });
+}
+
+function denyLeaveRequest(timeOffId){
+  if (!canSeeSupervisorHub()) { toast('Access restricted.', 'danger'); return; }
+  var rows = APP.state.data.timeOff || [];
+  var row = null;
+  rows.some(function(t){ if (String(t.Id) === String(timeOffId)) { row = t; return true; } return false; });
+  if (!row) { toast('Leave request not found.', 'danger'); return; }
+  var reason = window.prompt('Denial reason (required):', '');
+  if (reason === null) { return; }
+  if (!reason.trim()) { toast('A denial reason is required.', 'danger'); return; }
+  var personnel = APP.state.currentPersonnel;
+  var values = {
+    Status: 'Denied',
+    SupervisorDecisionDate: new Date().toISOString(),
+    DecisionNotes: reason
+  };
+  toast('Denying...', 'ok');
+  updateListItem(APP.lists.TimeOff, timeOffId, values, { entityType: 'TimeOff', reason: 'Leave denial', before: { Status: row.Status } }).then(function(){
+    var personId = row.PersonID && row.PersonID.Id;
+    if (personId) {
+      sendNotification({
+        title: 'Leave request denied',
+        body: 'Your ' + (row.TimeOffType || 'leave') + ' request for ' + formatDate(row.StartDate) + (row.EndDate && row.EndDate !== row.StartDate ? ' to ' + formatDate(row.EndDate) : '') + ' was denied. Reason: ' + reason,
+        notificationType: 'General',
+        sourceModule: 'SupervisorHub',
+        sensitivityLevel: 'Internal',
+        audienceType: 'Individual',
+        recipientPersonId: personId,
+        actionURL: '#calendar',
+        isSystemGenerated: true
+      }).catch(function(){});
+    }
+    return ensureTimeOffLoaded(true);
+  }).then(function(){
+    toast('Leave request denied.', 'ok');
+    if (APP.state.route === 'supervisor') { renderSupervisorHubContent(); }
+  }).catch(function(err){
+    toast(extractSpErrorMessage(err) || 'Denial failed.', 'danger');
+  });
 }
 
 function renderRoute(){
@@ -9160,6 +9316,8 @@ function handleClick(e){
   /* Supervisor Hub actions */
   if (action === 'acknowledge-privacy-banner') { APP.state.supervisorPrivacyAcknowledged = true; logAudit('PrivacyBannerAcknowledged', 'SupervisorHub', null, null, {}); renderSupervisorHub(); return; }
   if (action === 'set-supervisor-scope') { APP.state.supervisorScope = el.getAttribute('data-scope') || 'direct'; renderSupervisorHubContent(); return; }
+  if (action === 'approve-leave') { approveLeaveRequest(el.getAttribute('data-id')); return; }
+  if (action === 'deny-leave') { denyLeaveRequest(el.getAttribute('data-id')); return; }
 }
 function detectEmbeddedMode(){
   var isEmbedded = false;
