@@ -7610,7 +7610,7 @@ function renderAssets(){
     html += metricCard('Portable Devices', portableCount, 'Laptops and other portable equipment', Math.min(100, portableCount / 3));
     html += metricCard('Software Titles Near ATO Attention', atoSoon, 'Titles with ATO expiry within 90 days', Math.min(100, atoSoon * 12));
     html += '</div>';
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button><button class="btn subtle" data-action="approved-sw-catalog">SW Catalog</button><button class="btn subtle" data-action="warranty-tracking">Warranties</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button><button class="btn subtle" data-action="inventory-audit-mode">Audit</button><button class="btn subtle" data-action="approved-sw-catalog">SW Catalog</button><button class="btn subtle" data-action="warranty-tracking">Warranties</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
     if (ui.personId) {
       var focusPerson = findPersonById(ui.personId);
       if (focusPerson) {
@@ -7747,6 +7747,189 @@ function renderWarrantyTrackingView(){
   }
 
   openModal('Warranty Tracking', html, '<button class="btn" data-action="close-modal">Close</button>', 'Hardware warranty status overview');
+}
+
+function openInventoryAuditMode(){
+  var hw = (APP.state.data.hardwareAssets || []).slice();
+  hw.sort(function(a,b){ return (a.Title || a.AssetID || '').localeCompare(b.Title || b.AssetID || ''); });
+  if (hw.length === 0) { toast('No hardware assets to audit.', 'warn'); return; }
+  APP.state.auditItems = hw.map(function(a){
+    return { id: a.Id, title: a.Title || a.AssetID || 'Unknown', type: a.AssetType || '', serial: a.SerialNumber || '', location: a.PhysicalLocation || '', status: null };
+  });
+  APP.state.auditIndex = 0;
+  renderAuditStep();
+}
+function renderAuditStep(){
+  var items = APP.state.auditItems || [];
+  var idx = APP.state.auditIndex || 0;
+  if (idx >= items.length) { return finalizeAudit(); }
+  var item = items[idx];
+  var progress = Math.round(((idx) / items.length) * 100);
+  var body = '<div style="text-align:center;margin-bottom:12px">';
+  body += '<div style="font-size:11px;color:var(--text-muted)">Asset ' + (idx + 1) + ' of ' + items.length + '</div>';
+  body += '<div style="background:var(--border);height:6px;border-radius:3px;margin:6px 0"><div style="background:var(--primary,#2980b9);height:6px;border-radius:3px;width:' + progress + '%"></div></div>';
+  body += '</div>';
+  body += '<div class="kv">';
+  body += '<div class="k">Asset</div><div class="v"><strong>' + escHtml(item.title) + '</strong></div>';
+  body += '<div class="k">Type</div><div class="v">' + escHtml(item.type) + '</div>';
+  body += '<div class="k">Serial</div><div class="v">' + escHtml(item.serial || 'N/A') + '</div>';
+  body += '<div class="k">Location</div><div class="v">' + escHtml(item.location || 'Not set') + '</div>';
+  body += '</div>';
+  body += '<div style="margin-top:16px;text-align:center;font-weight:600">What is the status of this asset?</div>';
+  var footer = '<button class="btn success" data-action="audit-mark" data-status="Verified" style="min-width:100px">Verified</button>';
+  footer += '<button class="btn danger" data-action="audit-mark" data-status="Missing" style="min-width:100px">Missing</button>';
+  footer += '<button class="btn" data-action="audit-mark" data-status="Damaged" style="min-width:100px;background:var(--warning,#f39c12);color:#fff">Damaged</button>';
+  footer += '<button class="btn subtle" data-action="audit-mark" data-status="Skip" style="min-width:80px">Skip</button>';
+  openModal('Inventory Audit', body, footer, 'Step through assets');
+}
+function markAuditItem(status){
+  var items = APP.state.auditItems || [];
+  var idx = APP.state.auditIndex || 0;
+  if (idx < items.length) { items[idx].status = status; }
+  APP.state.auditIndex = idx + 1;
+  if (APP.state.auditIndex >= items.length) {
+    closeModal();
+    finalizeAudit();
+  } else {
+    renderAuditStep();
+  }
+}
+function finalizeAudit(){
+  var items = APP.state.auditItems || [];
+  var verified = items.filter(function(i){ return i.status === 'Verified'; });
+  var missing = items.filter(function(i){ return i.status === 'Missing'; });
+  var damaged = items.filter(function(i){ return i.status === 'Damaged'; });
+  var skipped = items.filter(function(i){ return i.status === 'Skip' || !i.status; });
+  var now = new Date().toISOString();
+  var userId = APP.state.currentUser ? APP.state.currentUser.id : null;
+
+  var body = '<div style="display:flex;gap:12px;margin-bottom:12px">';
+  body += '<div style="padding:8px 14px;border-radius:4px;background:var(--success-bg,#27ae6022);flex:1;text-align:center"><strong style="color:var(--success,#27ae60)">' + verified.length + '</strong><div style="font-size:11px">Verified</div></div>';
+  body += '<div style="padding:8px 14px;border-radius:4px;background:var(--danger-bg,#e74c3c22);flex:1;text-align:center"><strong style="color:var(--danger,#e74c3c)">' + missing.length + '</strong><div style="font-size:11px">Missing</div></div>';
+  body += '<div style="padding:8px 14px;border-radius:4px;background:var(--warning-bg,#f39c1222);flex:1;text-align:center"><strong style="color:var(--warning,#f39c12)">' + damaged.length + '</strong><div style="font-size:11px">Damaged</div></div>';
+  body += '<div style="padding:8px 14px;border-radius:4px;flex:1;text-align:center"><strong>' + skipped.length + '</strong><div style="font-size:11px">Skipped</div></div>';
+  body += '</div>';
+
+  if (missing.length > 0 || damaged.length > 0) {
+    body += '<div style="margin-top:8px"><strong>Issues Found:</strong></div><table class="data-table" style="font-size:11px"><thead><tr><th>Asset</th><th>Status</th></tr></thead><tbody>';
+    missing.concat(damaged).forEach(function(i){
+      body += '<tr><td>' + escHtml(i.title) + '</td><td><span class="badge badge-' + (i.status === 'Missing' ? 'danger' : 'warn') + '">' + i.status + '</span></td></tr>';
+    });
+    body += '</tbody></table>';
+  }
+
+  var footer = '<button class="btn" data-action="close-modal">Close</button>';
+  footer += '<button class="btn primary" data-action="audit-save-results">Save Audit Results</button>';
+  openModal('Audit Complete', body, footer, 'Inventory audit summary');
+
+  APP.state.auditResults = { verified: verified, missing: missing, damaged: damaged, skipped: skipped, date: now };
+}
+function saveAuditResults(){
+  var results = APP.state.auditResults;
+  if (!results) { toast('No audit results to save.', 'danger'); return; }
+  var now = results.date || new Date().toISOString();
+  var userId = APP.state.currentUser ? APP.state.currentUser.id : null;
+  var verified = results.verified || [];
+  toast('Saving audit results for ' + verified.length + ' verified assets...', 'ok');
+
+  var updates = verified.map(function(item){
+    var payload = { LastAuditDate: now };
+    if (userId) { payload.LastAuditBy = userId; }
+    return updateListItem(APP.lists.HardwareAssets, item.id, payload, { entityType: 'HardwareAsset', reason: 'Inventory audit — Verified' }).catch(function(){ return null; });
+  });
+
+  var auditMeta = {
+    total: (results.verified.length + results.missing.length + results.damaged.length + results.skipped.length),
+    verified: results.verified.length,
+    missing: results.missing.length,
+    damaged: results.damaged.length,
+    skipped: results.skipped.length,
+    missingAssets: results.missing.map(function(i){ return i.title; }),
+    damagedAssets: results.damaged.map(function(i){ return i.title; })
+  };
+  logAudit('InventoryAudit', 'HardwareAsset', null, auditMeta, { reason: 'Inventory audit completed' });
+
+  Promise.all(updates).then(function(){
+    closeModal();
+    toast('Audit results saved. ' + verified.length + ' assets updated.', 'ok');
+    return ensureAssetsLoaded(true);
+  }).then(function(){
+    if (APP.state.route === 'assets') renderAssets();
+  }).catch(function(err){
+    toast(extractSpErrorMessage(err) || 'Failed to save some audit results.', 'danger');
+  });
+}
+
+function openCheckOutModal(assignmentId){
+  var assignments = APP.state.data.hardwareAssignments || [];
+  var asgn = null;
+  assignments.some(function(a){ if (String(a.Id) === String(assignmentId)) { asgn = a; return true; } return false; });
+  if (!asgn) { toast('Assignment not found.', 'danger'); return; }
+  var assetName = asgn._asset ? (asgn._asset.Title || asgn._asset.AssetID || '') : getLookupTitle(asgn.Asset) || '';
+  var personName = asgn._person ? formatPerson(asgn._person) : getLookupTitle(asgn.Person) || '';
+  var body = '<div class="kv">';
+  body += '<div class="k">Asset</div><div class="v"><strong>' + escHtml(assetName) + '</strong></div>';
+  body += '<div class="k">Assigned To</div><div class="v">' + escHtml(personName) + '</div>';
+  body += '</div>';
+  body += '<div class="form-grid" style="margin-top:12px">';
+  body += '<label>Expected Return Date</label><input type="date" id="checkOutReturnDate" />';
+  body += '<label>Notes</label><textarea id="checkOutNotes" rows="2" placeholder="Reason for check-out"></textarea>';
+  body += '</div>';
+  APP.state.checkOutAssignmentId = assignmentId;
+  var footer = '<button class="btn" data-action="close-modal">Cancel</button>';
+  footer += '<button class="btn primary" data-action="confirm-check-out">Check Out</button>';
+  openModal('Check Out Portable Device', body, footer, 'Record device check-out');
+}
+function confirmCheckOut(){
+  var id = APP.state.checkOutAssignmentId;
+  if (!id) return;
+  var returnDate = document.getElementById('checkOutReturnDate');
+  var notes = document.getElementById('checkOutNotes');
+  var payload = { Status: 'Checked Out' };
+  if (returnDate && returnDate.value) payload.ExpectedReturnDate = returnDate.value;
+  if (notes && notes.value.trim()) payload.Notes = (notes.value.trim());
+  toast('Recording check-out...', 'ok');
+  updateListItem(APP.lists.HardwareAssignments, id, payload, { entityType: 'HardwareAssignment', reason: 'Portable device checked out' }).then(function(){
+    closeModal();
+    return ensureAssetsLoaded(true);
+  }).then(function(){
+    toast('Device checked out.', 'ok');
+    if (APP.state.route === 'assets') renderAssets();
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Check-out failed.', 'danger'); });
+}
+function openCheckInModal(assignmentId){
+  var assignments = APP.state.data.hardwareAssignments || [];
+  var asgn = null;
+  assignments.some(function(a){ if (String(a.Id) === String(assignmentId)) { asgn = a; return true; } return false; });
+  if (!asgn) { toast('Assignment not found.', 'danger'); return; }
+  var assetName = asgn._asset ? (asgn._asset.Title || asgn._asset.AssetID || '') : getLookupTitle(asgn.Asset) || '';
+  var body = '<div class="kv"><div class="k">Asset</div><div class="v"><strong>' + escHtml(assetName) + '</strong></div></div>';
+  body += '<div class="form-grid" style="margin-top:12px">';
+  body += '<label>Condition</label><select id="checkInCondition"><option value="Good">Good</option><option value="Damaged">Damaged</option><option value="Needs Repair">Needs Repair</option></select>';
+  body += '<label>Notes</label><textarea id="checkInNotes" rows="2" placeholder="Return notes"></textarea>';
+  body += '</div>';
+  APP.state.checkInAssignmentId = assignmentId;
+  var footer = '<button class="btn" data-action="close-modal">Cancel</button>';
+  footer += '<button class="btn primary" data-action="confirm-check-in">Check In</button>';
+  openModal('Check In Portable Device', body, footer, 'Record device return');
+}
+function confirmCheckIn(){
+  var id = APP.state.checkInAssignmentId;
+  if (!id) return;
+  var condition = document.getElementById('checkInCondition');
+  var notes = document.getElementById('checkInNotes');
+  var payload = { Status: 'Active', ExpectedReturnDate: null };
+  var noteText = (condition ? condition.value : 'Good') + ' condition on return.';
+  if (notes && notes.value.trim()) noteText += ' ' + notes.value.trim();
+  payload.Notes = noteText;
+  toast('Recording check-in...', 'ok');
+  updateListItem(APP.lists.HardwareAssignments, id, payload, { entityType: 'HardwareAssignment', reason: 'Portable device checked in' }).then(function(){
+    closeModal();
+    return ensureAssetsLoaded(true);
+  }).then(function(){
+    toast('Device checked in.', 'ok');
+    if (APP.state.route === 'assets') renderAssets();
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Check-in failed.', 'danger'); });
 }
 
 function renderSimpleAssetTable(title, rows){
@@ -8957,7 +9140,9 @@ function renderSupervisorHub(){
     ensureOrganizationsLoaded().catch(function(){ return []; }),
     ensureTimeOffLoaded().catch(function(){ return []; }),
     ensureRequestsLoaded().catch(function(){ return []; }),
-    ensureTrainingSubmissionsLoaded().catch(function(){ return []; })
+    ensureTrainingSubmissionsLoaded().catch(function(){ return []; }),
+    ensureSF182Loaded().catch(function(){ return []; }),
+    ensureInOutStepsLoaded().catch(function(){ return []; })
   ]).then(function(){ renderSupervisorHubInner(); });
 }
 
@@ -9067,13 +9252,32 @@ function renderSupervisorHubContent(){
     return pid && teamIds[pid] && String(s.Status || '').toLowerCase() === 'pending review';
   });
 
-  var totalPending = pendingLeave.length + pendingRequests.length + pendingTrainingSubs.length;
+  /* SH-13: SF-182 pending supervisor approval */
+  var pendingSF182 = (APP.state.data.sf182Requests || []).filter(function(r){
+    var pid = r.PersonID && r.PersonID.Id ? r.PersonID.Id : null;
+    var status = String(r.Status || '').toLowerCase();
+    return pid && teamIds[pid] && (status === 'submitted' || status === 'pending');
+  });
+
+  /* SH-14: In-processing steps assigned to supervisor */
+  var myInOutSteps = (APP.state.data.inOutSteps || []).filter(function(step){
+    var assignedTo = step.AssignedTo && step.AssignedTo.Id ? String(step.AssignedTo.Id) : '';
+    var owningOrg = step.OwningOrgID && step.OwningOrgID.Id ? String(step.OwningOrgID.Id) : '';
+    var myOrgId = getCurrentOrgId() ? String(getCurrentOrgId()) : '';
+    var status = String(step.Status || '').toLowerCase();
+    if (status === 'complete' || status === 'completed' || status === 'skipped') return false;
+    return assignedTo === String(currentPersonId) || (myOrgId && owningOrg === myOrgId);
+  });
+
+  var totalPending = pendingLeave.length + pendingRequests.length + pendingTrainingSubs.length + pendingSF182.length + myInOutSteps.length;
 
   /* SH-10: unified action queue with inline actions */
   html += renderSupervisorActionQueue({
     pendingLeave: pendingLeave,
     pendingRequests: pendingRequests,
     pendingTrainingSubs: pendingTrainingSubs,
+    pendingSF182: pendingSF182,
+    myInOutSteps: myInOutSteps,
     teamMembers: teamMembers
   });
 
@@ -9134,7 +9338,9 @@ function renderSupervisorActionQueue(input){
   var pendingLeave = input.pendingLeave || [];
   var pendingRequests = input.pendingRequests || [];
   var pendingTrainingSubs = input.pendingTrainingSubs || [];
-  var totalPending = pendingLeave.length + pendingRequests.length + pendingTrainingSubs.length;
+  var pendingSF182 = input.pendingSF182 || [];
+  var myInOutSteps = input.myInOutSteps || [];
+  var totalPending = pendingLeave.length + pendingRequests.length + pendingTrainingSubs.length + pendingSF182.length + myInOutSteps.length;
 
   var html = '<div class="card' + (totalPending > 0 ? ' border-danger' : '') + '" style="margin-top:16px">';
   html += '<div class="card-header">Action Queue' + (totalPending > 0 ? ' <span class="badge badge-danger">' + totalPending + '</span>' : '') + '</div>';
@@ -9189,6 +9395,40 @@ function renderSupervisorActionQueue(input){
       requestedTime: s.Id || 0,
       actions: '<button class="btn subtle success" data-action="review-submission-approve" data-id="' + escAttr(s.Id) + '">Approve</button> '
         + '<button class="btn subtle danger" data-action="review-submission-reject" data-id="' + escAttr(s.Id) + '">Reject</button>'
+    });
+  });
+  /* SH-13: SF-182 pending approval */
+  pendingSF182.forEach(function(r){
+    var personName = (r.PersonID && r.PersonID.Title) || 'Unknown';
+    var trainingTitle = r.TrainingTitle || r.Title || 'SF-182 Request';
+    var cost = r.EstimatedCost ? ('$' + Number(r.EstimatedCost).toFixed(0)) : '';
+    queue.push({
+      kind: 'sf182',
+      id: r.Id,
+      icon: '🎓',
+      title: 'SF-182 — ' + personName,
+      detail: trainingTitle + (cost ? ' • ' + cost : ''),
+      requestedTime: r.Created ? new Date(r.Created).getTime() : 0,
+      actions: '<button class="btn subtle success" data-action="sf182-approve" data-id="' + escAttr(r.Id) + '">Approve</button> '
+        + '<button class="btn subtle" data-action="sf182-return" data-id="' + escAttr(r.Id) + '">Return</button> '
+        + '<button class="btn subtle danger" data-action="sf182-reject" data-id="' + escAttr(r.Id) + '">Reject</button>'
+    });
+  });
+  /* SH-14: In-processing steps assigned to supervisor */
+  myInOutSteps.forEach(function(step){
+    var personName = (step.PersonID && step.PersonID.Title) || (step.Person && step.Person.Title) || 'Team member';
+    var stepTitle = step.Title || step.StepTitle || 'Step';
+    var dueDays = daysUntil(step.DueDate);
+    var dueLbl = dueDays != null ? (dueDays < 0 ? 'OVERDUE ' + Math.abs(dueDays) + 'd' : 'due in ' + dueDays + 'd') : '';
+    queue.push({
+      kind: 'inout-step',
+      id: step.Id,
+      icon: '🔄',
+      title: 'In-processing: ' + stepTitle,
+      detail: personName + (dueLbl ? ' • ' + dueLbl : ''),
+      overdue: dueDays != null && dueDays < 0,
+      requestedTime: step.Created ? new Date(step.Created).getTime() : 0,
+      actions: '<button class="btn subtle success" data-action="complete-inout-step" data-id="' + escAttr(step.Id) + '">Complete</button>'
     });
   });
   /* Sort: overdue first, then oldest first */
@@ -9293,6 +9533,76 @@ function denyLeaveRequest(timeOffId){
     if (APP.state.route === 'supervisor') { renderSupervisorHubContent(); }
   }).catch(function(err){
     toast(extractSpErrorMessage(err) || 'Denial failed.', 'danger');
+  });
+}
+
+/* SH-13: SF-182 approval workflow */
+function sf182SupervisorAction(sf182Id, newStatus){
+  if (!canSeeSupervisorHub()) { toast('Access restricted.', 'danger'); return; }
+  var rows = APP.state.data.sf182Requests || [];
+  var row = null;
+  rows.some(function(r){ if (String(r.Id) === String(sf182Id)) { row = r; return true; } return false; });
+  if (!row) { toast('SF-182 request not found.', 'danger'); return; }
+  var notes = '';
+  if (newStatus === 'Rejected' || newStatus === 'Returned') {
+    notes = window.prompt(newStatus === 'Rejected' ? 'Rejection reason (required):' : 'Notes for revision:', '');
+    if (notes === null) return;
+    if (newStatus === 'Rejected' && !notes.trim()) { toast('A reason is required for rejection.', 'danger'); return; }
+  } else {
+    notes = window.prompt('Approval notes (optional):', '') || '';
+  }
+  toast('Updating SF-182...', 'ok');
+  var payload = { Status: newStatus };
+  if (notes) payload.SupervisorNotes = notes;
+  updateListItem(APP.lists.SF182Requests, sf182Id, payload, { entityType: 'SF182Request', reason: 'Supervisor ' + newStatus.toLowerCase(), before: { Status: row.Status } }).then(function(){
+    var personId = row.PersonID && row.PersonID.Id;
+    if (personId) {
+      sendNotification({
+        title: 'SF-182 request ' + newStatus.toLowerCase(),
+        body: 'Your SF-182 training request' + (row.TrainingTitle ? ' for ' + row.TrainingTitle : '') + ' has been ' + newStatus.toLowerCase() + '.' + (notes ? ' Note: ' + notes : ''),
+        notificationType: 'General',
+        sourceModule: 'SupervisorHub',
+        sensitivityLevel: 'Public',
+        audienceType: 'Individual',
+        recipientPersonId: personId,
+        actionURL: '#sf182',
+        isSystemGenerated: true
+      }).catch(function(){});
+    }
+    return ensureSF182Loaded(true);
+  }).then(function(){
+    toast('SF-182 ' + newStatus.toLowerCase() + '.', 'ok');
+    if (APP.state.route === 'supervisor') renderSupervisorHubContent();
+  }).catch(function(err){
+    toast(extractSpErrorMessage(err) || 'SF-182 update failed.', 'danger');
+  });
+}
+
+/* SH-14: In-processing step sign-off */
+function completeInOutStep(stepId){
+  if (!canSeeSupervisorHub()) { toast('Access restricted.', 'danger'); return; }
+  var steps = APP.state.data.inOutSteps || [];
+  var step = null;
+  steps.some(function(s){ if (String(s.Id) === String(stepId)) { step = s; return true; } return false; });
+  if (!step) { toast('Step not found.', 'danger'); return; }
+  var notes = window.prompt('Completion notes (optional):', '');
+  if (notes === null) return;
+  toast('Completing step...', 'ok');
+  var payload = {
+    Status: 'Complete',
+    CompletedOn: new Date().toISOString()
+  };
+  if (APP.state.currentUser && APP.state.currentUser.id) {
+    payload.CompletedBy = APP.state.currentUser.id;
+  }
+  if (notes) payload.Notes = notes;
+  updateListItem(APP.lists.InOutSteps, stepId, payload, { entityType: 'InOutStep', reason: 'Supervisor completed in-processing step', before: { Status: step.Status } }).then(function(){
+    return ensureInOutStepsLoaded(true);
+  }).then(function(){
+    toast('Step completed.', 'ok');
+    if (APP.state.route === 'supervisor') renderSupervisorHubContent();
+  }).catch(function(err){
+    toast(extractSpErrorMessage(err) || 'Step completion failed.', 'danger');
   });
 }
 
@@ -9767,6 +10077,13 @@ function handleClick(e){
   if (action === 'confirm-transfer-sw') { confirmTransferSw(); return; }
   if (action === 'asset-depreciation') { renderAssetDepreciation(); return; }
   if (action === 'asset-discrepancies') { renderInventoryDiscrepancies(); return; }
+  if (action === 'inventory-audit-mode') { ensureAssetsLoaded().then(function(){ openInventoryAuditMode(); }); return; }
+  if (action === 'check-out-device') { openCheckOutModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-check-out') { confirmCheckOut(); return; }
+  if (action === 'check-in-device') { openCheckInModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-check-in') { confirmCheckIn(); return; }
+  if (action === 'audit-mark') { markAuditItem(el.getAttribute('data-status')); return; }
+  if (action === 'audit-save-results') { saveAuditResults(); return; }
   if (action === 'approved-sw-catalog') { ensureAssetsLoaded().then(function(){ renderApprovedSoftwareCatalog(); }); return; }
   if (action === 'warranty-tracking') { ensureAssetsLoaded().then(function(){ renderWarrantyTrackingView(); }); return; }
   if (action === 'asset-timeline') { renderAssignmentTimeline(el.getAttribute('data-id')); return; }
@@ -9786,6 +10103,10 @@ function handleClick(e){
   if (action === 'set-supervisor-scope') { APP.state.supervisorScope = el.getAttribute('data-scope') || 'direct'; renderSupervisorHubContent(); return; }
   if (action === 'approve-leave') { approveLeaveRequest(el.getAttribute('data-id')); return; }
   if (action === 'deny-leave') { denyLeaveRequest(el.getAttribute('data-id')); return; }
+  if (action === 'sf182-approve') { sf182SupervisorAction(el.getAttribute('data-id'), 'Supervisor Approved'); return; }
+  if (action === 'sf182-return') { sf182SupervisorAction(el.getAttribute('data-id'), 'Returned'); return; }
+  if (action === 'sf182-reject') { sf182SupervisorAction(el.getAttribute('data-id'), 'Rejected'); return; }
+  if (action === 'complete-inout-step') { completeInOutStep(el.getAttribute('data-id')); return; }
 }
 function detectEmbeddedMode(){
   var isEmbedded = false;

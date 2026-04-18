@@ -148,11 +148,9 @@ false positives on the script side, not problems in SharePoint:
 - [x] **Add `LastAuditBy` column to `CCSD_HardwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Same list > **Add column** > **Person or Group** > name it `LastAuditBy`
 
-- [ ] **Build inventory audit mode** — 💻 (after columns exist)
-  - Checklist-style walkthrough of all assets, mark each Verified / Missing / Damaged
+- [x] **Build inventory audit mode** — 💻 ✅ Done 2026-04-18. `openInventoryAuditMode()` creates step-by-step walkthrough of all assets. `renderAuditStep()` shows per-asset modal with Verified/Missing/Damaged/Skip buttons and progress bar. `finalizeAudit()` shows summary with counts and issues table.
 
-- [ ] **Build audit history log** — 💻
-  - Records who audited, when, what status was found (uses existing AppAuditLog list)
+- [x] **Build audit history log** — 💻 ✅ Done 2026-04-18. `saveAuditResults()` updates LastAuditDate/LastAuditBy on verified assets and logs audit metadata via `logAudit()`.
 
 - [ ] **Barcode / asset tag scanning** — 👤 + 💻
   - **Your decision needed**: This requires camera access via the browser. SharePoint Online pages *can* use `getUserMedia()` but your network security policy may block it. Test by visiting any website that requests camera access from a work machine.
@@ -194,7 +192,7 @@ false positives on the script side, not problems in SharePoint:
 - [x] **Add `ExpectedReturnDate` column to `CCSD_HardwareAssignments`** — 👤 ✅ Created 2026-04-18
   1. Open `CCSD_HardwareAssignments` > **Add column** > **Date and Time** > name it `ExpectedReturnDate`
 
-- [ ] **Check-out / check-in for portable devices** — 💻 (after column exists)
+- [x] **Check-out / check-in for portable devices** — 💻 ✅ Done 2026-04-18. `openCheckOutModal()` / `confirmCheckOut()` for portable device check-out with expected return date. `openCheckInModal()` / `confirmCheckIn()` for check-in with condition notes.
 
 ### Assignment Improvements (P2) — 💻
 
@@ -2104,16 +2102,9 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
   - Approve → creates `CCSD_TrainingRecords` entry (existing pattern from Index.html training submission flow). Calls `logAudit()`.
   - Reject → sets `Status = 'Rejected'` with notes. Calls `logAudit()`.
 
-- [ ] **SF-182 approval** — Inline review for pending SF-182 training requests:
-  - Show: training name, requestor, estimated cost, duty hours, non-duty hours, justification
-  - Approve → sets `Status = 'Supervisor Approved'` (existing status value per `openSF182EditModal()` at Index.html:6986). Calls `logAudit()`.
-  - Return for revision → sets `Status = 'Returned'` with notes
-  - Reject → sets `Status = 'Rejected'` with notes
+- [x] **SF-182 approval** — ✅ Done 2026-04-18. `sf182SupervisorAction()` handles approve/return/reject with notes prompts, updates Status, calls `logAudit()` and `sendNotification()`. Integrated into unified action queue with 🎓 icon.
 
-- [ ] **In-processing step sign-off** — Supervisor marks steps assigned to them as complete:
-  - Show step details: step number, title, description, due date
-  - Complete → sets `Status = 'Complete'`, `CompletedBy = currentUser`, `CompletedOn = now()` on the `CCSD_InOutStepStatus` row. Calls `logAudit()`.
-  - If all supervisor steps are complete, show a summary "All your onboarding steps for [person] are done."
+- [x] **In-processing step sign-off** — ✅ Done 2026-04-18. `completeInOutStep()` sets Status='Complete', CompletedBy/CompletedOn, calls `logAudit()`. Integrated into unified action queue with 🔄 icon.
 
 - [ ] **Overdue badge on Hub nav tab** — Red badge showing count of overdue items across all sources. Badge renders in `renderNav()` when `canSeeSupervisorHub()` is true. Count computed from cached action queue data. Updates on each page load.
 
@@ -2478,8 +2469,8 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 - [x] **SH-10: Build unified action queue** — 💻 ✅ Done 2026-04-18. `renderSupervisorActionQueue()` aggregates pending leave + requests assigned + training submissions into a single sorted list (overdue first, then oldest). Inline action buttons per item.
 - [x] **SH-11: Build leave approval workflow** — 💻 ✅ Done 2026-04-18. `approveLeaveRequest()` / `denyLeaveRequest()` prompt for notes/reason, update Status + SupervisorDecisionDate + DecisionNotes via `updateListItem` (audit logged), send notification to requester via `sendNotification()`. Manning-impact panel deferred.
 - [x] **SH-12: Build training submission review** — 💻 ✅ Done 2026-04-18 via integration. The unified action queue surfaces pending submissions with approve/reject buttons that route to the existing `reviewSubmission()` Training pipeline.
-- [ ] **SH-13: Build SF-182 approval workflow** — 💻 Per 12e spec. Inline approve/return/reject.
-- [ ] **SH-14: Build in-processing step sign-off** — 💻 Per 12e spec. Complete steps assigned to supervisor.
+- [x] **SH-13: Build SF-182 approval workflow** — 💻 ✅ Done 2026-04-18. `sf182SupervisorAction()` with approve/return/reject actions, notes prompts, notification sending. Wired into handleClick and unified action queue.
+- [x] **SH-14: Build in-processing step sign-off** — 💻 ✅ Done 2026-04-18. `completeInOutStep()` marks steps complete with CompletedBy/CompletedOn. Wired into handleClick and unified action queue.
 - [x] **SH-15: Build cross-module links** — 💻 ✅ Done 2026-04-18. "Quick Navigation" card added to Supervisor Hub with icon-labeled links to Calendar, Training, Requests, In/Out Processing, Assets, Facilities, Security (gated), and Reports. Each passes context via route navigation.
 - [ ] **SH-16: Build reports** — 💻 Per 12g spec. Team summary, training compliance matrix, leave utilization, equipment accountability. CSV export. Register in Reports module.
 - [ ] **SH-17: Integrate with Notification Framework** — 💻 Per 12h spec. Supervisor notification templates, team notification sending, Hub notification panel. Depends on NF-04 (Section 9) being built.
