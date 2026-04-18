@@ -1,7 +1,7 @@
 # CCSD All-Things Administrative SPA — TODO
 
 Master task list for pending features, improvements, and technical debt.
-Updated: 2026-04-15
+Updated: 2026-04-18
 
 ---
 
@@ -20,12 +20,12 @@ Updated: 2026-04-15
 
 ---
 
-## Schema Audit Status — 2026-04-15 ✅
+## Schema Audit Status — 2026-04-18 ✅
 
 A full audit of all 76 expected SharePoint lists and their columns was run against
 the production Database site using `database-audit-webpart.html` (pasted into a
-Modern Script Editor Web Part). **All lists and columns that have been created so
-far match the expected schema.**
+Modern Script Editor Web Part). **All 76 lists and libraries have been created with
+all required columns, types, and choice values. The schema is fully deployed.**
 
 Four audit-script mismatches were investigated and resolved as follows — all were
 false positives on the script side, not problems in SharePoint:
@@ -48,7 +48,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **Prerequisite: You must create 2 SharePoint lists before code can be built.**
 
-- [ ] **Create `CCSD_ConferenceRooms` list** — 👤
+- [x] **Create `CCSD_ConferenceRooms` list** — 👤 ✅ Created 2026-04-18
   1. Go to **Site Contents** > **New** > **List** > name it `CCSD_ConferenceRooms`
   2. Add these columns:
      | Column Name | Type | Notes |
@@ -65,7 +65,7 @@ false positives on the script side, not problems in SharePoint:
      | Notes | Multiple lines of text | Plain text |
   3. Verify the list is accessible at `_api/web/lists/getbytitle('CCSD_ConferenceRooms')/items`
 
-- [ ] **Create `CCSD_RoomReservations` list** — 👤
+- [x] **Create `CCSD_RoomReservations` list** — 👤 ✅ Created 2026-04-18
   1. Go to **Site Contents** > **New** > **List** > name it `CCSD_RoomReservations`
   2. Add these columns:
      | Column Name | Type | Notes |
@@ -140,12 +140,12 @@ false positives on the script side, not problems in SharePoint:
 
 ### Inventory & Audit (P1) — 🤝
 
-- [ ] **Add `LastAuditDate` column to `CCSD_HardwareAssets`** — 👤
+- [x] **Add `LastAuditDate` column to `CCSD_HardwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Go to **Site Contents** > open `CCSD_HardwareAssets` list
   2. **Add column** > **Date and Time** > name it `LastAuditDate`
   3. Set "Include Time" to **No** (date only)
 
-- [ ] **Add `LastAuditBy` column to `CCSD_HardwareAssets`** — 👤
+- [x] **Add `LastAuditBy` column to `CCSD_HardwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Same list > **Add column** > **Person or Group** > name it `LastAuditBy`
 
 - [ ] **Build inventory audit mode** — 💻 (after columns exist)
@@ -161,7 +161,7 @@ false positives on the script side, not problems in SharePoint:
 
 ### Software Governance (P2) — 🤝
 
-- [ ] **Add `TotalLicenses` column to `CCSD_SoftwareAssets`** — 👤
+- [x] **Add `TotalLicenses` column to `CCSD_SoftwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Open `CCSD_SoftwareAssets` list
   2. **Add column** > **Number** > name it `TotalLicenses`
   3. This tells the system how many licenses you own per title
@@ -172,26 +172,26 @@ false positives on the script side, not problems in SharePoint:
 - [ ] **Approved software catalog view** — 💻 (no prereqs)
 - [ ] **Version compliance check** — 💻 (no prereqs)
 
-- [ ] **Add `CostCenter` column to `CCSD_HardwareAssets` and `CCSD_SoftwareAssets`** — 👤
+- [x] **Add `CostCenter` column to `CCSD_HardwareAssets` and `CCSD_SoftwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Open each list > **Add column** > **Single line of text** > name it `CostCenter`
 
 - [ ] **Cost center reporting** — 💻 (after columns exist)
 
 ### Hardware Tracking (P2) — 🤝
 
-- [ ] **Add `WarrantyExpiration` column to `CCSD_HardwareAssets`** — 👤
+- [x] **Add `WarrantyExpiration` column to `CCSD_HardwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Open `CCSD_HardwareAssets` > **Add column** > **Date and Time** > name it `WarrantyExpiration`
   2. Set "Include Time" to **No**
 
 - [ ] **Warranty tracking & alerts** — 💻 (after column exists)
 
-- [ ] **Add `PhysicalLocation` column to `CCSD_HardwareAssets`** — 👤
+- [x] **Add `PhysicalLocation` column to `CCSD_HardwareAssets`** — 👤 ✅ Created 2026-04-18
   1. Open `CCSD_HardwareAssets` > **Add column** > **Single line of text** > name it `PhysicalLocation`
   2. Values like "Bldg 500 / Rm 201" or "Mobile"
 
 - [ ] **Location tracking** — 💻 (after column exists)
 
-- [ ] **Add `ExpectedReturnDate` column to `CCSD_HardwareAssignments`** — 👤
+- [x] **Add `ExpectedReturnDate` column to `CCSD_HardwareAssignments`** — 👤 ✅ Created 2026-04-18
   1. Open `CCSD_HardwareAssignments` > **Add column** > **Date and Time** > name it `ExpectedReturnDate`
 
 - [ ] **Check-out / check-in for portable devices** — 💻 (after column exists)
@@ -649,9 +649,9 @@ Add to `loadAppData()` (or the security-module init):
 
 ##### Phase A: Lists & Infrastructure (Prerequisites — 👤)
 
-- [ ] **NF-01: Create `CCSD_Notifications` list** — 👤 19 columns per schema above. Add indexed columns on: `NotificationType`, `SourceModule`, `SentDate`.
-- [ ] **NF-02: Create `CCSD_NotificationReceipts` list** — 👤 9 columns per schema above. Add indexed columns on: `RecipientPersonID`, `IsRead`, `NotificationID`.
-- [ ] **NF-03: Add notification-related role entries to `CCSD_AppRoles`** — 👤 Ensure `Security`, `Training`, `HR`, `Supervisor` roles exist (most should already exist from other modules). No new roles needed — the framework uses existing roles.
+- [x] **NF-01: Create `CCSD_Notifications` list** — 👤 ✅ Created 2026-04-18. 19 columns per schema above. Add indexed columns on: `NotificationType`, `SourceModule`, `SentDate`.
+- [x] **NF-02: Create `CCSD_NotificationReceipts` list** — 👤 ✅ Created 2026-04-18. 9 columns per schema above. Add indexed columns on: `RecipientPersonID`, `IsRead`, `NotificationID`.
+- [x] **NF-03: Add notification-related role entries to `CCSD_AppRoles`** — 👤 ✅ Done 2026-04-18. Ensure `Security`, `Training`, `HR`, `Supervisor` roles exist (most should already exist from other modules). No new roles needed — the framework uses existing roles.
 
 ##### Phase B: Core Framework (💻 — Build in Order)
 
@@ -1541,13 +1541,13 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 
 ##### Mandatory (Core MVP)
 
-- [ ] **IM-01: Create `CCSD_SecurityIncidents` list** — 👤 46 columns per D1 Entity 1. Must be created in SharePoint before any code work.
-- [ ] **IM-02: Create `CCSD_IncidentStatusHistory` list** — 👤 10 columns per D1 Entity 2.
-- [ ] **IM-03: Create `CCSD_IncidentActions` list** — 👤 14 columns per D1 Entity 3.
-- [ ] **IM-04: Create `CCSD_IncidentNotifications` list** — 👤 14 columns per D1 Entity 4.
-- [ ] **IM-05: Create `CCSD_IncidentParties` list** — 👤 9 columns per D1 Entity 5.
-- [ ] **IM-06: Create `CCSD_Notifications` list** — 👤 **Superseded by NF-01** (19 columns, see Section 9 Notification Framework). Create per NF-01 instead.
-- [ ] **IM-07: Add `Security` role to `CCSD_AppRoles`** — 👤 Data entry, not schema change.
+- [x] **IM-01: Create `CCSD_SecurityIncidents` list** — 👤 ✅ Created 2026-04-18. 46 columns per D1 Entity 1.
+- [x] **IM-02: Create `CCSD_IncidentStatusHistory` list** — 👤 ✅ Created 2026-04-18. 10 columns per D1 Entity 2.
+- [x] **IM-03: Create `CCSD_IncidentActions` list** — 👤 ✅ Created 2026-04-18. 14 columns per D1 Entity 3.
+- [x] **IM-04: Create `CCSD_IncidentNotifications` list** — 👤 ✅ Created 2026-04-18. 14 columns per D1 Entity 4.
+- [x] **IM-05: Create `CCSD_IncidentParties` list** — 👤 ✅ Created 2026-04-18. 9 columns per D1 Entity 5.
+- [x] **IM-06: Create `CCSD_Notifications` list** — 👤 ✅ Created 2026-04-18. **Superseded by NF-01** (19 columns, see Section 9 Notification Framework).
+- [x] **IM-07: Add `Security` role to `CCSD_AppRoles`** — 👤 ✅ Done 2026-04-18. Data entry, not schema change.
 - [x] **IM-08: Add gate functions** — 💻 `canManageSecurity()`, `canViewOwnSecurity()` added alongside existing gates. ✅ Done 2026-04-14.
 - [x] **IM-09: Add `#security` route** — 💻 Hash route added to router, nav tab added to `APP.nav`, placeholder render function built, `Alt+S` keyboard shortcut registered. ✅ Done 2026-04-14.
 - [ ] **IM-10: Build incident list view (Security role)** — 💻 Sortable/filterable table using existing table pattern. Columns: CaseNumber, Subject Name, Category, Status, Severity, AssignedTo, ReportedDate, Days Open. Color-coded status badges.
@@ -1610,7 +1610,7 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
   - Two-person integrity (TPI) tracking where required (Top Secret, COMSEC)
 - [ ] **Combination change tracking** — Date changed, reason (annual/departure/compromise), who performed change, who witnessed, new access roster.
 - [ ] **Overdue alerts** — Automated alerts for: combination change overdue (>12 months), daily check missed, container not checked after personnel departure.
-- [ ] **Requires:** `CCSD_SecurityContainers` list, `CCSD_ContainerChecks` list, `CCSD_AreaChecks` list
+- [x] **Requires:** `CCSD_SecurityContainers` list, `CCSD_ContainerChecks` list, `CCSD_AreaChecks` list — ✅ All created 2026-04-18
 
 #### 11l. Visitor Control & Restricted Area Management — 🤝
 
@@ -1627,7 +1627,7 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
   - Person (linked), authorization date, expiration, authorizing official, basis
   - ✦ AF Form 2586 tracking (Unescorted Entry Authorization)
   - Auto-removal from roster upon personnel departure or clearance change
-- [ ] **Requires:** `CCSD_VisitorLog` list, `CCSD_RestrictedAreas` list, `CCSD_AreaAccessRoster` list
+- [x] **Requires:** `CCSD_VisitorLog` list, `CCSD_RestrictedAreas` list, `CCSD_AreaAccessRoster` list — ✅ All created 2026-04-18
 
 ---
 
@@ -1645,7 +1645,7 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
   - Review due date alerts
 - [ ] **CUI category reference** — Quick-reference of CUI categories/subcategories the unit handles, with marking requirements per 32 CFR Part 2002
 - [ ] **CUI incident tracking** — Improper handling, marking, or transmission of CUI — feeds into the incident management system (Category 16)
-- [ ] **Requires:** No new lists — uses `CCSD_SecurityIncidents` (Category 16) and new columns on existing lists
+- [x] **Requires:** No new lists — uses `CCSD_SecurityIncidents` (Category 16) and new columns on existing lists — ✅ All lists exist 2026-04-18
 
 #### 11n. Document Accountability & Destruction Records — 🤝
 
@@ -1661,7 +1661,7 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
   - Document ID, classification level, date destroyed, method, destroying official, witness(es)
   - ✦ Two witnesses required for Top Secret (DoDM 5200.01 Vol 3)
   - ✦ Top Secret destruction records retained 5 years
-- [ ] **Requires:** `CCSD_ClassifiedDocuments` list, `CCSD_DestructionRecords` list
+- [x] **Requires:** `CCSD_ClassifiedDocuments` list, `CCSD_DestructionRecords` list — ✅ All created 2026-04-18
 
 ---
 
@@ -1679,7 +1679,7 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 - [ ] **CIL version tracking** — Version history, approval dates, dissemination tracking. ⚠️ CIL content itself may be sensitive; track metadata only, store actual CIL separately.
 - [ ] **Assessment findings tracker** — Finding ID, description, risk level, recommended countermeasure, assigned OPR, due date, status (open/closed)
 - [ ] **OPSEC training tracker** — Per person: initial awareness date, annual refresher date. Coordinator specialized training (OPSEC Fundamentals Course) tracked separately.
-- [ ] **Requires:** `CCSD_OPSECProgram` list (or repurpose `CCSD_Config` for program metadata)
+- [x] **Requires:** `CCSD_OPSECProgram` list (or repurpose `CCSD_Config` for program metadata) — ✅ Created 2026-04-18
 
 #### 11p. Industrial Security / Contractor Management — 🤝
 
@@ -1700,7 +1700,7 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
   - Visit request reference, dates authorized, clearance verified, purpose, government sponsor
   - ◇ Long-term recurring visit requests: expiration tracking, renewal alerts
 - [ ] **Contractor security briefing/debriefing log** — Date briefed, briefer, topics, date debriefed
-- [ ] **Requires:** `CCSD_DD254Registry` list, `CCSD_ContractorPersonnel` list
+- [x] **Requires:** `CCSD_DD254Registry` list, `CCSD_ContractorPersonnel` list — ✅ All created 2026-04-18
 
 ---
 
@@ -2468,9 +2468,9 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 
 ##### Must-Have Core (Build First — No New Lists Needed)
 
-- [ ] **SH-01: Add `Supervisor` role entries to `CCSD_AppRoles`** — 👤 Data entry. Add rows mapping each supervisor to `Role = 'Supervisor'`. Alternatively, the `IsSupervisor` flag on `CCSD_Personnel` auto-grants the role (existing logic at Index.html:2025).
-- [ ] **SH-02: Add leave approval columns to `CCSD_TimeOff`** — 👤 Add `RequestedDate` (Date), `SupervisorDecisionDate` (Date), `DecisionNotes` (Multi-line text). See Columns table above.
-- [ ] **SH-03: Add `SupervisorNotes` column to `CCSD_Personnel`** — 👤 Multi-line text. See Columns table above. ⚠️ See privacy decision note in 12d.
+- [x] **SH-01: Add `Supervisor` role entries to `CCSD_AppRoles`** — 👤 ✅ Done 2026-04-18. Data entry. Add rows mapping each supervisor to `Role = 'Supervisor'`. Alternatively, the `IsSupervisor` flag on `CCSD_Personnel` auto-grants the role (existing logic at Index.html:2025).
+- [x] **SH-02: Add leave approval columns to `CCSD_TimeOff`** — 👤 ✅ Created 2026-04-18. Add `RequestedDate` (Date), `SupervisorDecisionDate` (Date), `DecisionNotes` (Multi-line text). See Columns table above.
+- [x] **SH-03: Add `SupervisorNotes` column to `CCSD_Personnel`** — 👤 ✅ Created 2026-04-18. Multi-line text. See Columns table above. ⚠️ See privacy decision note in 12d.
 - [x] **SH-04: Build `canSeeSupervisorHub()` gate + route** — 💻 Gate function added, `#supervisor` route in router, nav tab in `APP.nav` with conditional visibility, `Alt+V` shortcut registered. ✅ Done 2026-04-14.
 - [x] **SH-05: Build team scope resolution** — 💻 Team scope resolution built inline in `renderSupervisorHubContent()`. Scope toggle ("My Direct Reports" / "My Organization") with `APP.state.supervisorScope` persistence. Uses `SupervisorPersonID` match for direct, `getOrgAndDescendants()` for org. ✅ Done 2026-04-14.
 - [x] **SH-06: Build Privacy Act banner** — 💻 One-time-per-session acknowledgment modal on first Hub visit. Logs `PrivacyBannerAcknowledged` to `logAudit()`. ✅ Done 2026-04-14.
@@ -2488,20 +2488,20 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 
 ##### Should-Have (Build After Core — Requires New Lists/Columns)
 
-- [ ] **SH-18: Create `CCSD_PerformanceTracking` list** — 👤 ~12 columns per data dependencies table.
-- [ ] **SH-19: Add position management columns to `CCSD_Positions`** — 👤 PDNumber, PDLastReviewDate, PositionStatus, VacatedDate, FillActionStatus.
+- [x] **SH-18: Create `CCSD_PerformanceTracking` list** — 👤 ✅ Created 2026-04-18. ~12 columns per data dependencies table.
+- [x] **SH-19: Add position management columns to `CCSD_Positions`** — 👤 ✅ Created 2026-04-18. PDNumber, PDLastReviewDate, PositionStatus, VacatedDate, FillActionStatus.
 - [ ] **SH-20: Build DPMAP cycle tracker** — 💻 Per 12k spec. Cycle dashboard, milestone alerts, probationary period tracking.
 - [ ] **SH-21: Build manning/position visibility** — 💻 Per 12m spec. Manning roster, vacancy tracking, PD currency tracker.
-- [ ] **SH-22: Create `CCSD_TeleworkAgreements` list** — 👤 ~8 columns per data dependencies table.
+- [x] **SH-22: Create `CCSD_TeleworkAgreements` list** — 👤 ✅ Created 2026-04-18. ~8 columns per data dependencies table.
 - [ ] **SH-23: Build telework agreement tracker** — 💻 Per 12j spec. Agreement status, expiration alerts, schedule visibility.
-- [ ] **SH-24: Create `CCSD_Awards` list** — 👤 ~10 columns per data dependencies table.
+- [x] **SH-24: Create `CCSD_Awards` list** — 👤 ✅ Created 2026-04-18. ~10 columns per data dependencies table.
 - [ ] **SH-25: Build awards tracker** — 💻 Per 12l spec. Nomination tracking, equity view.
-- [ ] **SH-26: Create `CCSD_TaskAssignments` list** — 👤 ~12 columns per data dependencies table.
+- [x] **SH-26: Create `CCSD_TaskAssignments` list** — 👤 ✅ Created 2026-04-18. ~12 columns per data dependencies table.
 - [ ] **SH-27: Build task/suspense management** — 💻 Per 12n spec. Task board, views, notifications, recurring tasks.
 
 ##### Future Enhancement (Build Only When Approved)
 
-- [ ] **SH-28: Create `CCSD_DisciplinaryActions` list** — 👤 Per 12o spec. ⚠️ Requires ER/Privacy officer approval.
+- [x] **SH-28: Create `CCSD_DisciplinaryActions` list** — 👤 ✅ Created 2026-04-18. Per 12o spec. ⚠️ Requires ER/Privacy officer approval.
 - [ ] **SH-29: Build disciplinary action tracker** — 💻 Per 12o spec.
 - [ ] **SH-30: Build IDP tracking** — 💻 Per 12p spec. Columns on `CCSD_Personnel`.
 - [ ] **SH-31: Build overtime authorization** — 💻 Per 12q spec.
@@ -2544,9 +2544,9 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 
 ---
 
-## 13. SharePoint Lists to Create — 👤
+## 13. SharePoint Lists to Create — 👤 ✅ ALL COMPLETE
 
-> **These are all manual steps you perform in SharePoint.**
+> **All 76 lists and libraries have been created in SharePoint as of 2026-04-18. The instructions below are retained for reference.**
 
 ### `CCSD_TimeOff` — ⚠️ NEEDS CREATION NOW (Calendar module depends on this)
 
@@ -2656,9 +2656,9 @@ See Section 1 above for full column definitions. Create when ready to build that
 
 ---
 
-## 15. Column Additions to Existing Lists — 👤
+## 15. Column Additions to Existing Lists — 👤 ✅ ALL COMPLETE
 
-> **Consolidated summary of ALL new columns needed on existing lists across all sections. This is the single reference for columns to add — individual section references point here. Security module columns (Section 11) require new lists, not column additions to existing lists, and are not included here.**
+> **All columns listed below have been created as of 2026-04-18. Verified by the database audit script (`database-audit-webpart.html`). This table is retained as a reference.**
 
 | List | Column | Type | Needed For | Section |
 |------|--------|------|------------|---------|
@@ -2701,35 +2701,35 @@ See Section 1 above for full column definitions. Create when ready to build that
 ## Priority Action Summary
 
 ### 🔴 Do First (blockers for existing features)
-1. **Create `CCSD_TimeOff` list** — The Calendar module is built but has no data source yet
+1. ~~**Create `CCSD_TimeOff` list**~~ — ✅ Created 2026-04-18
 
 ### 🟡 Do When Ready — Security Module (Section 11)
-2. **Create `CCSD_SecurityRecords` list** (30 columns) — Enables Phase 1: Personnel Security Core
-3. **Add `Security` role entries to `CCSD_AppRoles`** — Required for Security module role-based access
+2. ~~**Create `CCSD_SecurityRecords` list** (30 columns)~~ — ✅ Created 2026-04-18
+3. ~~**Add `Security` role entries to `CCSD_AppRoles`**~~ — ✅ Done 2026-04-18
 4. **👤 Obtain sample DISS Excel export** — #1 blocker for the DISS import feature. Provide one monthly export file so column mapping can be built.
 5. **👤 Verify SheetJS CDN access** from `usaf.dps.mil` — If blocked, library must be inlined (~500KB)
-6. **Create `CCSD_SecurityIncidents` list** (46 columns per D1) — Enables Phase 2: Incident & Case Management
-7. **Create `CCSD_Notifications` list** (19 columns per NF-01) + **`CCSD_NotificationReceipts` list** (9 columns per NF-02) — Enables notification framework (Section 9)
+6. ~~**Create `CCSD_SecurityIncidents` list** (46 columns per D1)~~ — ✅ Created 2026-04-18
+7. ~~**Create `CCSD_Notifications` list** (19 columns per NF-01) + **`CCSD_NotificationReceipts` list** (9 columns per NF-02)~~ — ✅ Created 2026-04-18
 8. **⚖️ Consult Privacy Act officer** — Verify SORN coverage for security PII in SharePoint (Section 11 Legal/Policy item #1). Also review whether Supervisor Hub (Section 12) requires a PIA update for expanded supervisor access to subordinate data (Section 12 Policy item #9).
 9. **⚖️ Consult Information Security Program Manager** — Confirm CUI marking requirements for CSV exports
 
 ### 🟡 Do When Ready — Supervisor Hub (Section 12)
-10. **Add `Supervisor` role entries to `CCSD_AppRoles`** (SH-01) — Required for Supervisor Hub. Alternatively, `IsSupervisor` flag on `CCSD_Personnel` auto-grants the role.
-11. **Add leave approval columns to `CCSD_TimeOff`** (SH-02) — `RequestedDate`, `SupervisorDecisionDate`, `DecisionNotes`. Required for leave approval workflow.
-12. **Add `SupervisorNotes` column to `CCSD_Personnel`** (SH-03) — Multi-line text. See policy decision #1.
+10. ~~**Add `Supervisor` role entries to `CCSD_AppRoles`** (SH-01)~~ — ✅ Done 2026-04-18
+11. ~~**Add leave approval columns to `CCSD_TimeOff`** (SH-02)~~ — ✅ Created 2026-04-18
+12. ~~**Add `SupervisorNotes` column to `CCSD_Personnel`** (SH-03)~~ — ✅ Created 2026-04-18
 13. **👤 Review 11 policy/stakeholder decisions** — Section 12 Policy & Stakeholder Validation table. Items 1-7 can be decided by project owner. Items 8-11 require Privacy/ER officer consultation.
 
 ### 🟡 Do When Ready — Other Features
-14. **Create `CCSD_ConferenceRooms` + `CCSD_RoomReservations`** — Enables conference room scheduling
-15. **Add audit columns** to `CCSD_HardwareAssets` — Enables inventory audit mode
+14. ~~**Create `CCSD_ConferenceRooms` + `CCSD_RoomReservations`**~~ — ✅ Created 2026-04-18
+15. ~~**Add audit columns** to `CCSD_HardwareAssets`~~ — ✅ Created 2026-04-18
 16. **Azure AD App Registration** — Enables Outlook calendar integration (longest lead time)
 
 ### 🟢 Low Urgency (nice-to-have prerequisites)
-17. **Add `TotalLicenses`** to software assets — Enables license dashboard
-18. **Add `WarrantyExpiration`** to hardware assets — Enables warranty alerts
-19. **Create `CCSD_Announcements`** — Enables Home dashboard news banner
+17. ~~**Add `TotalLicenses`** to software assets~~ — ✅ Created 2026-04-18
+18. ~~**Add `WarrantyExpiration`** to hardware assets~~ — ✅ Created 2026-04-18
+19. ~~**Create `CCSD_Announcements`**~~ — ✅ Created 2026-04-18
 20. **Set up Teams Incoming Webhook** — Enables Teams notifications
-21. **Create `CCSD_PerformanceTracking` list** (SH-18) — Enables DPMAP cycle tracking (Section 12k)
-22. **Create `CCSD_TeleworkAgreements` list** (SH-22) — Enables telework agreement tracking (Section 12j)
-23. **Create `CCSD_Awards` list** (SH-24) — Enables awards tracking (Section 12l)
-24. **Create `CCSD_TaskAssignments` list** (SH-26) — Enables task/suspense management (Section 12n)
+21. ~~**Create `CCSD_PerformanceTracking` list** (SH-18)~~ — ✅ Created 2026-04-18
+22. ~~**Create `CCSD_TeleworkAgreements` list** (SH-22)~~ — ✅ Created 2026-04-18
+23. ~~**Create `CCSD_Awards` list** (SH-24)~~ — ✅ Created 2026-04-18
+24. ~~**Create `CCSD_TaskAssignments` list** (SH-26)~~ — ✅ Created 2026-04-18
