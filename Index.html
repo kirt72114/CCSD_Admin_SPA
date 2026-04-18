@@ -1991,8 +1991,8 @@ function batchCreateReceipts(notificationId, personIds){
     var pid = ids[i];
     var payload = {
       Title: 'NR-' + notificationId + '-' + pid,
-      NotificationIDId: notificationId,
-      RecipientPersonIDId: pid,
+      NotificationID: notificationId,
+      RecipientPersonID: pid,
       IsRead: false,
       IsDismissed: false,
       DeliveryChannel: 'InApp'
@@ -2036,9 +2036,9 @@ function sendNotification(options){
     TemplateID: options.templateId || '',
     Notes: options.notes || ''
   };
-  if (sentById) { record.SentById = sentById; }
-  if (options.audienceType === 'Individual' && options.recipientPersonId) { record.RecipientPersonIDId = Number(options.recipientPersonId); }
-  if (options.audienceType === 'Organization' && options.recipientOrgId) { record.RecipientOrgIDId = Number(options.recipientOrgId); }
+  if (sentById) { record.SentBy = sentById; }
+  if (options.audienceType === 'Individual' && options.recipientPersonId) { record.RecipientPersonID = Number(options.recipientPersonId); }
+  if (options.audienceType === 'Organization' && options.recipientOrgId) { record.RecipientOrgID = Number(options.recipientOrgId); }
   if (options.audienceType === 'Role' && options.recipientRole) { record.RecipientRole = options.recipientRole; }
   if (options.expiresDate) { record.ExpiresDate = options.expiresDate; }
   if (options.relatedEntityType) { record.RelatedEntityType = options.relatedEntityType; }
@@ -2100,7 +2100,8 @@ function ensureMyNotificationReceiptsLoaded(force){
     'RecipientPersonID/Id','RecipientPersonID/Title',
     'NotificationID/Id','NotificationID/Title','NotificationID/Body','NotificationID/NotificationType',
     'NotificationID/SourceModule','NotificationID/SensitivityLevel','NotificationID/SentDate',
-    'NotificationID/ExpiresDate','NotificationID/ActionURL','NotificationID/RelatedCaseNumber'
+    'NotificationID/ExpiresDate','NotificationID/ActionURL','NotificationID/RelatedCaseNumber',
+    'NotificationID/TemplateID','NotificationID/RelatedEntityID','NotificationID/RelatedEntityType'
   ];
   var opts = {
     filter: 'RecipientPersonIDId eq ' + personnel.Id + ' and IsDismissed ne 1',
@@ -2114,6 +2115,246 @@ function ensureMyNotificationReceiptsLoaded(force){
     addDiagnostic('warn', 'ensureMyNotificationReceiptsLoaded', 'Failed to load persistent notifications', { detail: err && err.text ? err.text : err });
     APP.state.data.myNotificationReceipts = [];
     return [];
+  });
+}
+
+/* NF-12: Notification composer modal. Used for ad-hoc sends from any module. */
+function openNotificationComposer(defaults){
+  defaults = defaults || {};
+  if (!APP.state.currentUser) { toast('Please wait for app to finish loading.', 'warn'); return; }
+  /* Build template options filtered by user permissions */
+  var templateOptions = '<option value="">— Free text (no template) —</option>';
+  Object.keys(NOTIFICATION_TEMPLATES).forEach(function(tplId){
+    var tpl = NOTIFICATION_TEMPLATES[tplId];
+    if (!canSendNotification(tpl.type, defaults.audienceType || 'Individual')) { return; }
+    var sel = (defaults.templateId === tplId) ? ' selected' : '';
+    templateOptions += '<option value="' + escAttr(tplId) + '"' + sel + '>' + escHtml(tplId + ' — ' + tpl.subject + ' (' + tpl.sensitivity + ')') + '</option>';
+  });
+
+  var audienceTypes = ['Individual','Organization','Role','All'];
+  var audienceOptions = audienceTypes.map(function(at){
+    var sel = (defaults.audienceType === at) ? ' selected' : '';
+    return '<option value="' + escAttr(at) + '"' + sel + '>' + escHtml(at) + '</option>';
+  }).join('');
+
+  var people = APP.state.data.people || [];
+  var personOptions = '<option value="">— Select person —</option>' + people.map(function(p){
+    var sel = (String(defaults.recipientPersonId || '') === String(p.Id)) ? ' selected' : '';
+    return '<option value="' + escAttr(p.Id) + '"' + sel + '>' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+
+  var orgs = APP.state.data.organizations || [];
+  var orgOptions = '<option value="">— Select organization —</option>' + orgs.map(function(o){
+    var sel = (String(defaults.recipientOrgId || '') === String(o.Id)) ? ' selected' : '';
+    return '<option value="' + escAttr(o.Id) + '"' + sel + '>' + escHtml(o.Title || o.OrgCode || ('Org #' + o.Id)) + '</option>';
+  }).join('');
+
+  var roleOptions = ['Security','Training','HR','Supervisor','IT','Facilities','Admin','App Admin'].map(function(r){
+    var sel = (defaults.recipientRole === r) ? ' selected' : '';
+    return '<option value="' + escAttr(r) + '"' + sel + '>' + escHtml(r) + '</option>';
+  }).join('');
+
+  var sourceOptions = ['Security','Training','Requests','Calendar','Assets','Facilities','SupervisorHub','System','Admin'].map(function(s){
+    var sel = (defaults.sourceModule === s) ? ' selected' : '';
+    return '<option value="' + escAttr(s) + '"' + sel + '>' + escHtml(s) + '</option>';
+  }).join('');
+
+  var sensitivityOptions = ['Public','Internal','Sensitive'].map(function(s){
+    var sel = (defaults.sensitivityLevel === s) ? ' selected' : '';
+    return '<option value="' + escAttr(s) + '"' + sel + '>' + escHtml(s) + '</option>';
+  }).join('');
+
+  var notifTypes = ['General','Security','SF86 Reminder','Incident Update','Training Reminder','Request Update','Supervisor Alert','System','Broadcast'];
+  var typeOptions = notifTypes.map(function(t){
+    var sel = (defaults.notificationType === t) ? ' selected' : '';
+    return '<option value="' + escAttr(t) + '"' + sel + '>' + escHtml(t) + '</option>';
+  }).join('');
+
+  var body = '<div style="display:grid;gap:10px">'
+    + '<div><label class="lbl">Template</label><select id="nc-template" class="ipt">' + templateOptions + '</select></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      + '<div><label class="lbl">Notification Type</label><select id="nc-type" class="ipt">' + typeOptions + '</select></div>'
+      + '<div><label class="lbl">Source Module</label><select id="nc-source" class="ipt">' + sourceOptions + '</select></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      + '<div><label class="lbl">Audience</label><select id="nc-audience" class="ipt">' + audienceOptions + '</select></div>'
+      + '<div><label class="lbl">Sensitivity</label><select id="nc-sensitivity" class="ipt">' + sensitivityOptions + '</select></div>'
+    + '</div>'
+    + '<div id="nc-recipient-individual"><label class="lbl">Recipient (Person)</label><select id="nc-person" class="ipt">' + personOptions + '</select></div>'
+    + '<div id="nc-recipient-org" style="display:none"><label class="lbl">Recipient (Organization)</label><select id="nc-org" class="ipt">' + orgOptions + '</select></div>'
+    + '<div id="nc-recipient-role" style="display:none"><label class="lbl">Recipient (Role)</label><select id="nc-role" class="ipt">' + roleOptions + '</select></div>'
+    + '<div><label class="lbl">Subject / Title</label><input id="nc-title" class="ipt" type="text" value="' + escAttr(defaults.title || '') + '"></div>'
+    + '<div><label class="lbl">Body</label><textarea id="nc-body" class="ipt" rows="5">' + escHtml(defaults.body || '') + '</textarea>'
+      + '<div id="nc-pii-warning" class="small-note" style="display:none;color:var(--danger,#c00);margin-top:4px"></div></div>'
+    + '<div><label class="lbl">Action URL (optional)</label><input id="nc-action" class="ipt" type="text" placeholder="#security or #training" value="' + escAttr(defaults.actionURL || '') + '"></div>'
+    + '</div>';
+
+  var footer = '<div></div><div>'
+    + '<button class="btn" data-action="close-modal">Cancel</button> '
+    + '<button class="btn primary" data-action="send-notification-from-composer">Send</button>'
+    + '</div>';
+
+  openModal('Send Notification', body, footer, defaults.subTitle || '');
+  APP.modalState.notificationDefaults = defaults;
+
+  /* Audience picker visibility toggle */
+  var audSel = document.getElementById('nc-audience');
+  function updateAudienceUi(){
+    var v = audSel.value;
+    document.getElementById('nc-recipient-individual').style.display = v === 'Individual' ? '' : 'none';
+    document.getElementById('nc-recipient-org').style.display = v === 'Organization' ? '' : 'none';
+    document.getElementById('nc-recipient-role').style.display = v === 'Role' ? '' : 'none';
+  }
+  audSel.addEventListener('change', updateAudienceUi);
+  updateAudienceUi();
+
+  /* Template auto-fill */
+  var tplSel = document.getElementById('nc-template');
+  tplSel.addEventListener('change', function(){
+    var tplId = tplSel.value;
+    if (!tplId) { return; }
+    var tpl = NOTIFICATION_TEMPLATES[tplId];
+    if (!tpl) { return; }
+    document.getElementById('nc-title').value = tpl.subject;
+    document.getElementById('nc-body').value = tpl.body;
+    document.getElementById('nc-type').value = tpl.type;
+    document.getElementById('nc-sensitivity').value = tpl.sensitivity;
+  });
+
+  /* Live PII warning */
+  var bodyInput = document.getElementById('nc-body');
+  var sensSel = document.getElementById('nc-sensitivity');
+  var warnDiv = document.getElementById('nc-pii-warning');
+  function updatePIIWarning(){
+    var pii = containsPII(bodyInput.value);
+    if (pii.hasPII) {
+      warnDiv.style.display = '';
+      warnDiv.textContent = '⚠ Possible PII detected: ' + pii.matches.join(', ') + (sensSel.value === 'Sensitive' ? ' — send will be blocked.' : ' — please review before sending.');
+    } else {
+      warnDiv.style.display = 'none';
+    }
+  }
+  bodyInput.addEventListener('input', updatePIIWarning);
+  sensSel.addEventListener('change', updatePIIWarning);
+}
+
+function sendNotificationFromComposer(){
+  var title = document.getElementById('nc-title').value.trim();
+  var bodyText = document.getElementById('nc-body').value.trim();
+  if (!title || !bodyText) { toast('Subject and body are required.', 'danger'); return; }
+  var audience = document.getElementById('nc-audience').value;
+  var options = {
+    title: title,
+    body: bodyText,
+    notificationType: document.getElementById('nc-type').value,
+    sourceModule: document.getElementById('nc-source').value,
+    sensitivityLevel: document.getElementById('nc-sensitivity').value,
+    audienceType: audience,
+    actionURL: document.getElementById('nc-action').value.trim(),
+    templateId: document.getElementById('nc-template').value || '',
+    isSystemGenerated: false
+  };
+  if (audience === 'Individual') {
+    var pid = document.getElementById('nc-person').value;
+    if (!pid) { toast('Select a recipient person.', 'danger'); return; }
+    options.recipientPersonId = Number(pid);
+  } else if (audience === 'Organization') {
+    var oid = document.getElementById('nc-org').value;
+    if (!oid) { toast('Select a recipient organization.', 'danger'); return; }
+    options.recipientOrgId = Number(oid);
+  } else if (audience === 'Role') {
+    var role = document.getElementById('nc-role').value;
+    if (!role) { toast('Select a recipient role.', 'danger'); return; }
+    options.recipientRole = role;
+  }
+  /* Inherit related entity context from composer defaults */
+  var d = APP.modalState.notificationDefaults || {};
+  if (d.relatedEntityType) { options.relatedEntityType = d.relatedEntityType; }
+  if (d.relatedEntityID != null) { options.relatedEntityID = d.relatedEntityID; }
+  if (d.relatedCaseNumber) { options.relatedCaseNumber = d.relatedCaseNumber; }
+
+  if (!canSendNotification(options.notificationType, options.audienceType)) {
+    toast('Your role is not authorized to send this notification.', 'danger'); return;
+  }
+  toast('Sending notification...', 'ok');
+  sendNotification(options).then(function(result){
+    closeModal();
+    toast('Sent to ' + result.recipientCount + ' recipient(s).', 'ok');
+    return ensureMyNotificationReceiptsLoaded(true);
+  }).catch(function(err){
+    toast(err && err.message ? err.message : 'Send failed.', 'danger');
+  });
+}
+
+/* NF-13: Threshold-computed notification generator. Runs at most once per
+ * session (APP.state.notificationChecksRun). For each condition, performs
+ * dedup check against loaded receipts before creating a new notification. */
+function initNotificationChecks(){
+  if (APP.state.notificationChecksRun) { return Promise.resolve({ skipped: true }); }
+  APP.state.notificationChecksRun = true;
+  var personnel = APP.state.currentPersonnel;
+  if (!personnel || !personnel.Id) { return Promise.resolve({ skipped: 'no personnel' }); }
+  var created = { trainingExpire: 0, trainingExpired: 0 };
+  function alreadySent(templateId, relatedEntityId){
+    var receipts = APP.state.data.myNotificationReceipts || [];
+    return receipts.some(function(rec){
+      var n = rec.NotificationID;
+      if (!n) { return false; }
+      return String(n.TemplateID || '') === templateId && String(n.RelatedEntityID || '') === String(relatedEntityId);
+    });
+  }
+  var training = [];
+  try { training = getMyTrainingModel(); } catch (e) { return Promise.resolve({ skipped: 'no training model' }); }
+  var queue = [];
+  training.forEach(function(r){
+    if (!r.applicable || !r.training) { return; }
+    var trainingId = r.training.Id;
+    var trainingName = r.training.TrainingName || r.training.Title || 'Training';
+    var latest = r.latest;
+    var exp = latest && latest.ExpirationDate ? parseDate(latest.ExpirationDate) : null;
+    var expiresStr = exp ? formatDate(exp) : '';
+    if (r.status === 'Expired' && !alreadySent('TRAIN-EXPIRED', trainingId)) {
+      var tpl = renderTemplate('TRAIN-EXPIRED', { trainingName: trainingName, expirationDate: expiresStr });
+      queue.push(sendNotification({
+        title: tpl.subject,
+        body: tpl.body,
+        notificationType: tpl.type,
+        sourceModule: 'Training',
+        sensitivityLevel: tpl.sensitivity,
+        audienceType: 'Individual',
+        recipientPersonId: personnel.Id,
+        templateId: 'TRAIN-EXPIRED',
+        relatedEntityType: 'TrainingRecord',
+        relatedEntityID: trainingId,
+        actionURL: '#training',
+        isSystemGenerated: true
+      }).then(function(){ created.trainingExpired++; }).catch(function(){}));
+    } else if (r.status === 'Due Soon' && exp) {
+      var days = daysUntil(exp);
+      if (days != null && days <= 30 && days >= 0 && !alreadySent('TRAIN-EXPIRE-30', trainingId)) {
+        var tpl2 = renderTemplate('TRAIN-EXPIRE-30', { trainingName: trainingName, daysRemaining: days, expirationDate: expiresStr });
+        queue.push(sendNotification({
+          title: tpl2.subject,
+          body: tpl2.body,
+          notificationType: tpl2.type,
+          sourceModule: 'Training',
+          sensitivityLevel: tpl2.sensitivity,
+          audienceType: 'Individual',
+          recipientPersonId: personnel.Id,
+          templateId: 'TRAIN-EXPIRE-30',
+          relatedEntityType: 'TrainingRecord',
+          relatedEntityID: trainingId,
+          actionURL: '#training',
+          isSystemGenerated: true
+        }).then(function(){ created.trainingExpire++; }).catch(function(){}));
+      }
+    }
+  });
+  return Promise.all(queue).then(function(){
+    if (created.trainingExpire + created.trainingExpired > 0) {
+      return ensureMyNotificationReceiptsLoaded(true).then(function(){ return created; });
+    }
+    return created;
   });
 }
 
@@ -2785,6 +3026,9 @@ function renderHome(){
     ensureOrganizationsLoaded().catch(function(){ return []; }),
     ensureMyNotificationReceiptsLoaded().catch(function(){ return []; })
   ]).then(function(){
+    /* NF-13: fire threshold-based notification checks once per session,
+     * non-blocking so the dashboard renders immediately. */
+    initNotificationChecks().catch(function(){});
     renderContextBar();
     var training = getMyTrainingModel();
     var req = getRequestSummary();
@@ -7666,12 +7910,176 @@ function renderSecurity(){
   var isSecurityRole = canManageSecurity();
   var hasOwnRecord = canViewOwnSecurity();
   renderLoading('Loading security view...');
-  var loaders = [ensureCurrentPersonnelLoaded(), ensureRolesLoaded(), ensurePeopleLoaded().catch(function(){ return []; })];
+  var loaders = [ensureCurrentPersonnelLoaded(), ensureRolesLoaded(), ensurePeopleLoaded().catch(function(){ return []; }), ensureOrganizationsLoaded().catch(function(){ return []; })];
   if (isSecurityRole || hasOwnRecord) { loaders.push(ensureSecurityIncidentsLoaded().catch(function(){ return []; })); }
   Promise.all(loaders).then(function(){
     if (isSecurityRole) { return renderSecurityAdmin(); }
     if (hasOwnRecord) { return renderSecurityMember(); }
     setView('<div class="section-header"><h2>Security</h2></div><div class="card"><div class="card-body"><p>No security record found for your account.</p></div></div>');
+  });
+}
+
+/* IM-13: Create Incident modal. */
+var INCIDENT_CATEGORIES = [
+  { name: 'Foreign Travel', guidelines: 'B' },
+  { name: 'Foreign Contacts', guidelines: 'B' },
+  { name: 'Foreign Activities and Interests', guidelines: 'B,C' },
+  { name: 'Financial Issues', guidelines: 'F' },
+  { name: 'Criminal Conduct and Legal Issues', guidelines: 'J,E' },
+  { name: 'Substance Abuse or Illegal Drugs', guidelines: 'H' },
+  { name: 'Alcohol-Related Events', guidelines: 'G' },
+  { name: 'Mental Health', guidelines: 'I' },
+  { name: 'Unauthorized Disclosure', guidelines: 'K' },
+  { name: 'Security Violations and Infractions', guidelines: 'K' },
+  { name: 'Change in Personal Status', guidelines: 'B,C,E' },
+  { name: 'Associations or Memberships', guidelines: 'A,E' },
+  { name: 'Technology and Cyber', guidelines: 'M' },
+  { name: 'Subversion of Adjudicative Process', guidelines: 'E' },
+  { name: 'Outside Activities or Employment', guidelines: 'L' },
+  { name: 'Information Security Incident', guidelines: 'K' },
+  { name: 'Physical Security Incident', guidelines: 'E' },
+  { name: 'Other or Uncategorized', guidelines: '' }
+];
+
+var INCIDENT_SEVERITIES = ['Infraction','Violation','Compromise','Low','Medium','High','Critical'];
+var INCIDENT_REPORTING_SOURCES = ['Self-Report','Supervisor','Commander','CV Alert','AFOSI','External Agency','Anonymous','SF-702 Discrepancy'];
+var INCIDENT_REPORTER_ROLES = ['Self','Supervisor','Security Manager','Commander','Other'];
+
+function openCreateIncidentModal(){
+  if (!canManageSecurity()) { toast('Access restricted to Security role.', 'danger'); return; }
+  var people = APP.state.data.people || [];
+  var personOptions = '<option value="">— Select subject —</option>' + people.map(function(p){
+    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var categoryOptions = INCIDENT_CATEGORIES.map(function(c){
+    return '<option value="' + escAttr(c.name) + '" data-guidelines="' + escAttr(c.guidelines) + '">' + escHtml(c.name) + '</option>';
+  }).join('');
+  var severityOptions = INCIDENT_SEVERITIES.map(function(s){ return '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>'; }).join('');
+  var sourceOptions = INCIDENT_REPORTING_SOURCES.map(function(s){ return '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>'; }).join('');
+  var reporterOptions = INCIDENT_REPORTER_ROLES.map(function(s){ return '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>'; }).join('');
+  var todayStr = new Date().toISOString().slice(0,10);
+  var body = '<div style="display:grid;gap:10px">'
+    + '<div><label class="lbl">Subject (Person)</label><select id="ci-subject" class="ipt">' + personOptions + '</select></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      + '<div><label class="lbl">Category</label><select id="ci-category" class="ipt">' + categoryOptions + '</select></div>'
+      + '<div><label class="lbl">Sub-Type (optional)</label><input id="ci-subtype" class="ipt" type="text" placeholder="e.g., Bankruptcy Ch7"></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
+      + '<div><label class="lbl">Incident Date</label><input id="ci-incident-date" class="ipt" type="date" value="' + escAttr(todayStr) + '"></div>'
+      + '<div><label class="lbl">Discovered Date</label><input id="ci-discovered-date" class="ipt" type="date" value="' + escAttr(todayStr) + '"></div>'
+      + '<div><label class="lbl">Severity</label><select id="ci-severity" class="ipt">' + severityOptions + '</select></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      + '<div><label class="lbl">Reporting Source</label><select id="ci-source" class="ipt">' + sourceOptions + '</select></div>'
+      + '<div><label class="lbl">Reporter Role</label><select id="ci-reporter-role" class="ipt">' + reporterOptions + '</select></div>'
+    + '</div>'
+    + '<div><label class="lbl">SEAD 4 Guidelines (auto)</label><input id="ci-guidelines" class="ipt" type="text" readonly></div>'
+    + '<div><label class="lbl">Description</label><textarea id="ci-description" class="ipt" rows="4" placeholder="Detailed narrative — Security role only"></textarea></div>'
+    + '<div id="ci-mh-warning" class="alert alert-warn small-note" style="display:none">Note: Voluntarily seeking counseling related to military combat, sexual assault, domestic violence, or grief is NOT reportable. Only conditions that substantially adversely affect judgment, reliability, or trustworthiness, or court-ordered treatment, are reportable.</div>'
+    + '</div>';
+  var footer = '<div></div><div>'
+    + '<button class="btn" data-action="close-modal">Cancel</button> '
+    + '<button class="btn primary" data-action="save-incident">Create Case</button>'
+    + '</div>';
+  openModal('Create Security Incident', body, footer);
+
+  /* Wire up category change to auto-fill guidelines and toggle MH warning */
+  var catSel = document.getElementById('ci-category');
+  function updateCategoryUi(){
+    var opt = catSel.options[catSel.selectedIndex];
+    document.getElementById('ci-guidelines').value = opt ? (opt.getAttribute('data-guidelines') || '') : '';
+    document.getElementById('ci-mh-warning').style.display = (catSel.value === 'Mental Health') ? '' : 'none';
+  }
+  catSel.addEventListener('change', updateCategoryUi);
+  updateCategoryUi();
+}
+
+function saveIncident(){
+  if (!canManageSecurity()) { toast('Access restricted.', 'danger'); return; }
+  var subjectId = document.getElementById('ci-subject').value;
+  var category = document.getElementById('ci-category').value;
+  var description = document.getElementById('ci-description').value.trim();
+  var errors = runValidation([
+    function(){ return validateRequired(subjectId, 'Subject'); },
+    function(){ return validateRequired(category, 'Category'); },
+    function(){ return validateRequired(description, 'Description'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+
+  var subjectPerson = (APP.state.data.people || []).filter(function(p){ return String(p.Id) === String(subjectId); })[0];
+  var subjectOrgId = subjectPerson && subjectPerson.OrgID && subjectPerson.OrgID.Id ? subjectPerson.OrgID.Id : null;
+  var prefix = (category === 'Information Security Incident' || category === 'Physical Security Incident') ? 'ISV' : 'SEC';
+  var reportingPerson = APP.state.currentPersonnel;
+  var reporterPersonId = reportingPerson && reportingPerson.Id ? reportingPerson.Id : null;
+
+  toast('Creating incident...', 'ok');
+  generateCaseNumber(prefix).then(function(caseNumber){
+    var values = {
+      Title: caseNumber,
+      CaseNumber: caseNumber,
+      PersonID: Number(subjectId),
+      IncidentCategory: category,
+      IncidentSubType: document.getElementById('ci-subtype').value.trim(),
+      SEAD4Guidelines: document.getElementById('ci-guidelines').value.trim(),
+      IncidentDate: document.getElementById('ci-incident-date').value,
+      DiscoveredDate: document.getElementById('ci-discovered-date').value,
+      ReportedDate: new Date().toISOString().slice(0,10),
+      Status: 'Reported',
+      Severity: document.getElementById('ci-severity').value,
+      ReportingSource: document.getElementById('ci-source').value,
+      ReporterRole: document.getElementById('ci-reporter-role').value,
+      Description: description,
+      IsArchived: false
+    };
+    if (subjectOrgId) { values.OrgID = subjectOrgId; }
+    if (reporterPersonId) { values.ReportedByPersonID = reporterPersonId; }
+    return createListItem(APP.lists.SecurityIncidents, values, { entityType: 'SecurityIncident', reason: 'Incident reported via SPA' }).then(function(result){
+      var incidentId = result && result.d ? result.d.Id : (result && result.Id);
+      if (!incidentId) { throw new Error('Incident created but ID not returned'); }
+      /* Create initial status history entry */
+      var histValues = {
+        Title: caseNumber + ' -> Reported',
+        IncidentID: incidentId,
+        CaseNumber: caseNumber,
+        FromStatus: '',
+        ToStatus: 'Reported',
+        TransitionDate: new Date().toISOString(),
+        Notes: 'Initial case creation.'
+      };
+      if (reporterPersonId) { histValues.ChangedBy = reporterPersonId; }
+      var historyPromise = createListItem(APP.lists.IncidentStatusHistory, histValues, { entityType: 'IncidentStatusHistory', noAudit: true }).catch(function(){ return null; });
+      /* Create auto-generated action items for `Reported` status */
+      var actions = [
+        { Title: 'Review and triage incident report', ActionType: 'Required', ActionCategory: 'Investigation', Priority: 'Urgent' },
+        { Title: 'Determine reporting timeline (DISS / external referral)', ActionType: 'Required', ActionCategory: 'Documentation', Priority: 'Normal' },
+        { Title: 'Identify and notify stakeholders', ActionType: 'Recommended', ActionCategory: 'Notification', Priority: 'Normal' }
+      ];
+      var actionPromises = actions.map(function(a){
+        var av = {
+          Title: a.Title,
+          IncidentID: incidentId,
+          CaseNumber: caseNumber,
+          ActionType: a.ActionType,
+          ActionCategory: a.ActionCategory,
+          Priority: a.Priority,
+          Status: 'Pending',
+          IsAutoGenerated: true,
+          TriggeringStatus: 'Reported'
+        };
+        return createListItem(APP.lists.IncidentActions, av, { entityType: 'IncidentAction', noAudit: true }).catch(function(){ return null; });
+      });
+      return Promise.all([historyPromise].concat(actionPromises)).then(function(){
+        return { id: incidentId, caseNumber: caseNumber };
+      });
+    });
+  }).then(function(res){
+    closeModal();
+    toast('Incident created: ' + res.caseNumber, 'ok');
+    return ensureSecurityIncidentsLoaded(true);
+  }).then(function(){
+    if (APP.state.route === 'security') { renderSecurity(); }
+  }).catch(function(err){
+    toast(err && err.message ? err.message : (extractSpErrorMessage(err) || 'Incident creation failed.'), 'danger');
   });
 }
 
@@ -7684,7 +8092,9 @@ function renderSecurityAdmin(){
 
   html += '<div class="section-header"><h2>Security Administration</h2>';
   html += '<div class="quick-actions">';
-  html += '<button class="btn primary" data-action="export-incidents-csv">Export Incidents (CSV)</button>';
+  html += '<button class="btn primary" data-action="open-create-incident">Create Incident</button> ';
+  html += '<button class="btn" data-action="open-notification-composer" data-source="Security">Send Notification</button> ';
+  html += '<button class="btn" data-action="export-incidents-csv">Export Incidents (CSV)</button>';
   html += '</div></div>';
 
   html += '<div class="kpi-grid" style="margin-bottom:14px">';
@@ -8230,6 +8640,20 @@ function handleClick(e){
   if (action === 'nav') { routeTo(el.getAttribute('data-route')); return; }
   if (action === 'refresh-route') { renderRoute(); return; }
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
+  if (action === 'open-create-incident') { openCreateIncidentModal(); return; }
+  if (action === 'save-incident') { saveIncident(); return; }
+  if (action === 'open-notification-composer') {
+    var defaults = {};
+    var src = el.getAttribute('data-source');
+    if (src) { defaults.sourceModule = src; }
+    var aud = el.getAttribute('data-audience');
+    if (aud) { defaults.audienceType = aud; }
+    var pid = el.getAttribute('data-person-id');
+    if (pid) { defaults.recipientPersonId = Number(pid); defaults.audienceType = defaults.audienceType || 'Individual'; }
+    openNotificationComposer(defaults);
+    return;
+  }
+  if (action === 'send-notification-from-composer') { sendNotificationFromComposer(); return; }
   if (action === 'mark-notification-read') {
     e.stopPropagation();
     var nrId = el.getAttribute('data-id');
