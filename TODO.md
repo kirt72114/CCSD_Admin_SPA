@@ -1,7 +1,7 @@
 # CCSD All-Things Administrative SPA — TODO
 
 Master task list for pending features, improvements, and technical debt.
-Updated: 2026-04-14
+Updated: 2026-04-15
 
 ---
 
@@ -17,6 +17,28 @@ Updated: 2026-04-14
 - 👤 = **You** (SharePoint admin, Azure AD, Power Automate, or manual data steps)
 - 💻 = **Claude** (code changes in Index.html)
 - 🤝 = **Both** (you do the prerequisite, Claude builds the feature)
+
+---
+
+## Schema Audit Status — 2026-04-15 ✅
+
+A full audit of all 76 expected SharePoint lists and their columns was run against
+the production Database site using `database-audit-webpart.html` (pasted into a
+Modern Script Editor Web Part). **All lists and columns that have been created so
+far match the expected schema.**
+
+Four audit-script mismatches were investigated and resolved as follows — all were
+false positives on the script side, not problems in SharePoint:
+
+| List | Finding | Resolution |
+|------|---------|------------|
+| `CCSD_TrainingCatalog` | Script expected `SF182` but actual display name is `SF182 Required` (internal name `_x053_F182`) | Audit script updated to expect `SF182 Required`. App code already queries correctly by internal name. |
+| `CCSD_AppRoles` | `Role` column was flagged as type mismatch (Choice vs MultiChoice) | SharePoint list is correctly MultiChoice (a person can hold multiple roles). Audit script updated. App code already handles multi-value via `normalizeRoleValues()`. |
+| `CCSD_PersonnelDataCall_Staging` | `Step` column flagged as type mismatch (Number vs Choice) | Staging list intentionally uses Choice with values 1–12 to constrain input. Audit script updated. App never performs arithmetic on Step. |
+| `CCSD_OvertimeAuthorization` | `Type` column missing choices | Column was renamed to `OvertimeType` because `Type` is a SharePoint reserved word. Audit script updated. No app code depends on this (future module). |
+
+**Next time the audit runs, these lists should all report as ✅ green.** Use
+`database-audit-webpart.html` any time a new list or column is added to re-verify.
 
 ---
 
