@@ -655,17 +655,17 @@ Add to `loadAppData()` (or the security-module init):
 
 ##### Phase B: Core Framework (💻 — Build in Order)
 
-- [ ] **NF-04: Implement `sendNotification(options)`** — 💻 Core function. Creates `CCSD_Notifications` item, calls `resolveAudience()`, calls `batchCreateReceipts()`, calls `logAudit()`. Includes `SensitivityLevel` enforcement and `containsPII()` check.
-- [ ] **NF-05: Implement `resolveAudience(audienceType, targetId)`** — 💻 Queries personnel/roles based on audience type. Returns array of PersonIDs. Includes 500-recipient cap with confirmation.
-- [ ] **NF-06: Implement `batchCreateReceipts(notificationId, personIds)`** — 💻 SharePoint `$batch` API. Creates receipt rows in batches of 100. Returns promise resolving when all batches complete.
-- [ ] **NF-07: Implement `renderTemplate(templateId, vars)`** — 💻 Template registry in `APP.config.notificationTemplates`. Placeholder substitution. Sensitivity enforcement (Sensitive templates cannot have body overridden).
-- [ ] **NF-08: Implement `containsPII(text)`** — 💻 Regex patterns for SSN, DoD ID. Configurable keyword list. Returns `{hasPII: bool, matches: []}`.
-- [ ] **NF-09: Implement `canSendNotification(type, audience)`** — 💻 Permission matrix check against current user roles.
+- [x] **NF-04: Implement `sendNotification(options)`** — 💻 ✅ Done 2026-04-18. Core function builds notification record, resolves audience, batches receipts, logs audit. SensitivityLevel + containsPII check enforce. 500-recipient cap requires `confirmedLargeAudience`.
+- [x] **NF-05: Implement `resolveAudience(audienceType, targetId)`** — 💻 ✅ Done 2026-04-18. Resolves Individual/Organization/Role/All to PersonID array using `APP.state.data.people` and `APP.state.rolesRaw`.
+- [x] **NF-06: Implement `batchCreateReceipts(notificationId, personIds)`** — 💻 ✅ Done 2026-04-18. Parallel POSTs with concurrency=5 (simpler than $batch API; can be upgraded later). Returns successful receipts.
+- [x] **NF-07: Implement `renderTemplate(templateId, vars)`** — 💻 ✅ Done 2026-04-18. 16-template registry (`NOTIFICATION_TEMPLATES`). Sensitive templates retain body — only placeholder substitution allowed.
+- [x] **NF-08: Implement `containsPII(text)`** — 💻 ✅ Done 2026-04-18. Regex SSN + 10-digit DoD ID + keyword list (`NOTIFICATION_PII_KEYWORDS`). Returns `{hasPII, matches}`.
+- [x] **NF-09: Implement `canSendNotification(type, audience)`** — 💻 ✅ Done 2026-04-18. Permission matrix check using `hasRole()`.
 
 ##### Phase C: UI Integration (💻 — Build in Order)
 
-- [ ] **NF-10: Extend `getNotifications()` for persistent notifications** — 💻 Query `CCSD_NotificationReceipts` for current user. Merge with computed notifications. Sort by date. Cap at 50. Add to `loadAppData()` data loading.
-- [ ] **NF-11: Update `renderNotificationCenter()` for persistent notifications** — 💻 Module icons, mark-as-read action, dismiss action (blocked for security), badge count on bell icon, "View All" link if >10 items.
+- [x] **NF-10: Extend `getNotifications()` for persistent notifications** — 💻 ✅ Done 2026-04-18. Queries `CCSD_NotificationReceipts` via new `ensureMyNotificationReceiptsLoaded()`, expands `NotificationID`, filters expired, merges with computed items, sorts by date desc, caps at 50. Wired into `renderHome()` data loading.
+- [x] **NF-11: Update `renderNotificationCenter()` for persistent notifications** — 💻 ✅ Done 2026-04-18. Module icons via `mapNotificationModuleIcon()`. Mark-as-read + dismiss buttons (security non-dismissable). `markNotificationRead()` and `dismissNotification()` wired into `handleClick`.
 - [ ] **NF-12: Build notification composer modal** — 💻 `openNotificationComposer(defaults)`. Template selector dropdown, audience type selector, recipient picker (person/org/role), free-text body with PII warning, sensitivity auto-set from template, send button. Used by Security module ("Send Notification" on incident detail) and Admin broadcast.
 - [ ] **NF-13: Implement `initNotificationChecks()`** — 💻 Threshold-computed notification generator. Runs on page load. Checks SF-86 due dates (90/60/30), training expirations (30 days), clearance expirations. Dedup by `TemplateID + RelatedEntityID`. Creates persistent notifications via `sendNotification()`.
 
@@ -1552,7 +1552,7 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 - [x] **IM-09: Add `#security` route** — 💻 Hash route added to router, nav tab added to `APP.nav`, placeholder render function built, `Alt+S` keyboard shortcut registered. ✅ Done 2026-04-14.
 - [ ] **IM-10: Build incident list view (Security role)** — 💻 Sortable/filterable table using existing table pattern. Columns: CaseNumber, Subject Name, Category, Status, Severity, AssignedTo, ReportedDate, Days Open. Color-coded status badges.
 - [ ] **IM-11: Build incident list view (Member role)** — 💻 Simplified table: CaseNumber, Status, ReportedDate, ResolutionDate. Obscured by default with reveal toggle.
-- [ ] **IM-12: Build case number generation** — 💻 Two-step create pattern per D6. `SEC-`/`ISV-` prefix logic.
+- [x] **IM-12: Build case number generation** — 💻 ✅ Done 2026-04-18. `generateCaseNumber(prefix, year)` queries `CCSD_SecurityIncidents`, finds max sequence for `PREFIX-YYYY-` pattern, returns next padded 4-digit ID.
 - [ ] **IM-13: Build "Create Incident" modal** — 💻 Using existing `openModal()` pattern. Fields: Subject (person lookup), Category (dropdown with 18 values), SubType, IncidentDate, DiscoveredDate, Severity, ReportingSource, ReporterRole, Description. Auto-populate SEAD4Guidelines from category. Show mental health carve-out warning for Category 8. On save: generate case number, create item, create initial status history entry, create auto-generated action items for `Reported` status.
 - [ ] **IM-14: Build incident detail modal** — 💻 Tabbed layout:
   - **Summary tab:** All case fields, editable by Security role. Status badge with transition buttons (valid next states only per D2 graph).
@@ -1564,9 +1564,9 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
   - **SOR tab:** (visible only when status >= `SOR Issued`) SOR fields, response tracking, appeal tracking per D1.
 - [ ] **IM-15: Build status transition logic** — 💻 State machine per D2. On each transition: validate against allowed transitions, prompt for transition notes, update Status + PriorStatus, create `CCSD_IncidentStatusHistory` row, create auto-generated action items per D2 table, fire auto-notifications per D2 side effects table, call `logAudit()`.
 - [ ] **IM-16: Build notification composer** — 💻 **Superseded by NF-12** (generalized, reusable composer in Section 9 Notification Framework). Security incident usage wires into NF-12 with incident-specific defaults (templates NT-01 through NT-07, dual-write to `CCSD_IncidentNotifications`).
-- [ ] **IM-17: Extend `getNotifications()` for persistent notifications** — 💻 **Superseded by NF-10 + NF-11** (generalized notification panel in Section 9 Notification Framework). Security-specific rendering (🔒 icon, non-dismissable) handled by the framework's module-aware logic.
+- [x] **IM-17: Extend `getNotifications()` for persistent notifications** — 💻 ✅ Done 2026-04-18 via NF-10 + NF-11. Module icons (🔒 Security, 📋 Training, etc.) and non-dismissable security notifications handled by `getNotifications()` and `renderNotificationCenter()`.
 - [ ] **IM-18: Build incident audit logging** — 💻 Call `logAudit()` for all 13 event types per D5. Add `View` logging when detail modal opens.
-- [ ] **IM-19: Build query-level security enforcement** — 💻 All `CCSD_SecurityIncidents` queries filtered by role per D3. Member: `$filter=PersonID eq X`. Security Mgr with scope: `$filter=OrgID eq X`. App Admin: no filter. Strip sensitive fields from member-visible responses.
+- [x] **IM-19: Build query-level security enforcement** — 💻 ✅ Done 2026-04-18. `getSecurityIncidentFilter()` returns OData filter based on role. `canViewIncident()` for client-side checks. `redactIncidentForMember()` strips sensitive fields. `ensureSecurityIncidentsLoaded()` applies filter at query time.
 
 ##### Recommended Enhancements (Post-MVP)
 
@@ -1580,7 +1580,7 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
   - Overdue action items count
   - Pending SOR responses
 - [ ] **IM-24: Case-to-case linking** — 💻 "Related Cases" field on incident record. Useful when a new incident arises from a prior case.
-- [ ] **IM-25: Incident CSV export** — 💻 Export with CUI banner header: `"CUI // PRIVACY ACT PROTECTED // FOR OFFICIAL USE ONLY"`. Columns configurable. Export logged.
+- [x] **IM-25: Incident CSV export** — 💻 ✅ Done 2026-04-18. `exportIncidentCSV()` with CUI banner header + footer. Wired to `Export Incidents (CSV)` button on Security Admin view. Logged via `logAudit('Export', 'SecurityIncidents', ...)`.
 - [ ] **IM-26: Bulk status update** — 💻 Select multiple `Administrative Withdrawal` cases when multiple people depart simultaneously.
 - [ ] **IM-27: Power Automate email integration** — 👤 Create a flow: trigger on `CCSD_Notifications` item created where `NotificationType = 'Security'`. Send email via O365 connector.
 - [ ] **IM-28: Incident print view** — 💻 Print-optimized layout showing case summary, timeline, actions, and communication log. For inclusion in physical case files.

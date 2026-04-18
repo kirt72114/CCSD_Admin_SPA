@@ -870,7 +870,23 @@ var APP = {
     PerformanceTracking: 'CCSD_PerformanceTracking',
     TeleworkAgreements: 'CCSD_TeleworkAgreements',
     Awards: 'CCSD_Awards',
-    TaskAssignments: 'CCSD_TaskAssignments'
+    TaskAssignments: 'CCSD_TaskAssignments',
+    DisciplinaryActions: 'CCSD_DisciplinaryActions',
+    OvertimeAuthorization: 'CCSD_OvertimeAuthorization',
+    ConferenceRooms: 'CCSD_ConferenceRooms',
+    RoomReservations: 'CCSD_RoomReservations',
+    Announcements: 'CCSD_Announcements',
+    SecurityContainers: 'CCSD_SecurityContainers',
+    ContainerChecks: 'CCSD_ContainerChecks',
+    AreaChecks: 'CCSD_AreaChecks',
+    VisitorLog: 'CCSD_VisitorLog',
+    RestrictedAreas: 'CCSD_RestrictedAreas',
+    AreaAccessRoster: 'CCSD_AreaAccessRoster',
+    ClassifiedDocuments: 'CCSD_ClassifiedDocuments',
+    DestructionRecords: 'CCSD_DestructionRecords',
+    OPSECProgram: 'CCSD_OPSECProgram',
+    DD254Registry: 'CCSD_DD254Registry',
+    ContractorPersonnel: 'CCSD_ContractorPersonnel'
     /* ───────────────────────────────────────────────────────────────────────
      * TODO: Conference Room Scheduling
      * ─────────────────────────────────────────────────────────────────────
@@ -1844,6 +1860,263 @@ function runDataQualityChecks(){
   return issues;
 }
 
+/* ─── Notification Framework (NF-04 through NF-11) ─── */
+
+/* NF-07: Template registry. Sensitive templates cannot have body overridden. */
+var NOTIFICATION_TEMPLATES = {
+  'NT-01': { type: 'Incident Update', sensitivity: 'Sensitive', subject: 'Case Update', body: 'Please contact the security office regarding case {caseNumber}.' },
+  'NT-02': { type: 'Incident Update', sensitivity: 'Sensitive', subject: 'Access Status Change', body: 'Your access status has changed. Contact the security office.' },
+  'NT-03': { type: 'Incident Update', sensitivity: 'Sensitive', subject: 'SOR Correspondence', body: 'You have received correspondence from the adjudicative authority regarding case {caseNumber}. Contact the security office if you have questions.' },
+  'NT-04': { type: 'Incident Update', sensitivity: 'Sensitive', subject: 'Case Resolution', body: 'Case {caseNumber} has been resolved. Contact the security office for details.' },
+  'NT-05': { type: 'Incident Update', sensitivity: 'Sensitive', subject: 'Case Closed', body: 'Case {caseNumber} has been closed.' },
+  'NT-06': { type: 'Incident Update', sensitivity: 'Sensitive', subject: 'Debriefing Required', body: 'You are required to complete a security debriefing. Contact the security office to schedule.' },
+  'NT-07': { type: 'Incident Update', sensitivity: 'Sensitive', subject: 'Daily Check-In', body: 'Please contact the security office at your earliest convenience regarding an ongoing matter.' },
+  'SF86-REMIND-90': { type: 'SF86 Reminder', sensitivity: 'Internal', subject: 'SF-86 Due in 90 Days', body: 'Your {clearanceType} periodic reinvestigation is due in approximately 90 days. Contact the security office to begin the SF-86 process.' },
+  'SF86-REMIND-60': { type: 'SF86 Reminder', sensitivity: 'Internal', subject: 'SF-86 Due in 60 Days', body: 'Your {clearanceType} periodic reinvestigation is due in approximately 60 days. Please initiate your SF-86 if you have not already done so.' },
+  'SF86-REMIND-30': { type: 'SF86 Reminder', sensitivity: 'Internal', subject: 'SF-86 Due in 30 Days', body: 'Your {clearanceType} periodic reinvestigation is due in approximately 30 days. This is urgent — contact the security office immediately if your SF-86 has not been submitted.' },
+  'TRAIN-EXPIRE-30': { type: 'Training Reminder', sensitivity: 'Public', subject: 'Training Expiring Soon', body: '{trainingName} expires in {daysRemaining} days. Please complete the training before {expirationDate}.' },
+  'TRAIN-EXPIRED': { type: 'Training Reminder', sensitivity: 'Public', subject: 'Training Expired', body: '{trainingName} has expired as of {expirationDate}. Complete this training immediately.' },
+  'REQ-ASSIGNED': { type: 'Request Update', sensitivity: 'Public', subject: 'Request Assigned', body: 'You have been assigned request {requestId}: {requestTitle}. Due date: {dueDate}.' },
+  'REQ-OVERDUE': { type: 'Request Update', sensitivity: 'Public', subject: 'Request Overdue', body: 'Request {requestId} is overdue. Original due date: {dueDate}.' },
+  'SUP-TEAM-ALERT': { type: 'Supervisor Alert', sensitivity: 'Internal', subject: 'Team Compliance Alert', body: '{count} member(s) in your organization have overdue training or expiring clearances. Review the Supervisor Hub for details.' },
+  'SYS-BROADCAST': { type: 'Broadcast', sensitivity: 'Public', subject: '', body: '' }
+};
+
+function renderTemplate(templateId, vars){
+  var tpl = NOTIFICATION_TEMPLATES[templateId];
+  if (!tpl) { return null; }
+  vars = vars || {};
+  function substitute(str){
+    return String(str || '').replace(/\{(\w+)\}/g, function(_, key){
+      return vars[key] != null ? String(vars[key]) : '{' + key + '}';
+    });
+  }
+  return {
+    templateId: templateId,
+    type: tpl.type,
+    sensitivity: tpl.sensitivity,
+    subject: substitute(tpl.subject),
+    body: substitute(tpl.body)
+  };
+}
+
+/* NF-08: PII detection. Scans for SSN, DoD ID (EDIPI), and configurable allegation keywords. */
+var NOTIFICATION_PII_KEYWORDS = ['ssn', 'social security', 'edipi', 'allegation', 'investigation', 'sor ', 'statement of reasons', 'adjudicative', 'derogatory'];
+function containsPII(text){
+  var src = String(text || '');
+  var matches = [];
+  if (/\b\d{3}-\d{2}-\d{4}\b/.test(src)) { matches.push('SSN'); }
+  if (/\b\d{10}\b/.test(src)) { matches.push('DoD ID / EDIPI'); }
+  var lower = src.toLowerCase();
+  NOTIFICATION_PII_KEYWORDS.forEach(function(kw){
+    if (lower.indexOf(kw) >= 0) { matches.push(kw); }
+  });
+  return { hasPII: matches.length > 0, matches: matches };
+}
+
+/* NF-09: Permission matrix for sending notifications. */
+function canSendNotification(notificationType, audienceType){
+  if (hasRole('App Admin')) { return true; }
+  if (audienceType === 'All') { return false; }
+  var t = String(notificationType || '');
+  if (audienceType === 'Organization' || audienceType === 'Role') { return false; }
+  if (t === 'Security' || t === 'SF86 Reminder' || t === 'Incident Update') { return hasRole('Security'); }
+  if (t === 'Training Reminder') { return hasAnyRole(['Training','HR','Admin']); }
+  if (t === 'Supervisor Alert') { return hasAnyRole(['Supervisor','Admin']); }
+  if (t === 'General' || t === 'Request Update' || t === 'System') { return hasAnyRole(['HR','Admin','Supervisor','Security','Training']); }
+  if (t === 'Broadcast') { return false; }
+  return hasAnyRole(['HR','Admin']);
+}
+
+/* NF-05: Resolve an audience descriptor to an array of PersonIDs. */
+function resolveAudience(audienceType, targetId, targetRole){
+  var people = APP.state.data.people || [];
+  if (audienceType === 'Individual') {
+    return Promise.resolve(targetId ? [Number(targetId)] : []);
+  }
+  if (audienceType === 'Organization') {
+    var orgId = Number(targetId);
+    var ids = people.filter(function(p){
+      var personOrgId = p.OrgID && p.OrgID.Id ? p.OrgID.Id : null;
+      var status = String(p.Status || '').toLowerCase();
+      return personOrgId === orgId && status.indexOf('depart') < 0;
+    }).map(function(p){ return p.Id; });
+    return Promise.resolve(ids);
+  }
+  if (audienceType === 'Role') {
+    var roleName = String(targetRole || '').toLowerCase();
+    var rolePersonIds = (APP.state.rolesRaw || []).filter(function(r){
+      var roles = normalizeRoleValues(r.Role);
+      return roles.some(function(rn){ return String(rn || '').toLowerCase() === roleName; });
+    }).map(function(r){
+      return (r.Member && r.Member.Id) || null;
+    }).filter(function(v){ return v != null; });
+    var emailToPersonId = {};
+    people.forEach(function(p){
+      if (p.Email) { emailToPersonId[String(p.Email).toLowerCase()] = p.Id; }
+      if (p.Account && p.Account.EMail) { emailToPersonId[String(p.Account.EMail).toLowerCase()] = p.Id; }
+    });
+    var matched = (APP.state.rolesRaw || []).filter(function(r){
+      var roles = normalizeRoleValues(r.Role);
+      return roles.some(function(rn){ return String(rn || '').toLowerCase() === roleName; });
+    }).reduce(function(acc, r){
+      var memEmail = r.Member && (r.Member.EMail || r.Member.Email);
+      if (memEmail && emailToPersonId[String(memEmail).toLowerCase()]) {
+        acc.push(emailToPersonId[String(memEmail).toLowerCase()]);
+      }
+      return acc;
+    }, []);
+    return Promise.resolve(unique(matched.concat(rolePersonIds.filter(function(id){ return false; }))));
+  }
+  if (audienceType === 'All') {
+    var allIds = people.filter(function(p){
+      var status = String(p.Status || '').toLowerCase();
+      return status.indexOf('depart') < 0;
+    }).map(function(p){ return p.Id; });
+    return Promise.resolve(allIds);
+  }
+  return Promise.resolve([]);
+}
+
+/* NF-06: Create receipt rows. Uses parallel POSTs with concurrency limit (5). */
+function batchCreateReceipts(notificationId, personIds){
+  var ids = (personIds || []).filter(function(id){ return id != null; });
+  if (!ids.length) { return Promise.resolve([]); }
+  var concurrency = 5;
+  var results = new Array(ids.length);
+  var index = 0;
+  function worker(){
+    if (index >= ids.length) { return Promise.resolve(); }
+    var i = index++;
+    var pid = ids[i];
+    var payload = {
+      Title: 'NR-' + notificationId + '-' + pid,
+      NotificationIDId: notificationId,
+      RecipientPersonIDId: pid,
+      IsRead: false,
+      IsDismissed: false,
+      DeliveryChannel: 'InApp'
+    };
+    return createListItem(APP.lists.NotificationReceipts, payload, { entityType: 'NotificationReceipt', noAudit: true }).then(function(r){
+      results[i] = r;
+    }).catch(function(err){
+      addDiagnostic('warn', 'batchCreateReceipts', 'Failed to create receipt for personId ' + pid, { detail: err && err.text ? err.text : err });
+      results[i] = null;
+    }).then(worker);
+  }
+  var workers = [];
+  for (var k = 0; k < Math.min(concurrency, ids.length); k++) { workers.push(worker()); }
+  return Promise.all(workers).then(function(){ return results.filter(function(r){ return r != null; }); });
+}
+
+/* NF-04: Core sendNotification. Creates record, resolves audience, creates receipts, logs audit. */
+function sendNotification(options){
+  options = options || {};
+  if (!options.title || !options.body) { return Promise.reject(new Error('title and body are required')); }
+  if (!options.audienceType) { return Promise.reject(new Error('audienceType is required')); }
+  var sensitivity = options.sensitivityLevel || 'Public';
+  if (sensitivity === 'Sensitive') {
+    var pii = containsPII(options.body);
+    if (pii.hasPII) {
+      logAudit('NotificationBlocked', 'Notification', null, null, { reason: 'PII detected in Sensitive notification', changedFields: pii.matches.join(',') });
+      return Promise.reject(new Error('PII detected in Sensitive notification body: ' + pii.matches.join(', ')));
+    }
+  }
+  var personnel = APP.state.currentPersonnel;
+  var sentById = personnel && personnel.Id ? personnel.Id : null;
+  var record = {
+    Title: options.title,
+    NotificationType: options.notificationType || 'General',
+    SourceModule: options.sourceModule || 'System',
+    Body: options.body,
+    SensitivityLevel: sensitivity,
+    AudienceType: options.audienceType,
+    SentDate: new Date().toISOString(),
+    IsSystemGenerated: !!options.isSystemGenerated,
+    TemplateID: options.templateId || '',
+    Notes: options.notes || ''
+  };
+  if (sentById) { record.SentById = sentById; }
+  if (options.audienceType === 'Individual' && options.recipientPersonId) { record.RecipientPersonIDId = Number(options.recipientPersonId); }
+  if (options.audienceType === 'Organization' && options.recipientOrgId) { record.RecipientOrgIDId = Number(options.recipientOrgId); }
+  if (options.audienceType === 'Role' && options.recipientRole) { record.RecipientRole = options.recipientRole; }
+  if (options.expiresDate) { record.ExpiresDate = options.expiresDate; }
+  if (options.relatedEntityType) { record.RelatedEntityType = options.relatedEntityType; }
+  if (options.relatedEntityID != null) { record.RelatedEntityID = Number(options.relatedEntityID); }
+  if (options.relatedCaseNumber) { record.RelatedCaseNumber = options.relatedCaseNumber; }
+  if (options.actionURL) { record.ActionURL = options.actionURL; }
+  return resolveAudience(options.audienceType, options.recipientPersonId || options.recipientOrgId, options.recipientRole).then(function(personIds){
+    if (personIds.length > 500 && !options.confirmedLargeAudience) {
+      return Promise.reject(new Error('Audience exceeds 500 recipients (' + personIds.length + '). Set confirmedLargeAudience=true to proceed.'));
+    }
+    return createListItem(APP.lists.Notifications, record, { entityType: 'Notification', reason: options.notes || '' }).then(function(created){
+      var notificationId = created.d ? created.d.Id : (created && created.Id);
+      if (!notificationId) { throw new Error('Notification created but no ID returned'); }
+      return batchCreateReceipts(notificationId, personIds).then(function(receipts){
+        logAudit('NotificationCreated', 'Notification', null, {
+          notificationId: notificationId,
+          type: record.NotificationType,
+          audienceType: record.AudienceType,
+          recipientCount: receipts.length,
+          sensitivityLevel: sensitivity,
+          templateId: record.TemplateID
+        }, { itemId: notificationId });
+        return { notificationId: notificationId, recipientCount: receipts.length, receipts: receipts };
+      });
+    });
+  });
+}
+
+function markNotificationRead(receiptId){
+  if (!receiptId) { return Promise.reject(new Error('receiptId required')); }
+  var values = { IsRead: true, ReadDate: new Date().toISOString() };
+  return updateListItem(APP.lists.NotificationReceipts, receiptId, values, { entityType: 'NotificationReceipt', noAudit: false }).then(function(r){
+    var local = APP.state.data.myNotificationReceipts || [];
+    local.forEach(function(rec){ if (String(rec.Id) === String(receiptId)) { rec.IsRead = true; rec.ReadDate = values.ReadDate; } });
+    return r;
+  });
+}
+
+function dismissNotification(receiptId){
+  if (!receiptId) { return Promise.reject(new Error('receiptId required')); }
+  var values = { IsDismissed: true, DismissedDate: new Date().toISOString(), IsRead: true };
+  if (!values.ReadDate) { values.ReadDate = values.DismissedDate; }
+  return updateListItem(APP.lists.NotificationReceipts, receiptId, values, { entityType: 'NotificationReceipt', noAudit: false }).then(function(r){
+    APP.state.data.myNotificationReceipts = (APP.state.data.myNotificationReceipts || []).filter(function(rec){ return String(rec.Id) !== String(receiptId); });
+    return r;
+  });
+}
+
+/* NF-10: Load persistent notifications for current user. */
+function ensureMyNotificationReceiptsLoaded(force){
+  if (APP.state.data.myNotificationReceipts && !force) { return Promise.resolve(APP.state.data.myNotificationReceipts); }
+  var personnel = APP.state.currentPersonnel;
+  if (!personnel || !personnel.Id) {
+    APP.state.data.myNotificationReceipts = [];
+    return Promise.resolve([]);
+  }
+  var wanted = [
+    'Title','IsRead','ReadDate','IsDismissed','DismissedDate','DeliveryChannel',
+    'RecipientPersonID/Id','RecipientPersonID/Title',
+    'NotificationID/Id','NotificationID/Title','NotificationID/Body','NotificationID/NotificationType',
+    'NotificationID/SourceModule','NotificationID/SensitivityLevel','NotificationID/SentDate',
+    'NotificationID/ExpiresDate','NotificationID/ActionURL','NotificationID/RelatedCaseNumber'
+  ];
+  var opts = {
+    filter: 'RecipientPersonIDId eq ' + personnel.Id + ' and IsDismissed ne 1',
+    orderby: 'Id desc',
+    top: 200
+  };
+  return queryList(APP.lists.NotificationReceipts, wanted, opts, 'ensureMyNotificationReceiptsLoaded').then(function(rows){
+    APP.state.data.myNotificationReceipts = rows || [];
+    return rows || [];
+  }).catch(function(err){
+    addDiagnostic('warn', 'ensureMyNotificationReceiptsLoaded', 'Failed to load persistent notifications', { detail: err && err.text ? err.text : err });
+    APP.state.data.myNotificationReceipts = [];
+    return [];
+  });
+}
+
 /* ─── Notification Center ─── */
 function getNotifications(){
   var items = [];
@@ -1862,17 +2135,98 @@ function getNotifications(){
       else if (d != null && d <= 3) { items.push({ type: 'warn', icon: '!', title: 'Request Due Soon', detail: (r.Title || r.RequestID) + ' due in ' + d + ' day(s).', time: formatDate(r.DueDate), route: 'requests' }); }
     }
   });
-  return items.slice(0, 20);
+  /* NF-10: merge persistent notifications from CCSD_NotificationReceipts */
+  var receipts = APP.state.data.myNotificationReceipts || [];
+  var now = new Date();
+  receipts.forEach(function(rec){
+    if (normalizeBoolean(rec.IsRead) || normalizeBoolean(rec.IsDismissed)) { return; }
+    var n = rec.NotificationID;
+    if (!n) { return; }
+    if (n.ExpiresDate) {
+      var exp = parseDate(n.ExpiresDate);
+      if (exp && exp.getTime() < now.getTime()) { return; }
+    }
+    var sensitivity = String(n.SensitivityLevel || '').toLowerCase();
+    var moduleIcon = mapNotificationModuleIcon(n.SourceModule);
+    var routeKey = (n.ActionURL || '').replace(/^#/, '') || mapNotificationModuleRoute(n.SourceModule);
+    var sourceModule = String(n.SourceModule || '');
+    var notificationType = String(n.NotificationType || '');
+    var isSecurityRelated = sourceModule === 'Security' || notificationType === 'Incident Update' || notificationType === 'SF86 Reminder';
+    items.push({
+      type: sensitivity === 'sensitive' ? 'danger' : 'info',
+      icon: moduleIcon,
+      title: moduleIcon + ' ' + (n.Title || ''),
+      detail: n.Body || '',
+      time: formatDate(n.SentDate),
+      route: routeKey,
+      persistent: true,
+      receiptId: rec.Id,
+      notificationId: n.Id,
+      isDismissable: !isSecurityRelated,
+      sensitivityLevel: n.SensitivityLevel || 'Public'
+    });
+  });
+  items.sort(function(a, b){
+    var at = a.time ? new Date(a.time).getTime() : 0;
+    var bt = b.time ? new Date(b.time).getTime() : 0;
+    return bt - at;
+  });
+  return items.slice(0, 50);
 }
+
+function mapNotificationModuleIcon(sourceModule){
+  switch (String(sourceModule || '')) {
+    case 'Security': return '🔒';
+    case 'Training': return '📋';
+    case 'Requests': return '📨';
+    case 'Calendar': return '📅';
+    case 'Assets': return '💻';
+    case 'Facilities': return '🏢';
+    case 'SupervisorHub': return '👥';
+    case 'Admin': return '📢';
+    default: return '🔔';
+  }
+}
+
+function mapNotificationModuleRoute(sourceModule){
+  switch (String(sourceModule || '')) {
+    case 'Security': return 'security';
+    case 'Training': return 'training';
+    case 'Requests': return 'requests';
+    case 'Calendar': return 'calendar';
+    case 'Assets': return 'assets';
+    case 'Facilities': return 'facilities';
+    case 'SupervisorHub': return 'supervisor';
+    case 'Admin': return 'admin';
+    default: return 'home';
+  }
+}
+
+/* NF-11: Notification panel with mark-as-read/dismiss actions */
 function renderNotificationCenter(){
   var items = getNotifications();
   if (!items.length) { return '<div class="empty">No notifications right now. All clear.</div>'; }
   var html = '<div class="spotlight-list">';
   items.forEach(function(n){
-    html += '<div class="spotlight-item" style="cursor:pointer" data-action="nav" data-route="' + escAttr(n.route || 'home') + '"><div><div class="l1">' + escHtml(n.title) + '</div><div class="l2">' + escHtml(n.detail) + '</div></div><div>' + statusBadge(n.type === 'danger' ? 'Overdue' : (n.type === 'warn' ? 'Due Soon' : 'Info')) + '</div></div>';
+    var actions = '';
+    if (n.persistent) {
+      actions += '<button class="btn subtle" data-action="mark-notification-read" data-id="' + escAttr(n.receiptId) + '" title="Mark as read">✓</button>';
+      if (n.isDismissable) {
+        actions += ' <button class="btn subtle" data-action="dismiss-notification" data-id="' + escAttr(n.receiptId) + '" title="Dismiss">✕</button>';
+      }
+    }
+    var badge = statusBadge(n.type === 'danger' ? 'Overdue' : (n.type === 'warn' ? 'Due Soon' : 'Info'));
+    html += '<div class="spotlight-item" style="cursor:pointer" data-action="nav" data-route="' + escAttr(n.route || 'home') + '">'
+      + '<div><div class="l1">' + escHtml(n.title) + '</div><div class="l2">' + escHtml(n.detail) + '</div></div>'
+      + '<div>' + badge + (actions ? ' ' + actions : '') + '</div>'
+      + '</div>';
   });
   html += '</div>';
   return html;
+}
+
+function getUnreadNotificationCount(){
+  return getNotifications().length;
 }
 
 /* ─── Missing functions: findTrainingById, renderTrainingSubmissionTable, openTrainingModal ─── */
@@ -2428,7 +2782,8 @@ function renderHome(){
     ensureHowToLoaded(),
     ensureTimeOffLoaded().catch(function(){ return []; }),
     ensurePeopleLoaded().catch(function(){ return []; }),
-    ensureOrganizationsLoaded().catch(function(){ return []; })
+    ensureOrganizationsLoaded().catch(function(){ return []; }),
+    ensureMyNotificationReceiptsLoaded().catch(function(){ return []; })
   ]).then(function(){
     renderContextBar();
     var training = getMyTrainingModel();
@@ -7163,37 +7518,234 @@ function getOrgPeopleStats(orgId){
  *  SECURITY MODULE
  * ═══════════════════════════════════════════════════════════════════════ */
 
+/* IM-12: Case number generation. Two-step pattern — query existing for max
+ * sequence, return next ID in form PREFIX-YYYY-NNNN. */
+function generateCaseNumber(prefix, year){
+  prefix = prefix || 'SEC';
+  year = year || new Date().getFullYear();
+  var pattern = prefix + '-' + year + '-';
+  return ensureSecurityIncidentsLoaded().then(function(rows){
+    var maxSeq = 0;
+    (rows || []).forEach(function(row){
+      var num = row.CaseNumber || '';
+      if (String(num).indexOf(pattern) !== 0) { return; }
+      var tail = String(num).slice(pattern.length);
+      var n = parseInt(tail, 10);
+      if (!isNaN(n) && n > maxSeq) { maxSeq = n; }
+    });
+    var next = maxSeq + 1;
+    var padded = ('0000' + next).slice(-4);
+    return pattern + padded;
+  });
+}
+
+function ensureSecurityIncidentsLoaded(force){
+  if (APP.state.data.securityIncidents && !force) { return Promise.resolve(APP.state.data.securityIncidents); }
+  var wanted = [
+    'Title','CaseNumber','Category','SubType','Status','PriorStatus','Severity',
+    'PersonID/Id','PersonID/Title','OrgID/Id','OrgID/Title',
+    'IncidentDate','DiscoveredDate','ReportedDate','ResolutionDate','ClosedDate',
+    'AssignedTo/Id','AssignedTo/Title','ReporterRole','ReportingSource',
+    'Description','SEAD4Guidelines','SORResponseDeadline'
+  ];
+  var opts = { top: 1000, orderby: 'Id desc' };
+  var filter = getSecurityIncidentFilter();
+  if (filter) { opts.filter = filter; }
+  return queryList(APP.lists.SecurityIncidents, wanted, opts, 'ensureSecurityIncidentsLoaded').then(function(rows){
+    APP.state.data.securityIncidents = rows || [];
+    return rows || [];
+  }).catch(function(err){
+    addDiagnostic('warn', 'ensureSecurityIncidentsLoaded', 'Failed to load security incidents', { detail: err && err.text ? err.text : err });
+    APP.state.data.securityIncidents = [];
+    return [];
+  });
+}
+
+/* IM-19: Query-level security enforcement. Returns OData filter string
+ * appropriate for the current user's role.
+ *  - App Admin: no filter (sees all)
+ *  - Security with scope: filter to scoped org
+ *  - Security without scope: no filter (sees all in their purview)
+ *  - Member: filter to own PersonID
+ *  - No access: returns 'Id eq 0' (returns nothing) */
+function getSecurityIncidentFilter(){
+  if (hasRole('App Admin')) { return ''; }
+  if (canManageSecurity()) {
+    var scopeOrgIds = getSecurityRoleScopeOrgIds();
+    if (scopeOrgIds && scopeOrgIds.length) {
+      return scopeOrgIds.map(function(id){ return 'OrgIDId eq ' + Number(id); }).join(' or ');
+    }
+    return '';
+  }
+  var personnel = APP.state.currentPersonnel;
+  if (personnel && personnel.Id) { return 'PersonIDId eq ' + personnel.Id; }
+  return 'Id eq 0';
+}
+
+function getSecurityRoleScopeOrgIds(){
+  var ids = [];
+  (APP.state.rolesRaw || []).forEach(function(row){
+    if (!roleRowMatchesUser(row) || !roleRowActive(row)) { return; }
+    var roles = normalizeRoleValues(row.Role);
+    if (roles.indexOf('Security') < 0) { return; }
+    if (row.ScopeOrgID && row.ScopeOrgID.Id) { ids.push(row.ScopeOrgID.Id); }
+  });
+  return unique(ids);
+}
+
+function canViewIncident(incident){
+  if (!incident) { return false; }
+  if (hasRole('App Admin')) { return true; }
+  if (canManageSecurity()) {
+    var scopeOrgIds = getSecurityRoleScopeOrgIds();
+    if (!scopeOrgIds.length) { return true; }
+    var orgId = incident.OrgID && incident.OrgID.Id ? incident.OrgID.Id : null;
+    return scopeOrgIds.indexOf(orgId) >= 0;
+  }
+  var personnel = APP.state.currentPersonnel;
+  var incidentPersonId = incident.PersonID && incident.PersonID.Id ? incident.PersonID.Id : null;
+  return personnel && personnel.Id && incidentPersonId === personnel.Id;
+}
+
+/* Strip sensitive fields from an incident before showing to a member. */
+function redactIncidentForMember(incident){
+  if (!incident) { return null; }
+  return {
+    Id: incident.Id,
+    CaseNumber: incident.CaseNumber,
+    Status: incident.Status,
+    Category: incident.Category,
+    ReportedDate: incident.ReportedDate,
+    ResolutionDate: incident.ResolutionDate,
+    ClosedDate: incident.ClosedDate
+  };
+}
+
+/* IM-25: Incident CSV export with CUI banner header. */
+function exportIncidentCSV(){
+  if (!canManageSecurity()) { toast('Access restricted to Security role.', 'danger'); return; }
+  var rows = APP.state.data.securityIncidents || [];
+  if (!rows.length) { toast('No incidents to export.', 'warn'); return; }
+  var bannerLine = 'CUI // PRIVACY ACT PROTECTED // FOR OFFICIAL USE ONLY';
+  var columns = ['CaseNumber','Status','Category','SubType','Severity','SubjectName','OrgName','IncidentDate','ReportedDate','ResolutionDate','ClosedDate','AssignedTo'];
+  function csvCell(v){
+    var s = v == null ? '' : String(v);
+    if (s.indexOf('"') >= 0 || s.indexOf(',') >= 0 || s.indexOf('\n') >= 0) {
+      s = '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+  var out = bannerLine + '\n';
+  out += columns.join(',') + '\n';
+  rows.forEach(function(r){
+    var subjectName = (r.PersonID && r.PersonID.Title) || '';
+    var orgName = (r.OrgID && r.OrgID.Title) || '';
+    var assigned = (r.AssignedTo && r.AssignedTo.Title) || '';
+    var line = [
+      r.CaseNumber || '', r.Status || '', r.Category || '', r.SubType || '', r.Severity || '',
+      subjectName, orgName, formatDate(r.IncidentDate), formatDate(r.ReportedDate),
+      formatDate(r.ResolutionDate), formatDate(r.ClosedDate), assigned
+    ].map(csvCell).join(',');
+    out += line + '\n';
+  });
+  out += bannerLine + '\n';
+  var blob = new Blob([out], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'security_incidents_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  logAudit('Export', 'SecurityIncidents', null, { rowCount: rows.length, format: 'CSV' }, { listTitle: APP.lists.SecurityIncidents, reason: 'CSV export with CUI banner' });
+  toast('Exported ' + rows.length + ' incident(s) to CSV.', 'ok');
+}
+
 function renderSecurity(){
-  var html = '';
   var isSecurityRole = canManageSecurity();
   var hasOwnRecord = canViewOwnSecurity();
+  renderLoading('Loading security view...');
+  var loaders = [ensureCurrentPersonnelLoaded(), ensureRolesLoaded(), ensurePeopleLoaded().catch(function(){ return []; })];
+  if (isSecurityRole || hasOwnRecord) { loaders.push(ensureSecurityIncidentsLoaded().catch(function(){ return []; })); }
+  Promise.all(loaders).then(function(){
+    if (isSecurityRole) { return renderSecurityAdmin(); }
+    if (hasOwnRecord) { return renderSecurityMember(); }
+    setView('<div class="section-header"><h2>Security</h2></div><div class="card"><div class="card-body"><p>No security record found for your account.</p></div></div>');
+  });
+}
 
-  html += '<div class="section-header"><h2>Security</h2></div>';
+function renderSecurityAdmin(){
+  var html = '';
+  var rows = APP.state.data.securityIncidents || [];
+  var openCount = rows.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('admin') < 0; }).length;
+  var sorIssued = rows.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('sor') >= 0; }).length;
+  var resolved = rows.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('closed') >= 0; }).length;
 
-  if (isSecurityRole) {
-    html += '<div class="card"><div class="card-header">Security Administration</div><div class="card-body">';
-    html += '<p>The Security module will provide personnel security management, clearance tracking, incident case management, and compliance dashboards.</p>';
-    html += '<div class="alert alert-info" style="margin-top:10px">';
-    html += '<strong>Setup Required:</strong> The following SharePoint lists must be created before this module can be activated:';
-    html += '<ul style="margin:8px 0 0 20px">';
-    html += '<li><code>CCSD_SecurityRecords</code> — 30 columns (clearance tracking)</li>';
-    html += '<li><code>CCSD_SecurityIncidents</code> — 46 columns (incident/case management)</li>';
-    html += '<li><code>CCSD_IncidentStatusHistory</code> — 10 columns</li>';
-    html += '<li><code>CCSD_IncidentActions</code> — 14 columns</li>';
-    html += '<li><code>CCSD_IncidentNotifications</code> — 14 columns</li>';
-    html += '<li><code>CCSD_IncidentParties</code> — 9 columns</li>';
-    html += '</ul>';
-    html += '<p style="margin-top:8px">See <code>SHAREPOINT_LISTS_AND_COLUMNS.txt</code> for complete column definitions and choice values.</p>';
-    html += '</div></div></div>';
-  } else if (hasOwnRecord) {
-    html += '<div class="card"><div class="card-body">';
-    html += '<p>Your personal security status will appear here once the Security module is configured.</p>';
-    html += '</div></div>';
+  html += '<div class="section-header"><h2>Security Administration</h2>';
+  html += '<div class="quick-actions">';
+  html += '<button class="btn primary" data-action="export-incidents-csv">Export Incidents (CSV)</button>';
+  html += '</div></div>';
+
+  html += '<div class="kpi-grid" style="margin-bottom:14px">';
+  html += '<div class="kpi"><div class="k">Total Cases</div><div class="v">' + rows.length + '</div></div>';
+  html += '<div class="kpi"><div class="k">Open</div><div class="v">' + openCount + '</div></div>';
+  html += '<div class="kpi"><div class="k">SOR Issued</div><div class="v">' + sorIssued + '</div></div>';
+  html += '<div class="kpi"><div class="k">Closed</div><div class="v">' + resolved + '</div></div>';
+  html += '</div>';
+
+  html += '<div class="card"><div class="card-header">Incident Cases</div><div class="card-body">';
+  if (!rows.length) {
+    html += '<div class="empty">No incidents recorded yet. Use <strong>Create Incident</strong> to log a new case.</div>';
   } else {
-    html += '<div class="card"><div class="card-body">';
-    html += '<p>No security record found for your account.</p>';
-    html += '</div></div>';
+    html += '<div class="table-wrap"><table><thead><tr><th>Case #</th><th>Subject</th><th>Category</th><th>Status</th><th>Severity</th><th>Reported</th><th>Days Open</th></tr></thead><tbody>';
+    rows.slice(0, 200).forEach(function(r){
+      var subjectName = (r.PersonID && r.PersonID.Title) || '—';
+      var reported = parseDate(r.ReportedDate);
+      var closed = parseDate(r.ClosedDate || r.ResolutionDate);
+      var daysOpen = '';
+      if (reported) {
+        var endRef = closed || new Date();
+        daysOpen = Math.max(0, Math.round((endRef.getTime() - reported.getTime()) / 86400000));
+      }
+      html += '<tr><td><strong>' + escHtml(r.CaseNumber || ('#' + r.Id)) + '</strong></td>'
+        + '<td>' + escHtml(subjectName) + '</td>'
+        + '<td>' + escHtml(r.Category || '') + '</td>'
+        + '<td>' + statusBadge(r.Status || 'Open') + '</td>'
+        + '<td>' + escHtml(r.Severity || '') + '</td>'
+        + '<td>' + escHtml(formatDate(r.ReportedDate)) + '</td>'
+        + '<td>' + escHtml(String(daysOpen)) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
   }
+  html += '</div></div>';
+
+  setView(html);
+}
+
+function renderSecurityMember(){
+  var html = '';
+  var personnel = APP.state.currentPersonnel;
+  var rows = (APP.state.data.securityIncidents || []).filter(function(r){
+    return r.PersonID && personnel && r.PersonID.Id === personnel.Id;
+  }).map(redactIncidentForMember);
+
+  html += '<div class="section-header"><h2>My Security</h2></div>';
+  html += '<div class="card"><div class="card-header">My Cases</div><div class="card-body">';
+  if (!rows.length) {
+    html += '<div class="empty">You have no security cases on file.</div>';
+  } else {
+    html += '<div class="table-wrap"><table><thead><tr><th>Case #</th><th>Status</th><th>Reported</th><th>Resolved</th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      html += '<tr><td><strong>' + escHtml(r.CaseNumber || ('#' + r.Id)) + '</strong></td>'
+        + '<td>' + statusBadge(r.Status || 'Open') + '</td>'
+        + '<td>' + escHtml(formatDate(r.ReportedDate)) + '</td>'
+        + '<td>' + escHtml(formatDate(r.ResolutionDate || r.ClosedDate)) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<div class="small-note" style="margin-top:10px">Case details are restricted. Contact the security office for additional information.</div>';
+  }
+  html += '</div></div>';
 
   setView(html);
 }
@@ -7677,6 +8229,25 @@ function handleClick(e){
   if (action === 'close-modal') { closeModal(); return; }
   if (action === 'nav') { routeTo(el.getAttribute('data-route')); return; }
   if (action === 'refresh-route') { renderRoute(); return; }
+  if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
+  if (action === 'mark-notification-read') {
+    e.stopPropagation();
+    var nrId = el.getAttribute('data-id');
+    markNotificationRead(nrId).then(function(){
+      toast('Marked as read.', 'ok');
+      if (APP.state.route === 'home') { renderRoute(); }
+    }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Could not mark as read.', 'danger'); });
+    return;
+  }
+  if (action === 'dismiss-notification') {
+    e.stopPropagation();
+    var ndId = el.getAttribute('data-id');
+    dismissNotification(ndId).then(function(){
+      toast('Notification dismissed.', 'ok');
+      if (APP.state.route === 'home') { renderRoute(); }
+    }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Could not dismiss.', 'danger'); });
+    return;
+  }
   if (action === 'open-diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } routeTo('diagnostics'); return; }
   if (action === 'diag-detail') { openDiagnosticDetail(el.getAttribute('data-id')); return; }
   if (action === 'org-toggle') { ensureOrgChartUi(); var orgToggleId = Number(el.getAttribute('data-id')); APP.state.orgUi.expanded[orgToggleId] = !APP.state.orgUi.expanded[orgToggleId]; renderOrganizationsView(); return; }
