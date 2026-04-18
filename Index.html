@@ -2350,12 +2350,76 @@ function initNotificationChecks(){
       }
     }
   });
+  /* NF-15: supervisor team-alert. Only fires for supervisors. Counts team
+   * members with overdue training; sends a SUP-TEAM-ALERT notification once
+   * per week (deduplicated by RelatedEntityID = supervisor PersonID). */
+  if (canSeeSupervisorHub() && personnel && personnel.Id) {
+    var teamCount = computeOverdueTeamCount(personnel.Id);
+    if (teamCount > 0 && !alreadySent('SUP-TEAM-ALERT', personnel.Id)) {
+      var supTpl = renderTemplate('SUP-TEAM-ALERT', { count: teamCount });
+      queue.push(sendNotification({
+        title: supTpl.subject,
+        body: supTpl.body,
+        notificationType: supTpl.type,
+        sourceModule: 'SupervisorHub',
+        sensitivityLevel: supTpl.sensitivity,
+        audienceType: 'Individual',
+        recipientPersonId: personnel.Id,
+        templateId: 'SUP-TEAM-ALERT',
+        relatedEntityType: 'Other',
+        relatedEntityID: personnel.Id,
+        actionURL: '#supervisor',
+        isSystemGenerated: true,
+        /* Auto-expire after 7 days so it can re-trigger next week */
+        expiresDate: (function(){ var d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString(); })()
+      }).then(function(){ created.supervisorAlert = (created.supervisorAlert || 0) + 1; }).catch(function(){}));
+    }
+  }
   return Promise.all(queue).then(function(){
-    if (created.trainingExpire + created.trainingExpired > 0) {
+    if ((created.trainingExpire || 0) + (created.trainingExpired || 0) + (created.supervisorAlert || 0) > 0) {
       return ensureMyNotificationReceiptsLoaded(true).then(function(){ return created; });
     }
     return created;
   });
+}
+
+/* Count direct reports with overdue training. Used by NF-15. */
+function computeOverdueTeamCount(supervisorPersonId){
+  var people = APP.state.data.people || [];
+  var team = people.filter(function(p){
+    var supId = p.SupervisorPersonID && p.SupervisorPersonID.Id ? p.SupervisorPersonID.Id : null;
+    return supId === supervisorPersonId;
+  });
+  if (!team.length) { return 0; }
+  var records = APP.state.data.trainingRecords || [];
+  var catalog = APP.state.data.trainingCatalog || [];
+  var now = new Date();
+  var overdueCount = 0;
+  team.forEach(function(person){
+    var personOverdue = false;
+    catalog.forEach(function(t){
+      if (personOverdue) { return; }
+      if (!normalizeBoolean(t.IsActive) && t.IsActive != null) { return; }
+      try {
+        if (typeof trainingAppliesToPerson === 'function' && !trainingAppliesToPerson(t, person)) { return; }
+      } catch (e) {}
+      var personTrainingRecords = records.filter(function(r){
+        var rPersonId = r.PersonID && r.PersonID.Id ? r.PersonID.Id : null;
+        var rTrainingId = r.TrainingID && r.TrainingID.Id ? r.TrainingID.Id : null;
+        return rPersonId === person.Id && rTrainingId === t.Id;
+      });
+      var latest = personTrainingRecords.sort(function(a, b){
+        var ad = a.ExpirationDate || a.CompletionDate || '';
+        var bd = b.ExpirationDate || b.CompletionDate || '';
+        return ad < bd ? 1 : (ad > bd ? -1 : 0);
+      })[0];
+      if (!latest) { personOverdue = true; return; }
+      var exp = parseDate(latest.ExpirationDate);
+      if (exp && exp.getTime() < now.getTime()) { personOverdue = true; }
+    });
+    if (personOverdue) { overdueCount++; }
+  });
+  return overdueCount;
 }
 
 /* ─── Notification Center ─── */
@@ -2374,6 +2438,21 @@ function getNotifications(){
       var d = daysUntil(r.DueDate);
       if (d != null && d < 0) { items.push({ type: 'danger', icon: '!', title: 'Overdue Request', detail: (r.Title || r.RequestID) + ' is overdue.', time: formatDate(r.DueDate), route: 'requests' }); }
       else if (d != null && d <= 3) { items.push({ type: 'warn', icon: '!', title: 'Request Due Soon', detail: (r.Title || r.RequestID) + ' due in ' + d + ' day(s).', time: formatDate(r.DueDate), route: 'requests' }); }
+    }
+  });
+  /* Section 8: ATO expiration alerts. Surface software titles whose ATO
+   * expires within 90 days (warn) or has already expired (danger). Visible to
+   * everyone — these are unit-wide compliance signals. */
+  var swAssets = APP.state.data.softwareAssets || [];
+  swAssets.forEach(function(sw){
+    if (!sw || !sw.AtoExpiration) { return; }
+    if (sw.RequiresATO != null && !normalizeBoolean(sw.RequiresATO)) { return; }
+    var d = daysUntil(sw.AtoExpiration);
+    var name = sw.Title || sw.SoftwareID || 'Software title';
+    if (d != null && d < 0) {
+      items.push({ type: 'danger', icon: '!', title: 'ATO Expired', detail: name + ' ATO expired ' + formatDate(sw.AtoExpiration) + ' (' + Math.abs(d) + ' days ago).', time: formatDate(sw.AtoExpiration), route: 'assets' });
+    } else if (d != null && d <= 90) {
+      items.push({ type: 'warn', icon: '!', title: 'ATO Expiring Soon', detail: name + ' ATO expires in ' + d + ' day(s) (' + formatDate(sw.AtoExpiration) + ').', time: formatDate(sw.AtoExpiration), route: 'assets' });
     }
   });
   /* NF-10: merge persistent notifications from CCSD_NotificationReceipts */
@@ -3024,7 +3103,8 @@ function renderHome(){
     ensureTimeOffLoaded().catch(function(){ return []; }),
     ensurePeopleLoaded().catch(function(){ return []; }),
     ensureOrganizationsLoaded().catch(function(){ return []; }),
-    ensureMyNotificationReceiptsLoaded().catch(function(){ return []; })
+    ensureMyNotificationReceiptsLoaded().catch(function(){ return []; }),
+    ensureAssetsLoaded().catch(function(){ return []; })
   ]).then(function(){
     /* NF-13: fire threshold-based notification checks once per session,
      * non-blocking so the dashboard renders immediately. */
@@ -7187,11 +7267,53 @@ function renderAssets(){
     ['Unclassified Network','Secret Network','Top Secret / JWICS','Not Tagged'].forEach(function(label){ html += '<div class="asset-slim-card"><div class="hd">' + escHtml(label) + '</div><div class="val">' + escHtml(String(envCounts[label] || 0)) + '</div></div>'; });
     html += '</div><div class="kv" style="margin-top:14px"><div class="k">Approved Software Titles</div><div class="v">' + escHtml(String(idx.softwareAssets.filter(function(sw){ var ap = String(sw.ApprovalStatus || '').toLowerCase(); return !ap || ap.indexOf('approved') >= 0; }).length)) + '</div><div class="k">Exception-Based Assignments</div><div class="v">' + escHtml(String(idx.softwareAssignments.filter(function(a){ return normalizeBoolean(a.ExceptionApproved); }).length)) + '</div><div class="k">Systems with ATO Tracking</div><div class="v">' + escHtml(String(idx.systems.filter(function(s){ return s.AtoNumber || s.AtoStatus || s.AtoExpiration; }).length)) + '</div><div class="k">Current Seat-Linked Hardware</div><div class="v">' + escHtml(String(idx.hardwareAssignments.filter(function(a){ return isActiveHardwareAssignment(a) && a._seat; }).length)) + '</div></div></div></div></div>';
     html += renderAssetWatchlist(idx);
+    html += renderLicenseUtilizationCard(idx);
     html += '<div style="margin-top:16px">' + renderAssetAssignmentTables(idx, search) + '</div>';
     html += '</div></div>';
     setView(html);
   }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">Assets failed to load.</div></div></div>'); });
 }
+/* Section 2: License utilization dashboard. Renders software titles where
+ * TotalLicenses is set, with active assignment count and utilization %. */
+function renderLicenseUtilizationCard(idx){
+  var titles = (idx.softwareAssets || []).filter(function(sw){
+    var n = Number(sw.TotalLicenses);
+    return !isNaN(n) && n > 0;
+  });
+  if (!titles.length) {
+    return '<div class="card" style="margin-top:16px"><div class="card-head"><div class="card-title">License Utilization</div><div class="card-sub">Set <code>TotalLicenses</code> on software titles in <code>CCSD_SoftwareAssets</code> to see utilization here.</div></div></div>';
+  }
+  var assignmentsByTitle = {};
+  (idx.softwareAssignments || []).forEach(function(a){
+    if (!isActiveSoftwareAssignment(a)) { return; }
+    var swId = a.SoftwareID && a.SoftwareID.Id ? a.SoftwareID.Id : (a._software && a._software.Id);
+    if (!swId) { return; }
+    assignmentsByTitle[swId] = (assignmentsByTitle[swId] || 0) + 1;
+  });
+  titles.sort(function(a, b){
+    var au = (assignmentsByTitle[a.Id] || 0) / Number(a.TotalLicenses);
+    var bu = (assignmentsByTitle[b.Id] || 0) / Number(b.TotalLicenses);
+    return bu - au;
+  });
+  var html = '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">License Utilization</div><div class="card-sub">' + titles.length + ' titles tracked. Sorted by highest utilization.</div></div></div><div class="card-body">';
+  html += '<div class="table-wrap"><table><thead><tr><th>Software</th><th>Vendor</th><th>Used</th><th>Total</th><th>Utilization</th><th>Status</th></tr></thead><tbody>';
+  titles.forEach(function(sw){
+    var used = assignmentsByTitle[sw.Id] || 0;
+    var total = Number(sw.TotalLicenses);
+    var pct = total > 0 ? Math.round((used / total) * 100) : 0;
+    var statusLabel = pct >= 100 ? 'Over Limit' : (pct >= 90 ? 'Near Cap' : (pct >= 60 ? 'Healthy' : 'Underutilized'));
+    var swName = sw.Title || sw.SoftwareID || 'Software';
+    var vendor = sw.Vendor || '';
+    html += '<tr><td>' + escHtml(swName) + '</td><td>' + escHtml(vendor) + '</td>'
+      + '<td>' + escHtml(String(used)) + '</td>'
+      + '<td>' + escHtml(String(total)) + '</td>'
+      + '<td><div class="utilization-bar" style="background:#eee;height:8px;border-radius:4px;width:120px;overflow:hidden"><div style="background:' + (pct >= 100 ? '#c00' : pct >= 90 ? '#e67e22' : '#2ecc71') + ';height:100%;width:' + Math.min(100, pct) + '%"></div></div><span class="muted" style="margin-left:8px">' + pct + '%</span></td>'
+      + '<td>' + statusBadge(statusLabel) + '</td></tr>';
+  });
+  html += '</tbody></table></div></div></div>';
+  return html;
+}
+
 function renderSimpleAssetTable(title, rows){
   return '<div class="card"><div class="card-head"><div class="card-title">' + escHtml(title) + '</div></div><div class="card-body"><div class="empty">This legacy helper is no longer used in the upgraded asset experience.</div></div></div>';
 }
@@ -8083,6 +8205,231 @@ function saveIncident(){
   });
 }
 
+/* IM-14: Basic incident detail view with summary, timeline, actions. */
+var INCIDENT_STATUSES = [
+  'Reported','Under Review','Preliminary Inquiry','Under Investigation',
+  'Pending Adjudication','SOR Issued','Response/Appeal','Resolved',
+  'Closed - No Action Required','Closed - Favorable','Closed - Adverse Action',
+  'Referred to External Agency','Referred to AFOSI','Administrative Withdrawal'
+];
+
+/* D2-aligned allowed-next-status map (subset; conservative — the transition
+ * still requires Security role). The detail view only shows valid next options. */
+var INCIDENT_NEXT_STATUS = {
+  'Reported': ['Under Review','Preliminary Inquiry','Closed - No Action Required','Administrative Withdrawal','Referred to AFOSI','Referred to External Agency'],
+  'Under Review': ['Preliminary Inquiry','Under Investigation','Closed - No Action Required','Administrative Withdrawal'],
+  'Preliminary Inquiry': ['Under Investigation','Closed - No Action Required','Closed - Favorable','Administrative Withdrawal'],
+  'Under Investigation': ['Pending Adjudication','SOR Issued','Closed - Favorable','Administrative Withdrawal','Referred to External Agency'],
+  'Pending Adjudication': ['SOR Issued','Closed - Favorable','Closed - Adverse Action','Resolved'],
+  'SOR Issued': ['Response/Appeal','Resolved','Closed - Adverse Action'],
+  'Response/Appeal': ['Resolved','Closed - Favorable','Closed - Adverse Action'],
+  'Resolved': ['Closed - No Action Required','Closed - Favorable','Closed - Adverse Action'],
+  'Referred to External Agency': ['Resolved','Administrative Withdrawal','Closed - No Action Required'],
+  'Referred to AFOSI': ['Under Investigation','Resolved','Administrative Withdrawal']
+};
+
+function ensureIncidentStatusHistoryLoaded(incidentId){
+  var wanted = ['Title','IncidentID/Id','CaseNumber','FromStatus','ToStatus','TransitionDate','ChangedBy/Id','ChangedBy/Title','Notes','DaysInPriorStatus','DeadlineWasMet'];
+  var opts = { filter: 'IncidentIDId eq ' + Number(incidentId), orderby: 'TransitionDate desc', top: 200 };
+  return queryList(APP.lists.IncidentStatusHistory, wanted, opts, 'ensureIncidentStatusHistoryLoaded').catch(function(){ return []; });
+}
+
+function ensureIncidentActionsLoaded(incidentId){
+  var wanted = ['Title','IncidentID/Id','CaseNumber','ActionType','ActionCategory','AssignedTo/Id','AssignedTo/Title','DueDate','Priority','Status','CompletedDate','CompletedBy/Id','CompletedBy/Title','CompletionNotes','IsAutoGenerated','TriggeringStatus'];
+  var opts = { filter: 'IncidentIDId eq ' + Number(incidentId), orderby: 'Id asc', top: 200 };
+  return queryList(APP.lists.IncidentActions, wanted, opts, 'ensureIncidentActionsLoaded').catch(function(){ return []; });
+}
+
+function openIncidentDetailModal(incidentId){
+  if (!canManageSecurity() && !canViewIncident(findIncidentById(incidentId))) {
+    toast('Access restricted.', 'danger'); return;
+  }
+  var incident = findIncidentById(incidentId);
+  if (!incident) { toast('Incident not found.', 'danger'); return; }
+  /* IM-18: log view event */
+  logAudit('View', 'SecurityIncident', null, { caseNumber: incident.CaseNumber }, { listTitle: APP.lists.SecurityIncidents, itemId: incidentId });
+  openModal('Loading…', '<div class="loading">Loading incident…</div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', incident.CaseNumber || '');
+  Promise.all([ensureIncidentStatusHistoryLoaded(incidentId), ensureIncidentActionsLoaded(incidentId)]).then(function(all){
+    var history = all[0] || [];
+    var actions = all[1] || [];
+    APP.modalState.incidentDetail = { incidentId: incidentId, incident: incident, history: history, actions: actions };
+    renderIncidentDetailModal();
+  }).catch(function(){
+    toast('Failed to load incident detail.', 'danger');
+    closeModal();
+  });
+}
+
+function findIncidentById(incidentId){
+  var rows = APP.state.data.securityIncidents || [];
+  for (var i = 0; i < rows.length; i++) { if (String(rows[i].Id) === String(incidentId)) { return rows[i]; } }
+  return null;
+}
+
+function renderIncidentDetailModal(){
+  var state = APP.modalState.incidentDetail;
+  if (!state) { return; }
+  var inc = state.incident;
+  var canManage = canManageSecurity();
+  var subjectName = (inc.PersonID && inc.PersonID.Title) || '—';
+  var assignedName = (inc.AssignedTo && inc.AssignedTo.Title) || 'Unassigned';
+  var orgName = (inc.OrgID && inc.OrgID.Title) || '';
+  var nextStatuses = INCIDENT_NEXT_STATUS[inc.Status] || [];
+  var statusOptions = '<option value="">— Select next status —</option>' + nextStatuses.map(function(s){
+    return '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>';
+  }).join('');
+
+  var body = '';
+  body += '<div class="kv">'
+    + '<div class="k">Case Number</div><div class="v"><strong>' + escHtml(inc.CaseNumber || ('#' + inc.Id)) + '</strong></div>'
+    + '<div class="k">Subject</div><div class="v">' + escHtml(subjectName) + '</div>'
+    + '<div class="k">Organization</div><div class="v">' + escHtml(orgName) + '</div>'
+    + '<div class="k">Status</div><div class="v">' + statusBadge(inc.Status || 'Open') + ' <span class="muted">(prior: ' + escHtml(inc.PriorStatus || '—') + ')</span></div>'
+    + '<div class="k">Category</div><div class="v">' + escHtml(inc.Category || '') + (inc.SubType ? ' <span class="muted">/ ' + escHtml(inc.SubType) + '</span>' : '') + '</div>'
+    + '<div class="k">SEAD 4 Guidelines</div><div class="v">' + escHtml(inc.SEAD4Guidelines || '—') + '</div>'
+    + '<div class="k">Severity</div><div class="v">' + escHtml(inc.Severity || '') + '</div>'
+    + '<div class="k">Reporting Source</div><div class="v">' + escHtml(inc.ReportingSource || '') + '</div>'
+    + '<div class="k">Incident Date</div><div class="v">' + escHtml(formatDate(inc.IncidentDate)) + '</div>'
+    + '<div class="k">Discovered</div><div class="v">' + escHtml(formatDate(inc.DiscoveredDate)) + '</div>'
+    + '<div class="k">Reported</div><div class="v">' + escHtml(formatDate(inc.ReportedDate)) + '</div>'
+    + '<div class="k">Resolved</div><div class="v">' + escHtml(formatDate(inc.ResolutionDate)) + '</div>'
+    + '<div class="k">Assigned To</div><div class="v">' + escHtml(assignedName) + '</div>'
+    + '</div>';
+  if (canManage && inc.Description) {
+    body += '<div style="margin-top:12px"><div class="lbl">Description</div><div class="muted" style="white-space:pre-wrap">' + escHtml(inc.Description) + '</div></div>';
+  }
+
+  /* Status transition controls (IM-15) */
+  if (canManage && nextStatuses.length) {
+    body += '<div style="margin-top:14px;padding:10px;border:1px solid var(--border,#ccc);border-radius:6px">'
+      + '<div class="lbl">Transition Status</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:6px">'
+      + '<select id="id-next-status" class="ipt">' + statusOptions + '</select>'
+      + '<input id="id-transition-notes" class="ipt" type="text" placeholder="Transition notes (optional)">'
+      + '</div>'
+      + '<div style="margin-top:8px">'
+      + '<button class="btn primary" data-action="apply-status-transition">Apply Transition</button>'
+      + '<label style="margin-left:14px"><input id="id-notify-subject" type="checkbox"> Notify subject</label>'
+      + '</div>'
+      + '</div>';
+  }
+
+  /* Timeline */
+  body += '<div style="margin-top:18px"><div class="lbl">Status Timeline</div>';
+  if (!state.history.length) {
+    body += '<div class="empty">No status transitions recorded.</div>';
+  } else {
+    body += '<div class="spotlight-list">';
+    state.history.forEach(function(h){
+      var changedBy = (h.ChangedBy && h.ChangedBy.Title) || '';
+      body += '<div class="spotlight-item"><div>'
+        + '<div class="l1">' + escHtml((h.FromStatus || '—') + ' → ' + (h.ToStatus || '?')) + '</div>'
+        + '<div class="l2">' + escHtml(formatDate(h.TransitionDate)) + (changedBy ? ' • ' + escHtml(changedBy) : '') + (h.Notes ? ' • ' + escHtml(trimText(h.Notes, 100)) : '') + '</div>'
+        + '</div></div>';
+    });
+    body += '</div>';
+  }
+  body += '</div>';
+
+  /* Actions */
+  body += '<div style="margin-top:18px"><div class="lbl">Action Items (' + state.actions.length + ')</div>';
+  if (!state.actions.length) {
+    body += '<div class="empty">No action items.</div>';
+  } else {
+    body += '<div class="table-wrap"><table><thead><tr><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Due</th></tr></thead><tbody>';
+    state.actions.forEach(function(a){
+      body += '<tr><td>' + escHtml(a.Title || '') + (normalizeBoolean(a.IsAutoGenerated) ? ' <span class="badge muted">auto</span>' : '') + '</td>'
+        + '<td>' + escHtml(a.ActionCategory || '') + '</td>'
+        + '<td>' + escHtml(a.Priority || '') + '</td>'
+        + '<td>' + statusBadge(a.Status || 'Pending') + '</td>'
+        + '<td>' + escHtml(formatDate(a.DueDate)) + '</td></tr>';
+    });
+    body += '</tbody></table></div>';
+  }
+  body += '</div>';
+
+  var footer = '<div></div><div>';
+  if (canManage) {
+    footer += '<button class="btn" data-action="open-notification-composer" data-source="Security" data-audience="Individual" data-person-id="' + escAttr(inc.PersonID && inc.PersonID.Id) + '">Send Notification</button> ';
+  }
+  footer += '<button class="btn" data-action="close-modal">Close</button></div>';
+
+  openModal('Incident Detail', body, footer, inc.CaseNumber || '');
+}
+
+/* IM-15: status transition with audit + status history + optional notification (NF-14). */
+function applyIncidentStatusTransition(){
+  var state = APP.modalState.incidentDetail;
+  if (!state) { return; }
+  if (!canManageSecurity()) { toast('Access restricted.', 'danger'); return; }
+  var nextStatus = document.getElementById('id-next-status').value;
+  var notes = document.getElementById('id-transition-notes').value.trim();
+  var notifySubject = document.getElementById('id-notify-subject').checked;
+  if (!nextStatus) { toast('Select a next status.', 'danger'); return; }
+  var inc = state.incident;
+  var currentStatus = inc.Status || '';
+  var allowed = INCIDENT_NEXT_STATUS[currentStatus] || [];
+  if (allowed.indexOf(nextStatus) < 0) { toast('Transition not permitted from ' + currentStatus + ' to ' + nextStatus + '.', 'danger'); return; }
+  toast('Updating status...', 'ok');
+  var personnel = APP.state.currentPersonnel;
+  var changedById = personnel && personnel.Id ? personnel.Id : null;
+  var updates = { Status: nextStatus, PriorStatus: currentStatus };
+  if (nextStatus.indexOf('Closed') === 0) { updates.ClosedDate = new Date().toISOString().slice(0, 10); }
+  if (nextStatus === 'Resolved') { updates.ResolutionDate = new Date().toISOString().slice(0, 10); }
+  if (nextStatus === 'SOR Issued') {
+    updates.SORIssuedDate = new Date().toISOString().slice(0, 10);
+    var deadline = new Date(); deadline.setDate(deadline.getDate() + 30);
+    updates.SORResponseDeadline = deadline.toISOString().slice(0, 10);
+  }
+  updateListItem(APP.lists.SecurityIncidents, inc.Id, updates, { entityType: 'SecurityIncident', reason: 'Status transition: ' + currentStatus + ' -> ' + nextStatus, before: { Status: currentStatus, PriorStatus: inc.PriorStatus } }).then(function(){
+    var historyValues = {
+      Title: (inc.CaseNumber || '#' + inc.Id) + ' -> ' + nextStatus,
+      IncidentID: inc.Id,
+      CaseNumber: inc.CaseNumber || '',
+      FromStatus: currentStatus,
+      ToStatus: nextStatus,
+      TransitionDate: new Date().toISOString(),
+      Notes: notes
+    };
+    if (changedById) { historyValues.ChangedBy = changedById; }
+    return createListItem(APP.lists.IncidentStatusHistory, historyValues, { entityType: 'IncidentStatusHistory', noAudit: true });
+  }).then(function(){
+    /* NF-14: optional subject notification on status transition */
+    if (notifySubject && inc.PersonID && inc.PersonID.Id) {
+      var tplId = 'NT-01';
+      if (nextStatus === 'SOR Issued') { tplId = 'NT-03'; }
+      else if (nextStatus.indexOf('Closed') === 0) { tplId = 'NT-05'; }
+      else if (nextStatus === 'Resolved') { tplId = 'NT-04'; }
+      var rendered = renderTemplate(tplId, { caseNumber: inc.CaseNumber || ('#' + inc.Id) });
+      if (rendered) {
+        return sendNotification({
+          title: rendered.subject,
+          body: rendered.body,
+          notificationType: rendered.type,
+          sourceModule: 'Security',
+          sensitivityLevel: rendered.sensitivity,
+          audienceType: 'Individual',
+          recipientPersonId: inc.PersonID.Id,
+          templateId: tplId,
+          relatedEntityType: 'SecurityIncident',
+          relatedEntityID: inc.Id,
+          relatedCaseNumber: inc.CaseNumber || '',
+          actionURL: '#security',
+          isSystemGenerated: false
+        }).catch(function(err){ addDiagnostic('warn', 'incidentStatusNotify', 'Notification failed', { detail: err && err.message }); });
+      }
+    }
+  }).then(function(){
+    closeModal();
+    toast('Status updated to ' + nextStatus + '.', 'ok');
+    return ensureSecurityIncidentsLoaded(true);
+  }).then(function(){
+    if (APP.state.route === 'security') { renderSecurity(); }
+  }).catch(function(err){
+    toast(extractSpErrorMessage(err) || 'Status transition failed.', 'danger');
+  });
+}
+
 function renderSecurityAdmin(){
   var html = '';
   var rows = APP.state.data.securityIncidents || [];
@@ -8118,7 +8465,8 @@ function renderSecurityAdmin(){
         var endRef = closed || new Date();
         daysOpen = Math.max(0, Math.round((endRef.getTime() - reported.getTime()) / 86400000));
       }
-      html += '<tr><td><strong>' + escHtml(r.CaseNumber || ('#' + r.Id)) + '</strong></td>'
+      html += '<tr style="cursor:pointer" data-action="open-incident-detail" data-id="' + escAttr(r.Id) + '">'
+        + '<td><strong>' + escHtml(r.CaseNumber || ('#' + r.Id)) + '</strong></td>'
         + '<td>' + escHtml(subjectName) + '</td>'
         + '<td>' + escHtml(r.Category || '') + '</td>'
         + '<td>' + statusBadge(r.Status || 'Open') + '</td>'
@@ -8642,6 +8990,8 @@ function handleClick(e){
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
   if (action === 'open-create-incident') { openCreateIncidentModal(); return; }
   if (action === 'save-incident') { saveIncident(); return; }
+  if (action === 'open-incident-detail') { openIncidentDetailModal(el.getAttribute('data-id')); return; }
+  if (action === 'apply-status-transition') { applyIncidentStatusTransition(); return; }
   if (action === 'open-notification-composer') {
     var defaults = {};
     var src = el.getAttribute('data-source');
