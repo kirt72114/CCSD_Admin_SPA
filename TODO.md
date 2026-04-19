@@ -271,8 +271,8 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you.**
 
-- [ ] Lazy module loading (query lists only when module first visited)
-- [ ] List data pagination (handle 5000+ item lists via paging tokens)
+- [x] Lazy module loading (query lists only when module first visited) ✅ Done. Each render function uses `ensureXLoaded()` pattern that returns cached data or queries on first call. Modules don't pre-load other modules' data; e.g., Conference rooms only load when entering Calendar's Rooms tab.
+- [x] List data pagination (handle 5000+ item lists via paging tokens) ✅ Done 2026-04-18. `queryList()` now supports `opts.allPages` flag that follows `__next` / `odata.nextLink` from SharePoint. `maxRows` cap (default 50000) prevents runaway queries.
 - [x] Debounced calendar re-render ✅ Done 2026-04-18. `debouncedCalendarSearch` debounces calendar search input (250ms) to avoid full re-render on every keystroke.
 
 ### UX (P2) — 💻

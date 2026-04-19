@@ -1455,9 +1455,22 @@ function queryList(listTitle, wanted, opts, context){
       if (opts.orderby) { parts.push('$orderby=' + encodeURIComponent(opts.orderby)); }
       parts.push('$top=' + encodeURIComponent(String(opts.top || 200)));
       var path = "/web/lists/GetByTitle('" + escOData(listTitle) + "')/items?" + parts.join('&');
-      return spGetJson(path, context || ('queryList:' + listTitle)).then(function(data){
-        return data.value || [];
-      }).catch(function(err){
+      var allRows = [];
+      var maxRows = opts.maxRows || (opts.allPages ? 50000 : (opts.top || 200));
+      function fetchPage(currentPath){
+        return spGetJson(currentPath, context || ('queryList:' + listTitle)).then(function(data){
+          var page = data.value || [];
+          allRows = allRows.concat(page);
+          var nextLink = (data['odata.nextLink'] || (data.d && data.d.__next) || data['__next']);
+          if (opts.allPages && nextLink && allRows.length < maxRows) {
+            /* Convert absolute URL to relative path for apiUrl helper */
+            var relPath = nextLink.replace(/^https?:\/\/[^/]+/, '').replace(/^.*?\/_api/, '');
+            return fetchPage(relPath);
+          }
+          return allRows;
+        });
+      }
+      return fetchPage(path).catch(function(err){
         var msg = extractSpErrorMessage(err);
         var match = /The query to field '([^']+)' is not valid/i.exec(msg || '');
         if (attempt < 3 && match && match[1]) {
