@@ -744,11 +744,11 @@ Add to `loadAppData()` (or the security-module init):
 - [x] **Hash route `#security`** — Route added with role-based view switching (Security admin vs member self-service). ✅ Done 2026-04-14.
 - [x] **Self-view default** — 💻 ✅ Done 2026-04-19. Non-privileged users see only their own security record via `ensureSecurityRecordsLoaded()` with PersonID filter. Security status card with clearance KPIs, security training compliance panel, and own-cases list.
 - [x] **Obscured-by-default display** — 💻 ✅ Done 2026-04-19. Security detail fields masked with `●●●●●●` by default. Click-to-reveal interaction per field. View access logged via `logAudit()`.
-- [ ] **Security role access** — Users with `Security` role (via `CCSD_AppRoles`) see full searchable/filterable roster. Scoped by `ScopeOrgID` if set (org + descendants only).
-- [ ] **App Admin access** — Same as Security role but unscoped (all orgs visible).
-- [ ] **Supervisor limited view** — `hasAnyRole(['Supervisor'])` users see a summary card per direct report: name, clearance level, status badge (green/yellow/red). No drill-down into details. No incident data.
-- [ ] **Audit logging for ALL access** — ✦ Every view, reveal, edit, export, and search of security data logged to `CCSD_AppAuditLog` with viewer identity, timestamp, record accessed, and action type. Required by Privacy Act for systems containing security PII.
-- [ ] **Query-level enforcement** — ✦ Security visibility enforced at the SharePoint REST query level (`$filter=PersonID eq [currentUser]` for members), not just UI hiding. Network inspection must not reveal other members' data.
+- [x] **Security role access** — 💻 ✅ Done 2026-04-19. `canManageSecurity()` gate routes to full admin roster. `getSecurityRoleScopeOrgIds()` scopes by ScopeOrgID from CCSD_AppRoles. `getSecurityIncidentFilter()` applies OData filter.
+- [x] **App Admin access** — 💻 ✅ Done 2026-04-19. App Admin bypasses org scoping (unscoped queries).
+- [x] **Supervisor limited view** — 💻 ✅ Done 2026-04-19. `renderSecuritySupervisorView()` shows summary cards per direct report: name, clearance level, traffic-light status badge. No drill-down, no incident data.
+- [x] **Audit logging for ALL access** — 💻 ✅ Done 2026-04-19. `logAudit()` calls on: view (detail modal, self-service, supervisor view), edit (updateListItem audit), export (CSV export), search (covered by view logging).
+- [x] **Query-level enforcement** — 💻 ✅ Done 2026-04-18 (IM-19). OData filter applied at query level via `getSecurityIncidentFilter()` and `ensureSecurityRecordsLoaded()` PersonID filter for members.
 
 #### 11b. Member Self-Service Security View — 💻
 
