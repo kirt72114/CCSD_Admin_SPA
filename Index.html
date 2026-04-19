@@ -7107,6 +7107,7 @@ function renderCalendar(){
     html += '</div>';
     host.innerHTML = html;
     initSortableHeaders();
+    if (ui.view === 'month') { initCalendarDragToCreate(); }
   });
 }
 
@@ -7590,7 +7591,7 @@ function renderCalendarMonth(ui){
     if (isOutside) { cls += ' outside'; }
     if (isToday) { cls += ' today'; }
     if (isWeekend) { cls += ' weekend'; }
-    html += '<div class="' + cls + '">';
+    html += '<div class="' + cls + '" data-date="' + ds + '">';
     html += '<div class="cal-day-num">' + dt.getDate() + '</div>';
     /* Holiday */
     var hol = holidays[ds];
@@ -7860,6 +7861,75 @@ function openAddTimeOffModal(){
     + '<div class="full">' + formField('Notes', '<textarea id="toNotes" class="textarea" style="min-height:60px" placeholder="Optional notes"></textarea>') + '</div>'
     + '</div>';
   openModal('Add Time Off Entry', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="cal-save-entry">Save Entry</button></div>', 'Create a new time off record');
+}
+
+function openAddTimeOffModalWithDates(startDate, endDate){
+  openAddTimeOffModal();
+  setTimeout(function(){
+    var startEl = document.getElementById('toStart');
+    var endEl = document.getElementById('toEnd');
+    if (startEl) startEl.value = startDate;
+    if (endEl) endEl.value = endDate;
+  }, 50);
+}
+
+function initCalendarDragToCreate(){
+  var dragState = { active: false, startDate: null, endDate: null };
+  var dayCells = document.querySelectorAll('.cal-day[data-date]');
+  if (!dayCells.length) return;
+
+  function clearHighlight(){
+    dayCells.forEach(function(c){ c.style.outline = ''; c.style.outlineOffset = ''; });
+  }
+
+  function highlightRange(start, end){
+    var s = start < end ? start : end;
+    var e = start < end ? end : start;
+    dayCells.forEach(function(c){
+      var d = c.getAttribute('data-date');
+      if (d >= s && d <= e) {
+        c.style.outline = '2px solid var(--primary)';
+        c.style.outlineOffset = '-2px';
+      } else {
+        c.style.outline = '';
+        c.style.outlineOffset = '';
+      }
+    });
+  }
+
+  dayCells.forEach(function(cell){
+    cell.addEventListener('mousedown', function(e){
+      if (e.target.closest('.cal-entry')) return;
+      var date = cell.getAttribute('data-date');
+      if (!date) return;
+      dragState.active = true;
+      dragState.startDate = date;
+      dragState.endDate = date;
+      highlightRange(date, date);
+      e.preventDefault();
+    });
+
+    cell.addEventListener('mouseenter', function(){
+      if (!dragState.active) return;
+      var date = cell.getAttribute('data-date');
+      if (!date) return;
+      dragState.endDate = date;
+      highlightRange(dragState.startDate, dragState.endDate);
+    });
+  });
+
+  document.addEventListener('mouseup', function(){
+    if (!dragState.active) return;
+    dragState.active = false;
+    clearHighlight();
+    if (dragState.startDate && dragState.endDate) {
+      var s = dragState.startDate < dragState.endDate ? dragState.startDate : dragState.endDate;
+      var e = dragState.startDate < dragState.endDate ? dragState.endDate : dragState.startDate;
+      openAddTimeOffModalWithDates(s, e);
+    }
+    dragState.startDate = null;
+    dragState.endDate = null;
+  });
 }
 
 function saveTimeOffEntry(){
