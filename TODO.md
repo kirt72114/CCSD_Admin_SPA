@@ -2469,10 +2469,10 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 ##### Future Enhancement (Build Only When Approved)
 
 - [x] **SH-28: Create `CCSD_DisciplinaryActions` list** — 👤 ✅ Created 2026-04-18. Per 12o spec. ⚠️ Requires ER/Privacy officer approval.
-- [ ] **SH-29: Build disciplinary action tracker** — 💻 Per 12o spec.
+- [x] **SH-29: Build disciplinary action tracker** — 💻 ✅ Done 2026-04-18. `openDisciplinaryTracker()` shows team disciplinary actions (status-only, no narrative per 12o spec) with Active/Expired/Total KPIs, Privacy Notice banner, and expiration warnings.
 - [x] **SH-30: Build IDP tracking** — 💻 ✅ Done 2026-04-18. `openIDPTracker()` shows IDP On File / No IDP / Due for Update KPIs and per-person status table using `IDPOnFile` and `IDPLastUpdated` columns on CCSD_Personnel.
-- [ ] **SH-31: Build overtime authorization** — 💻 Per 12q spec.
-- [ ] **SH-32: Build sponsorship program** — 💻 Per 12r spec. Uses existing `CCSD_InOutStepStatus`.
+- [x] **SH-31: Build overtime authorization** — 💻 ✅ Done 2026-04-18. `openOvertimeTracker()` shows FY OT auths with totals per person + recent list. `openCreateOvertimeModal()` + `saveOvertimeAuth()` for new authorizations.
+- [x] **SH-32: Build sponsorship program** — 💻 ✅ Done 2026-04-18. `openSponsorAssignmentModal()` lists incoming personnel cases. `saveSponsorAssignment()` creates 4 sponsor checklist steps in CCSD_InOutStepStatus + sends sponsor notification.
 
 ---
 

@@ -2916,6 +2916,14 @@ function ensureTaskAssignmentsLoaded(force){
   if (APP.state.data.taskAssignments && !force) { return Promise.resolve(APP.state.data.taskAssignments); }
   return queryList(APP.lists.TaskAssignments, ['Title','Description','AssignedTo/Id','AssignedTo/Title','Originator/Id','Originator/Title','SuspenseDate','Priority','Status','Category','CompletionDate','IsRecurring','RecurrencePattern','Notes'], { top: 1000, orderby: 'SuspenseDate asc' }, 'ensureTaskAssignmentsLoaded').then(function(rows){ APP.state.data.taskAssignments = rows || []; return rows; }).catch(function(){ APP.state.data.taskAssignments = []; return []; });
 }
+function ensureDisciplinaryActionsLoaded(force){
+  if (APP.state.data.disciplinaryActions && !force) { return Promise.resolve(APP.state.data.disciplinaryActions); }
+  return queryList(APP.lists.DisciplinaryActions, ['Title','PersonID/Id','PersonID/Title','ActionType','DateIssued','ExpirationDate','Status','IssuedBy/Id','IssuedBy/Title','Notes'], { top: 500, orderby: 'DateIssued desc' }, 'ensureDisciplinaryActionsLoaded').then(function(rows){ APP.state.data.disciplinaryActions = rows || []; return rows; }).catch(function(){ APP.state.data.disciplinaryActions = []; return []; });
+}
+function ensureOvertimeLoaded(force){
+  if (APP.state.data.overtimeAuth && !force) { return Promise.resolve(APP.state.data.overtimeAuth); }
+  return queryList(APP.lists.OvertimeAuthorization, ['Title','PersonID/Id','PersonID/Title','Date','HoursAuthorized','Type','ApprovedBy/Id','ApprovedBy/Title','Reason','Status'], { top: 1000, orderby: 'Date desc' }, 'ensureOvertimeLoaded').then(function(rows){ APP.state.data.overtimeAuth = rows || []; return rows; }).catch(function(){ APP.state.data.overtimeAuth = []; return []; });
+}
 function ensureHowToLoaded(force){
   if (APP.state.data.howto && !force) { return Promise.resolve(APP.state.data.howto); }
   return queryList(APP.lists.HowTo, ['Title','Module','Audience','Summary','Steps','Links','Tags','IsActive','DisplayOrder'], { top: 200, orderby: 'DisplayOrder asc' }, 'ensureHowToLoaded').then(function(rows){ APP.state.data.howto = rows || []; return rows || []; }).catch(function(){ APP.state.data.howto = []; return []; });
@@ -9710,6 +9718,9 @@ function renderSupervisorHubContent(){
   html += '<button class="btn" data-action="sup-task-board">Tasks/Suspenses</button>';
   html += '<button class="btn" data-action="sup-idp-tracker">IDP Tracking</button>';
   html += '<button class="btn" data-action="sup-send-notification">Send Team Notification</button>';
+  html += '<button class="btn" data-action="sup-disciplinary-tracker">Disciplinary</button>';
+  html += '<button class="btn" data-action="sup-overtime-tracker">Overtime</button>';
+  html += '<button class="btn" data-action="sup-sponsor-assignment">Assign Sponsor</button>';
   html += '</div></div></div>';
 
   /* SH-15: Cross-module quick navigation */
@@ -10660,6 +10671,199 @@ function saveRecurringBooking(){
   }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to create recurring bookings.', 'danger'); });
 }
 
+/* SH-29: Disciplinary action tracker — minimal, status-only per 12o spec */
+function openDisciplinaryTracker(){
+  if (!hasAnyRole(['App Admin','HR'])) {
+    var people = APP.state.data.people || [];
+    var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+    var team = getTeamForScope('direct', currentPersonId, people);
+    var teamIds = {};
+    team.forEach(function(p){ teamIds[p.Id] = true; });
+  }
+  var actions = APP.state.data.disciplinaryActions || [];
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var teamActions = actions.filter(function(a){ return a.PersonID && a.PersonID.Id && teamIds[a.PersonID.Id]; });
+  var active = teamActions.filter(function(a){ return String(a.Status || '').toLowerCase() === 'active'; });
+  var expired = teamActions.filter(function(a){ return String(a.Status || '').toLowerCase() === 'expired'; });
+  var body = '<div class="warning-box" style="background:var(--warning-bg,#f39c1222);padding:8px;border-radius:4px;margin-bottom:10px;font-size:11px"><strong>⚠ Privacy Notice:</strong> Action records only — no narrative or facts. Full documentation belongs in the ER case file.</div>';
+  body += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+  body += '<div style="padding:6px 12px;background:var(--danger-bg,#e74c3c22);border-radius:4px"><strong>' + active.length + '</strong> Active</div>';
+  body += '<div style="padding:6px 12px;background:var(--bg-alt);border-radius:4px"><strong>' + expired.length + '</strong> Expired</div>';
+  body += '<div style="padding:6px 12px;background:var(--bg-alt);border-radius:4px"><strong>' + teamActions.length + '</strong> Total</div>';
+  body += '</div>';
+  body += '<table class="data-table"><thead><tr><th>Person</th><th>Action Type</th><th>Issued</th><th>Expires</th><th>Status</th></tr></thead><tbody>';
+  teamActions.forEach(function(a){
+    var d = daysUntil(a.ExpirationDate);
+    var color = d != null && d < 30 && String(a.Status || '').toLowerCase() === 'active' ? 'color:var(--warning,#e67e22)' : '';
+    body += '<tr><td>' + escHtml((a.PersonID && a.PersonID.Title) || '') + '</td>'
+      + '<td>' + escHtml(a.ActionType || '') + '</td>'
+      + '<td>' + escHtml(formatDate(a.DateIssued)) + '</td>'
+      + '<td style="' + color + '">' + escHtml(formatDate(a.ExpirationDate)) + '</td>'
+      + '<td>' + statusBadge(a.Status || 'Active') + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  if (!teamActions.length) { body += '<div class="empty">No disciplinary actions on file for your team.</div>'; }
+  openModal('Disciplinary Action Tracker', body, '<button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* SH-31: Overtime authorization tracker */
+function openOvertimeTracker(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var ot = APP.state.data.overtimeAuth || [];
+  var teamOT = ot.filter(function(o){ return o.PersonID && o.PersonID.Id && teamIds[o.PersonID.Id]; });
+  var year = new Date().getFullYear();
+  var thisYear = teamOT.filter(function(o){ var d = parseDate(o.Date); return d && d.getFullYear() === year; });
+  var perPerson = {};
+  team.forEach(function(p){ perPerson[p.Id] = { name: formatPerson(p), hours: 0, count: 0 }; });
+  thisYear.forEach(function(o){
+    if (perPerson[o.PersonID.Id]) {
+      perPerson[o.PersonID.Id].hours += Number(o.HoursAuthorized) || 0;
+      perPerson[o.PersonID.Id].count++;
+    }
+  });
+  var body = '<h3>Overtime Authorization — FY' + year + '</h3>';
+  var totalHours = thisYear.reduce(function(a, o){ return a + (Number(o.HoursAuthorized) || 0); }, 0);
+  body += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+  body += '<div style="padding:6px 12px;background:var(--bg-alt);border-radius:4px"><strong>' + thisYear.length + '</strong> Authorizations</div>';
+  body += '<div style="padding:6px 12px;background:var(--bg-alt);border-radius:4px"><strong>' + totalHours + '</strong> Total Hours</div>';
+  body += '</div>';
+  body += '<button class="btn primary btn-sm" data-action="open-create-overtime" style="margin-bottom:8px">+ New OT Authorization</button>';
+  body += '<h4 style="margin-top:10px">By Person</h4>';
+  body += '<table class="data-table"><thead><tr><th>Person</th><th># Auths</th><th>Total Hours</th></tr></thead><tbody>';
+  Object.keys(perPerson).map(function(k){ return perPerson[k]; }).sort(function(a,b){ return b.hours - a.hours; }).forEach(function(m){
+    body += '<tr><td>' + escHtml(m.name) + '</td><td>' + m.count + '</td><td>' + m.hours + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  body += '<h4 style="margin-top:10px">Recent</h4>';
+  body += '<table class="data-table"><thead><tr><th>Date</th><th>Person</th><th>Hours</th><th>Type</th><th>Reason</th></tr></thead><tbody>';
+  thisYear.slice(0, 50).forEach(function(o){
+    body += '<tr><td>' + escHtml(formatDate(o.Date)) + '</td>'
+      + '<td>' + escHtml((o.PersonID && o.PersonID.Title) || '') + '</td>'
+      + '<td>' + escHtml(String(o.HoursAuthorized || '')) + '</td>'
+      + '<td>' + escHtml(o.Type || '') + '</td>'
+      + '<td>' + escHtml(trimText(o.Reason || '', 60)) + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Overtime Authorization', body, '<button class="btn" data-action="close-modal">Close</button>');
+}
+
+function openCreateOvertimeModal(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var opts = team.map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
+  var body = '<div class="form-grid">'
+    + '<label>Employee</label><select id="otPersonId">' + opts + '</select>'
+    + '<label>Date</label><input type="date" id="otDate">'
+    + '<label>Hours</label><input type="number" step="0.5" id="otHours" min="0.5">'
+    + '<label>Type</label><select id="otType"><option>Overtime</option><option>Comp Time</option><option>Credit Hours</option></select>'
+    + '<label>Reason</label><textarea id="otReason" rows="2"></textarea>'
+    + '</div>';
+  openModal('New Overtime Authorization', body, '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-overtime">Authorize</button>');
+}
+
+function saveOvertimeAuth(){
+  var personId = Number(document.getElementById('otPersonId').value);
+  var date = document.getElementById('otDate').value;
+  var hours = Number(document.getElementById('otHours').value);
+  var type = document.getElementById('otType').value;
+  var reason = (document.getElementById('otReason').value || '').trim();
+  if (!personId || !date || !hours) { toast('Person, date, and hours are required.', 'warn'); return; }
+  var personnel = APP.state.currentPersonnel;
+  createListItem(APP.lists.OvertimeAuthorization, {
+    Title: 'OT ' + date,
+    PersonID: personId,
+    Date: new Date(date + 'T00:00:00').toISOString(),
+    HoursAuthorized: hours,
+    Type: type,
+    ApprovedBy: personnel ? personnel.Id : null,
+    Reason: reason,
+    Status: 'Approved'
+  }, { entityType: 'OvertimeAuth', reason: 'New OT authorization' }).then(function(){
+    closeModal();
+    toast('Overtime authorized.', 'ok');
+    ensureOvertimeLoaded(true).then(function(){ openOvertimeTracker(); });
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to authorize OT.', 'danger'); });
+}
+
+/* SH-32: Sponsorship program — assign a sponsor to incoming personnel via in-processing */
+function openSponsorAssignmentModal(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  /* Find incoming personnel (in-processing cases) */
+  var inout = APP.state.data.inout || [];
+  var incoming = inout.filter(function(c){
+    var t = String(c.ProcessType || '').toLowerCase();
+    var s = String(c.Status || '').toLowerCase();
+    return t === 'inprocessing' || t === 'in-processing' || (s === 'open' && t.indexOf('out') < 0);
+  });
+  var teamOpts = team.map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
+  var inOpts = incoming.map(function(c){ return '<option value="' + escAttr(c.Id) + '" data-person="' + escAttr(c.PersonID && c.PersonID.Id) + '">' + escHtml((c.PersonID && c.PersonID.Title) || c.Title) + '</option>'; }).join('');
+  if (!incoming.length) { toast('No incoming personnel cases found.', 'warn'); return; }
+  var body = '<p>Assign a sponsor to help an incoming team member integrate.</p>';
+  body += '<div class="form-grid">'
+    + '<label>Incoming Person</label><select id="sponsorInOutId">' + inOpts + '</select>'
+    + '<label>Sponsor</label><select id="sponsorPersonId">' + teamOpts + '</select>'
+    + '<label>Notes</label><textarea id="sponsorNotes" rows="2" placeholder="Optional notes for the sponsor"></textarea>'
+    + '</div>';
+  openModal('Assign Sponsor', body, '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-sponsor-assignment">Assign Sponsor</button>');
+}
+
+function saveSponsorAssignment(){
+  var inOutId = Number(document.getElementById('sponsorInOutId').value);
+  var sponsorId = Number(document.getElementById('sponsorPersonId').value);
+  var notes = (document.getElementById('sponsorNotes').value || '').trim();
+  if (!inOutId || !sponsorId) { toast('Both fields required.', 'warn'); return; }
+  /* Create a sponsor checklist as 4 in-processing steps assigned to the sponsor */
+  var sponsorSteps = [
+    { num: 100, title: 'Initial contact made' },
+    { num: 101, title: 'Welcome packet sent' },
+    { num: 102, title: 'Workstation tour completed' },
+    { num: 103, title: 'First-day escort' }
+  ];
+  var promises = sponsorSteps.map(function(s){
+    return createListItem(APP.lists.InOutSteps, {
+      Title: s.title,
+      InOutID: inOutId,
+      StepNumber: s.num,
+      AssignedTo: sponsorId,
+      Status: 'Pending',
+      MemberNotes: notes,
+      OfficeNotes: 'Sponsor checklist'
+    }, { entityType: 'InOutStep', reason: 'Sponsor assignment', noAudit: true });
+  });
+  Promise.all(promises).then(function(){
+    /* Notify sponsor */
+    sendNotification({
+      title: 'You have been assigned as a sponsor',
+      body: 'Please complete the sponsor checklist for your assigned newcomer.' + (notes ? ' Notes: ' + notes : ''),
+      notificationType: 'General',
+      sourceModule: 'SupervisorHub',
+      sensitivityLevel: 'Internal',
+      audienceType: 'Individual',
+      recipientPersonId: sponsorId,
+      actionURL: '#inout',
+      isSystemGenerated: true
+    }).catch(function(){});
+    closeModal();
+    toast('Sponsor assigned with 4-step checklist.', 'ok');
+    ensureInOutStepsLoaded(true);
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to assign sponsor.', 'danger'); });
+}
+
 /* SH-13: SF-182 approval workflow */
 function sf182SupervisorAction(sf182Id, newStatus){
   if (!canSeeSupervisorHub()) { toast('Access restricted.', 'danger'); return; }
@@ -11262,6 +11466,12 @@ function handleClick(e){
   if (action === 'save-case-links') { saveCaseLinks(); return; }
   if (action === 'room-recurring-booking') { openRecurringBookingModal(); return; }
   if (action === 'save-recurring-booking') { saveRecurringBooking(); return; }
+  if (action === 'sup-disciplinary-tracker') { ensureDisciplinaryActionsLoaded().then(function(){ openDisciplinaryTracker(); }); return; }
+  if (action === 'sup-overtime-tracker') { ensureOvertimeLoaded().then(function(){ openOvertimeTracker(); }); return; }
+  if (action === 'open-create-overtime') { openCreateOvertimeModal(); return; }
+  if (action === 'save-overtime') { saveOvertimeAuth(); return; }
+  if (action === 'sup-sponsor-assignment') { Promise.all([ensureInOutLoaded(), ensureInOutStepsLoaded()]).then(function(){ openSponsorAssignmentModal(); }); return; }
+  if (action === 'save-sponsor-assignment') { saveSponsorAssignment(); return; }
 }
 function detectEmbeddedMode(){
   var isEmbedded = false;
