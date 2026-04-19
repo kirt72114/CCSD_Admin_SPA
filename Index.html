@@ -4152,6 +4152,48 @@ function openOrgLeadershipModal(orgId){
   body += '<div class="proj-note" style="margin-bottom:14px">Leadership is prioritized using key leadership flags, position level, and title patterns such as commander, director, deputy, chief, branch chief, and senior enlisted leader.</div>' + renderOrgLeadershipRows(index, org.Id);
   openModal('Leadership — ' + escHtml(getOrgDisplayName(org)), body, '<div></div><button class="btn" data-action="close-modal">Close</button>', org.OrgCode || org.OrgID || '');
 }
+
+/* Section 4: Expanded org contact card */
+function openOrgContactCard(orgId){
+  var index = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []);
+  var org = index.byId[Number(orgId)];
+  if (!org) { toast('Organization not found.', 'danger'); return; }
+  var leaders = getOrgLeadership(org.Id, index) || [];
+  var address = [org.OrganizationAddressNumber, org.OrganizationAddressBldgNumber, org.OrganizationAddressStreet, org.OrganizationAddressCity, org.OrganizationAddressState, org.OrganizationAddressZip].filter(Boolean).join(', ');
+  var roll = index.getRollup(org.Id);
+  var body = '<div style="font-family:Arial,sans-serif">';
+  body += '<div style="border-bottom:2px solid var(--accent);padding-bottom:8px;margin-bottom:12px">';
+  body += '<div style="font-size:18px;font-weight:800">' + escHtml(getOrgDisplayName(org)) + '</div>';
+  body += '<div style="font-size:12px;color:var(--text-muted)">' + escHtml(org.OrgType || 'Organization') + ((org.OrgCode || org.OrgID) ? ' • ' + escHtml(org.OrgCode || org.OrgID) : '') + '</div>';
+  if (org.ParentOrgID && org.ParentOrgID.Title) { body += '<div style="font-size:11px;color:var(--text-muted)">Parent: ' + escHtml(org.ParentOrgID.Title) + '</div>'; }
+  body += '</div>';
+  body += '<div class="kv">';
+  if (org.OrgEmail) { body += '<div class="k">Org Email</div><div class="v"><a href="mailto:' + escAttr(org.OrgEmail) + '" style="color:var(--accent)">' + escHtml(org.OrgEmail) + '</a></div>'; }
+  if (org.OrgPhone) { body += '<div class="k">Phone</div><div class="v">' + escHtml(org.OrgPhone) + '</div>'; }
+  if (org.OrgDSN) { body += '<div class="k">DSN</div><div class="v">' + escHtml(org.OrgDSN) + '</div>'; }
+  if (org.OrgFax) { body += '<div class="k">Fax</div><div class="v">' + escHtml(org.OrgFax) + '</div>'; }
+  if (address) { body += '<div class="k">Address</div><div class="v">' + escHtml(address) + '</div>'; }
+  if (org.MissionStatement) { body += '<div class="k">Mission</div><div class="v">' + escHtml(org.MissionStatement) + '</div>'; }
+  body += '<div class="k">Direct Personnel</div><div class="v">' + roll.directPeople + '</div>';
+  body += '<div class="k">Branch Personnel</div><div class="v">' + roll.totalPeople + '</div>';
+  body += '<div class="k">Child Units</div><div class="v">' + roll.childCount + '</div>';
+  body += '<div class="k">Positions in Branch</div><div class="v">' + roll.totalPositions + '</div>';
+  body += '</div>';
+  if (leaders.length) {
+    body += '<h4 style="margin-top:14px">Leadership</h4>';
+    body += '<table class="data-table"><thead><tr><th>Name</th><th>Position</th><th>Email</th></tr></thead><tbody>';
+    leaders.slice(0, 12).forEach(function(item){
+      var p = item.person || item;
+      var pos = item.position || (p.PositionID && p.PositionID.Title) || p.PositionTitle || '';
+      body += '<tr><td>' + escHtml(formatPerson(p)) + '</td><td>' + escHtml(pos) + '</td><td>' + escHtml(p.Email || '') + '</td></tr>';
+    });
+    body += '</tbody></table>';
+  }
+  body += '</div>';
+  var footer = '<button class="btn" data-action="close-modal">Close</button>';
+  if (org.OrgEmail) { footer = '<a href="mailto:' + escAttr(org.OrgEmail) + '" class="btn primary" style="text-decoration:none;display:inline-block">Email Org</a> ' + footer; }
+  openModal('Contact Card — ' + escHtml(getOrgDisplayName(org)), body, footer, org.OrgCode || org.OrgID || '');
+}
 function renderOrganizationsView(){
   var orgs = APP.state.data.organizations || [];
   var people = APP.state.data.people || [];
@@ -4191,7 +4233,7 @@ function renderOrganizationsView(){
     crumbs.forEach(function(org){ detailHtml += '<button class="org-crumb" data-action="org-select" data-id="' + escAttr(org.Id) + '">' + escHtml(getOrgDisplayName(org)) + '</button>'; });
     detailHtml += '</div>';
     detailHtml += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roll.directPeople)) + '</div><div class="t">Direct Personnel</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.totalPeople)) + '</div><div class="t">Branch Personnel</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.childCount)) + '</div><div class="t">Immediate Child Units</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.totalPositions)) + '</div><div class="t">Positions in Branch</div></div></div>';
-    detailHtml += '<div class="org-root-actions"><button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(selected.Id) + '">View Leadership</button><button class="btn subtle" data-action="org-dashboard" data-id="' + escAttr(selected.Id) + '">Dashboard</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="edit-org" data-id="' + escAttr(selected.Id) + '">Edit Org</button>' : '') + '<button class="btn subtle" data-action="org-focus" data-id="' + escAttr(selected.Id) + '">' + (ui.focusOrgId === selected.Id ? 'Focused Branch' : 'Focus This Branch') + '</button>';
+    detailHtml += '<div class="org-root-actions"><button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(selected.Id) + '">View Leadership</button><button class="btn subtle" data-action="org-contact-card" data-id="' + escAttr(selected.Id) + '">Contact Card</button><button class="btn subtle" data-action="org-dashboard" data-id="' + escAttr(selected.Id) + '">Dashboard</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="edit-org" data-id="' + escAttr(selected.Id) + '">Edit Org</button>' : '') + '<button class="btn subtle" data-action="org-focus" data-id="' + escAttr(selected.Id) + '">' + (ui.focusOrgId === selected.Id ? 'Focused Branch' : 'Focus This Branch') + '</button>';
     if (ui.focusOrgId) { detailHtml += '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>'; }
     if (selected.SharePointURL) { detailHtml += '<a class="btn subtle" href="' + escAttr(selected.SharePointURL) + '" target="_blank" rel="noopener">Open SharePoint Site</a>'; }
     detailHtml += '</div>';
@@ -6703,6 +6745,7 @@ var CAL_TYPES = {
   'Sick Leave':     { key: 'sick',     label: 'Sick Leave',     color: '#ff5481' },
   'TDY':            { key: 'tdy',      label: 'TDY',            color: '#ffc769' },
   'Training':       { key: 'training', label: 'Training',       color: '#8c7bff' },
+  'Training Expiration': { key: 'training', label: 'Training Expiration', color: '#e74c3c' },
   'Comp Time':      { key: 'comp',     label: 'Comp Time',      color: '#65d5ff' },
   'Telework':       { key: 'telework', label: 'Telework',       color: '#25f4c7' },
   'LWOP':           { key: 'other',    label: 'LWOP',           color: '#a7b7d6' },
@@ -6727,7 +6770,8 @@ function ensureCalendarUi(){
       scopeOrgId: myOrgId,    /* null = all, else org filter */
       scopeLabel: '',
       search: '',
-      typeFilter: ''           /* empty = all, else filter by type key */
+      typeFilter: '',          /* empty = all, else filter by type key */
+      showTraining: false      /* overlay training expirations */
     };
   }
   return APP.state.calUi;
@@ -6814,6 +6858,8 @@ function renderCalendarHeader(ui){
   html += '</select>';
   /* Search */
   html += '<input class="cal-scope-select" id="calSearchInput" placeholder="Search names..." value="' + escAttr(ui.search) + '" style="width:140px" />';
+  /* Show training overlay toggle */
+  html += '<button class="btn subtle' + (ui.showTraining ? ' active' : '') + '" data-action="cal-toggle-training" style="padding:4px 8px;font-size:10px" title="Show training expirations">📋 Training</button>';
   /* Add entry (admin) */
   html += '<button class="btn subtle" data-action="cal-export-csv" style="padding:4px 8px;font-size:10px">CSV</button>';
   html += '<button class="btn subtle" data-action="cal-export-ics" style="padding:4px 8px;font-size:10px">ICS</button>';
@@ -7134,6 +7180,25 @@ function getCalendarEntries(ui){
     var s = String(e.Status || '').toLowerCase();
     return s === 'approved' || s === 'pending' || s === 'denied';
   });
+  /* Section 5: Training expirations as calendar entries (toggleable) */
+  if (ui.showTraining) {
+    var trainingRecs = APP.state.data.trainingRecords || [];
+    trainingRecs.forEach(function(tr){
+      if (!tr.ExpirationDate) return;
+      var personTitle = (tr.PersonID && tr.PersonID.Title) || '';
+      var trainingTitle = (tr.TrainingID && tr.TrainingID.Title) || 'Training';
+      entries.push({
+        Id: 'training-' + tr.Id,
+        PersonID: tr.PersonID,
+        StartDate: tr.ExpirationDate,
+        EndDate: tr.ExpirationDate,
+        TimeOffType: 'Training Expiration',
+        Status: 'Approved',
+        Title: trainingTitle + ' expires for ' + personTitle,
+        _isTraining: true
+      });
+    });
+  }
   var people = APP.state.data.people || [];
   var peopleById = {};
   people.forEach(function(p){ peopleById[p.Id] = p; });
@@ -11295,6 +11360,7 @@ function handleClick(e){
   if (action === 'org-clear-focus') { ensureOrgChartUi(); APP.state.orgUi.focusOrgId = null; renderOrganizationsView(); return; }
   if (action === 'org-toggle-above-root') { ensureOrgChartUi(); APP.state.orgUi.showAboveRoot = !APP.state.orgUi.showAboveRoot; renderOrganizationsView(); return; }
   if (action === 'org-view-leadership') { openOrgLeadershipModal(el.getAttribute('data-id')); return; }
+  if (action === 'org-contact-card') { openOrgContactCard(el.getAttribute('data-id')); return; }
   if (action === 'create-org') { openCreateOrgModal(); return; }
   if (action === 'edit-org') { openEditOrgModal(el.getAttribute('data-id')); return; }
   if (action === 'save-org') { saveOrg(); return; }
@@ -11360,6 +11426,7 @@ function handleClick(e){
   if (action === 'cal-next') { calNavigate('next'); return; }
   if (action === 'cal-today') { calToday(); return; }
   if (action === 'cal-set-view') { var v = el.getAttribute('data-view'); ensureCalendarUi().view = v; if (v === 'week') { var n = new Date(); n.setHours(0,0,0,0); ensureCalendarUi().weekStart = new Date(n); ensureCalendarUi().weekStart.setDate(n.getDate() - n.getDay()); } if (v === 'rooms') { Promise.all([ensureConferenceRoomsLoaded(), ensureRoomReservationsLoaded(), ensureFacilitiesLoaded()]).then(function(){ renderCalendar(); }); return; } renderCalendar(); return; }
+  if (action === 'cal-toggle-training') { var calUi = ensureCalendarUi(); calUi.showTraining = !calUi.showTraining; if (calUi.showTraining) { ensureTrainingRecordsLoaded().then(function(){ renderCalendar(); }); } else { renderCalendar(); } return; }
   if (action === 'cal-entry-detail') { openCalEntryDetail(el.getAttribute('data-entry-id')); return; }
   if (action === 'cal-add-entry') { openAddTimeOffModal(); return; }
   if (action === 'cal-save-entry') { saveTimeOffEntry(); return; }

@@ -219,7 +219,7 @@ false positives on the script side, not problems in SharePoint:
 > **No prerequisites from you. Uses existing `CCSD_Organizations` list.**
 
 - [ ] Org merge / restructure tool
-- [ ] Org contact card (expanded info)
+- [x] Org contact card (expanded info) ✅ Done 2026-04-18. `openOrgContactCard()` shows org details (email, phone, DSN, fax, address, mission), KPIs (personnel/positions counts), and leadership table with email mailto link.
 
 ---
 
@@ -227,7 +227,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you. Uses existing `CCSD_Training` and `CCSD_TrainingRecords` lists.**
 
-- [ ] Training calendar integration (show on Calendar module)
+- [x] Training calendar integration (show on Calendar module) ✅ Done 2026-04-18. Toggle button "📋 Training" in calendar header. When enabled, training expirations from CCSD_TrainingRecords appear as red entries on the calendar. New "Training Expiration" CAL_TYPE.
 - [ ] Training request workflow (person requests → supervisor approves → SF182 auto-created)
 
 ---
