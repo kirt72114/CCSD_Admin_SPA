@@ -233,6 +233,16 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .floorplan-main{flex:1;min-width:0}
 .floorplan-sidebar{width:240px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;max-height:70vh;overflow:hidden}
 .floorplan-sidebar .sb-head{padding:10px 12px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.person-picker{position:relative}
+.person-picker .input{padding-right:28px}
+.person-picker-menu{position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:var(--panel-2);border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;z-index:40;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.person-picker-item{padding:7px 10px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+.person-picker-item:last-child{border-bottom:none}
+.person-picker-item:hover,.person-picker-item.hl{background:rgba(101,213,255,.12)}
+.person-picker-item .pp-sub{color:var(--muted);font-size:10px;margin-top:1px}
+.person-picker-empty{padding:10px 12px;color:var(--muted);font-size:11px;text-align:center;font-style:italic}
+.person-picker-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.person-picker-clear:hover{background:rgba(255,255,255,.2);color:var(--text)}
 .floorplan-sidebar .sb-filters{padding:8px 10px 6px;border-bottom:1px solid var(--line);display:flex;gap:4px;flex-wrap:wrap}
 .floorplan-sidebar .sb-chip{padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;transition:.15s}
 .floorplan-sidebar .sb-chip:hover{background:rgba(101,213,255,.1);color:var(--text)}
@@ -4361,6 +4371,72 @@ function saveInOut(){
     return ensureInOutLoaded(true).then(function(){ renderInOut(); });
   }).catch(function(){ toast('In/Out creation failed.', 'danger'); });
 }
+/* ─── Searchable Person Picker ─── */
+function renderPersonPicker(baseId, selectedPersonId, placeholder, allowNone){
+  var people = APP.state.data.people || [];
+  var selected = null;
+  if (selectedPersonId != null && selectedPersonId !== '') {
+    for (var i = 0; i < people.length; i++) {
+      if (String(people[i].Id) === String(selectedPersonId)) { selected = people[i]; break; }
+    }
+  }
+  var initialText = selected ? formatPerson(selected) : '';
+  var hiddenValue = selected ? selected.Id : '';
+  return '<div class="person-picker" data-picker-base="' + escAttr(baseId) + '"' + (allowNone === false ? '' : ' data-allow-none="1"') + '>'
+    + '<input type="text" class="input person-picker-search" id="' + escAttr(baseId) + 'Search" placeholder="' + escAttr(placeholder || 'Search person by name...') + '" value="' + escAttr(initialText) + '" autocomplete="off" />'
+    + '<input type="hidden" id="' + escAttr(baseId) + '" value="' + escAttr(hiddenValue) + '" />'
+    + '<button type="button" class="person-picker-clear" data-action="person-picker-clear" data-picker-base="' + escAttr(baseId) + '" title="Clear" style="' + (selected ? '' : 'display:none') + '">&times;</button>'
+    + '<div class="person-picker-menu" id="' + escAttr(baseId) + 'Menu" style="display:none"></div>'
+    + '</div>';
+}
+function personPickerMatches(query){
+  var people = APP.state.data.people || [];
+  var q = (query || '').trim().toLowerCase();
+  if (!q) { return people.slice(0, 25); }
+  var matches = [];
+  for (var i = 0; i < people.length && matches.length < 25; i++) {
+    var p = people[i];
+    var hay = ((p.Title || '') + ' ' + (p.FullName || '') + ' ' + (p.Email || '') + ' ' + (p.OrgID ? (p.OrgID.Title || '') : '')).toLowerCase();
+    if (hay.indexOf(q) !== -1) { matches.push(p); }
+  }
+  return matches;
+}
+function personPickerRenderMenu(baseId, query){
+  var menu = document.getElementById(baseId + 'Menu');
+  if (!menu) { return; }
+  var picker = menu.parentNode;
+  var allowNone = picker && picker.getAttribute('data-allow-none') === '1';
+  var matches = personPickerMatches(query);
+  var html = '';
+  if (allowNone) {
+    html += '<div class="person-picker-item" data-action="person-picker-select" data-picker-base="' + escAttr(baseId) + '" data-person-id="" data-person-name=""><em style="color:var(--muted)">— None (Available) —</em></div>';
+  }
+  if (!matches.length) {
+    html += '<div class="person-picker-empty">No people match "' + escHtml(query || '') + '"</div>';
+  } else {
+    matches.forEach(function(p){
+      var sub = (p.OrgID && p.OrgID.Title ? p.OrgID.Title : '') + (p.PositionID && p.PositionID.Title ? ' · ' + p.PositionID.Title : '');
+      html += '<div class="person-picker-item" data-action="person-picker-select" data-picker-base="' + escAttr(baseId) + '" data-person-id="' + escAttr(p.Id) + '" data-person-name="' + escAttr(formatPerson(p)) + '">'
+        + '<div>' + escHtml(formatPerson(p)) + '</div>'
+        + (sub ? '<div class="pp-sub">' + escHtml(sub) + '</div>' : '')
+        + '</div>';
+    });
+  }
+  menu.innerHTML = html;
+  menu.style.display = 'block';
+}
+function personPickerSelect(baseId, personId, personName){
+  var hidden = document.getElementById(baseId);
+  var search = document.getElementById(baseId + 'Search');
+  var menu = document.getElementById(baseId + 'Menu');
+  var clearBtn = document.querySelector('.person-picker-clear[data-picker-base="' + baseId + '"]');
+  if (hidden) { hidden.value = personId || ''; }
+  if (search) { search.value = personName || ''; }
+  if (menu) { menu.style.display = 'none'; }
+  if (clearBtn) { clearBtn.style.display = personId ? '' : 'none'; }
+}
+function personPickerClear(baseId){ personPickerSelect(baseId, '', ''); var s = document.getElementById(baseId + 'Search'); if (s) { s.focus(); } }
+function getPersonPickerValue(baseId){ var el = document.getElementById(baseId); return el ? (el.value || '') : ''; }
 function ensureFacilityUi(){
   if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null, floorPlanMode: 'view', pickerPending: null, zoom: 1, panX: 0, panY: 0 }; }
   return APP.state.facilityUi;
@@ -4918,6 +4994,8 @@ function buildSeatTooltipHtml(data, showActions){
       if (data.occupant) {
         html += '<button data-action="release-seat" data-seat-id="' + escAttr(data.seatId) + '" title="Clear the assigned person">Release</button>';
       }
+      var isMaint = String(data.status || '').toLowerCase() === 'maintenance';
+      html += '<button data-action="toggle-maintenance" data-seat-id="' + escAttr(data.seatId) + '" title="' + (isMaint ? 'Return this seat to service' : 'Flag this seat for maintenance') + '">' + (isMaint ? 'In Service' : 'Maintenance') + '</button>';
       html += '<button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button>';
       html += '<button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button>';
     }
@@ -4957,16 +5035,13 @@ function openSeatEditModal(seatId){
     var sel = seat.RoomID && (seat.RoomID.Id || seat.RoomID) == r.Id ? ' selected' : '';
     return '<option value="' + escAttr(r.Id) + '"' + sel + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + '</option>';
   }).join('');
-  var personOpts = (APP.state.data.people || []).map(function(p){
-    var sel = seat.CurrentPersonID && (seat.CurrentPersonID.Id || seat.CurrentPersonID) == p.Id ? ' selected' : '';
-    return '<option value="' + escAttr(p.Id) + '"' + sel + '>' + escHtml(formatPerson(p)) + '</option>';
-  }).join('');
+  var currentPersonId = seat.CurrentPersonID ? (seat.CurrentPersonID.Id || seat.CurrentPersonID) : '';
   APP.modalState.editSeatId = seatId;
   var body = '<div class="form-grid">'
     + formField('Coordinates', '<input class="input" value="X: ' + (seat.XCoord || 0) + ', Y: ' + (seat.YCoord || 0) + '" disabled />')
     + formField('Room', '<select id="editSeatRoom" class="select"><option value="">-- Select --</option>' + roomOpts + '</select>')
     + formField('Seat Label', '<input id="editSeatLabel" class="input" value="' + escAttr(seat.SeatLabel || '') + '" />')
-    + formField('Assign Person', '<select id="editSeatPerson" class="select"><option value="">-- None (Available) --</option>' + personOpts + '</select>')
+    + formField('Assign Person', renderPersonPicker('editSeatPerson', currentPersonId, 'Search person by name...', true))
     + formField('Port Number', '<input id="editSeatPort" class="input" value="' + escAttr(seat.PortNumber || '') + '" />')
     + formField('Phone Number', '<input id="editSeatPhone" class="input" value="' + escAttr(seat.PhoneNumber || '') + '" />')
     + formField('NIPR', '<select id="editSeatNIPR" class="select"><option value="Yes"' + (normalizeBoolean(seat.HasNIPR) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(seat.HasNIPR) ? ' selected' : '') + '>No</option></select>')
@@ -4987,7 +5062,7 @@ function saveSeatEdit(){
   var roomId = document.getElementById('editSeatRoom').value;
   var errors = runValidation([function(){ return validateRequired(seatLabel, 'Seat Label'); }]);
   if (showValidationErrors(errors)) { return; }
-  var personId = document.getElementById('editSeatPerson').value;
+  var personId = getPersonPickerValue('editSeatPerson');
   var values = {
     Title: seatLabel,
     SeatLabel: seatLabel,
@@ -5002,6 +5077,20 @@ function saveSeatEdit(){
   };
   if (roomId) { values.RoomID = parseInt(roomId, 10); }
   if (personId) { values.CurrentPersonID = parseInt(personId, 10); } else { values.CurrentPersonID = null; }
+  if (roomId) {
+    var dup = seatLabelExistsInRoom(seatLabel, roomId, seatId);
+    if (dup) {
+      confirmDialog('Duplicate seat label',
+        'Another seat in this room is already labeled "' + seatLabel + '". Save anyway?',
+        'Save anyway',
+        function(){ _updateSeat(seatId, values); },
+        { danger: true });
+      return;
+    }
+  }
+  _updateSeat(seatId, values);
+}
+function _updateSeat(seatId, values){
   updateListItem(APP.lists.Seats, seatId, values, { entityType: 'Seat', reason: 'Seat edit' }).then(function(){
     toast('Seat updated!', 'ok');
     closeModal();
@@ -5083,6 +5172,34 @@ function printFloorPlan(){
   };
   window.addEventListener('afterprint', cleanup);
   setTimeout(function(){ try { window.print(); } catch (e) { cleanup(); toast('Print failed.', 'danger'); } }, 100);
+}
+function toggleSeatMaintenance(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var isMaint = String(seat.SeatStatus || '').toLowerCase() === 'maintenance';
+  var hasOccupant = seat.CurrentPersonID && seat.CurrentPersonID.Title;
+  var newStatus = isMaint ? (hasOccupant ? 'Occupied' : 'Available') : 'Maintenance';
+  updateListItem(APP.lists.Seats, seatId, { SeatStatus: newStatus }, { entityType: 'Seat', before: seat, reason: 'Toggle maintenance' }).then(function(){
+    hideSeatTooltip();
+    toast(isMaint ? 'Seat returned to service.' : 'Seat flagged for maintenance.', 'ok');
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Status update failed.', 'danger'); });
+}
+function seatLabelExistsInRoom(label, roomId, excludeSeatId){
+  var seats = APP.state.data.seats || [];
+  var lbl = String(label || '').trim().toLowerCase();
+  var rid = String(roomId);
+  for (var i = 0; i < seats.length; i++) {
+    var s = seats[i];
+    if (excludeSeatId != null && String(s.Id) === String(excludeSeatId)) { continue; }
+    var sRoom = s.RoomID && (s.RoomID.Id || s.RoomID);
+    if (String(sRoom) !== rid) { continue; }
+    if (String(s.SeatLabel || '').trim().toLowerCase() === lbl) { return s; }
+  }
+  return null;
 }
 function releaseSeat(seatId){
   if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
@@ -5282,9 +5399,6 @@ function openSeatPlacementModal(x, y){
     var sel = ui.selectedRoomId && r.Id === ui.selectedRoomId ? ' selected' : '';
     return '<option value="' + escAttr(r.Id) + '"' + sel + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + '</option>';
   }).join('');
-  var personOpts = (APP.state.data.people || []).map(function(p){
-    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
-  }).join('');
   APP.modalState.pickerCoords = { x: x, y: y };
   var suggestedLabel = getNextSeatLabel();
   var last = APP.state._lastPickerValues || {};
@@ -5292,7 +5406,7 @@ function openSeatPlacementModal(x, y){
     + formField('Coordinates', '<div style="display:flex;gap:8px;align-items:center"><input class="input" value="X: ' + x + ', Y: ' + y + '" disabled style="flex:1" /><span class="badge info" style="font-size:10px">Click elsewhere to reposition</span></div>')
     + formField('Room', '<select id="pickerRoom" class="select"><option value="">-- Select --</option>' + roomOpts + '</select>')
     + formField('Seat Label', '<input id="pickerSeatLabel" class="input" placeholder="e.g., A-01, B-12" value="' + escAttr(suggestedLabel) + '" />')
-    + formField('Assign Person', '<select id="pickerPerson" class="select"><option value="">-- None (Available) --</option>' + personOpts + '</select>')
+    + formField('Assign Person', renderPersonPicker('pickerPerson', '', 'Search person by name...', true))
     + formField('Port Number', '<input id="pickerPort" class="input" placeholder="e.g., P-1A-04" value="' + escAttr(last.port || '') + '" />')
     + formField('Phone Number', '<input id="pickerPhone" class="input" placeholder="DSN or commercial" />')
     + formField('NIPR', '<select id="pickerNIPR" class="select"><option value="Yes"' + (last.nipr ? ' selected' : '') + '>Yes</option><option value="No"' + (!last.nipr ? ' selected' : '') + '>No</option></select>')
@@ -5319,7 +5433,7 @@ function savePickerSeat(){
     function(){ return validateRequired(seatLabel, 'Seat Label'); }
   ]);
   if (showValidationErrors(errors)) { return; }
-  var personId = document.getElementById('pickerPerson').value;
+  var personId = getPersonPickerValue('pickerPerson');
   /* Remember network selections for rapid repeat placement */
   APP.state._lastPickerValues = {
     port: document.getElementById('pickerPort').value,
@@ -5345,6 +5459,18 @@ function savePickerSeat(){
     SeatStatus: personId ? 'Occupied' : 'Available',
     Notes: document.getElementById('pickerNotes').value
   };
+  var dup = seatLabelExistsInRoom(seatLabel, roomId);
+  if (dup) {
+    confirmDialog('Duplicate seat label',
+      'A seat labeled "' + seatLabel + '" already exists in this room. Creating a second one will split assignments between two records. Are you sure?',
+      'Create anyway',
+      function(){ _createPickerSeat(values, seatLabel); },
+      { danger: true });
+    return;
+  }
+  _createPickerSeat(values, seatLabel);
+}
+function _createPickerSeat(values, seatLabel){
   createListItem(APP.lists.Seats, values, { entityType: 'Seat', reason: 'Coordinate picker placement' }).then(function(result){
     toast('Seat "' + seatLabel + '" placed!', 'ok');
     var ui = ensureFacilityUi();
@@ -5519,10 +5645,15 @@ function saveBulkSeats(){
   if (!raw) { toast('No data provided.', 'danger'); return; }
   var lines = raw.split('\n').filter(function(l){ return l.trim(); });
   var rowErrors = [];
+  var seenLabels = {};
   var promises = lines.map(function(line, idx){
     var parts = line.split(',').map(function(s){ return s.trim(); });
     var label = parts[0];
     if (!label) { rowErrors.push('Line ' + (idx + 1) + ': missing seat label'); return Promise.resolve({ skipped: true }); }
+    var lk = label.toLowerCase();
+    if (seenLabels[lk]) { rowErrors.push('Line ' + (idx + 1) + ' (' + label + '): duplicate of line ' + seenLabels[lk]); return Promise.resolve({ skipped: true }); }
+    seenLabels[lk] = idx + 1;
+    if (seatLabelExistsInRoom(label, roomId)) { rowErrors.push('Line ' + (idx + 1) + ' (' + label + '): seat with this label already exists in room'); return Promise.resolve({ skipped: true }); }
     var values = {
       Title: label,
       SeatLabel: label,
@@ -8210,6 +8341,15 @@ var debouncedOrgSearch = debounce(function(value){ ensureOrgChartUi(); APP.state
 var debouncedAssetFilter = debounce(function(value){ getAssetUi(); APP.state.assetUi.search = value || ''; filterAssetTables(value); }, 180);
 function handleInput(e){
   var id = e.target && e.target.id;
+  if (e.target && e.target.classList && e.target.classList.contains('person-picker-search')) {
+    var baseId = id.replace(/Search$/, '');
+    personPickerRenderMenu(baseId, e.target.value);
+    /* If user clears text and had a selection, unset it */
+    var hidden = document.getElementById(baseId);
+    var clearBtn = document.querySelector('.person-picker-clear[data-picker-base="' + baseId + '"]');
+    if (hidden && !e.target.value) { hidden.value = ''; if (clearBtn) { clearBtn.style.display = 'none'; } }
+    return;
+  }
   if (id === 'peopleSearchInput') { debouncedFilterCards('#peopleGrid', e.target.value); }
   if (id === 'orgSearchInput') { debouncedOrgSearch(e.target.value); return; }
   if (id === 'trainingSearchInput') { debouncedFilterCards('#trainingGrid', e.target.value); }
@@ -8292,6 +8432,9 @@ function handleClick(e){
   if (action === 'confirm-dialog-ok') { var cb = APP.modalState && APP.modalState._pendingConfirm; closeModal(); if (typeof cb === 'function') { cb(); } return; }
   if (action === 'cancel-place-existing') { ensureFacilityUi(); APP.state.facilityUi.pendingPlaceSeatId = null; renderFacilities(); return; }
   if (action === 'sb-set-filter') { setSidebarFilter(el.getAttribute('data-filter') || 'all'); return; }
+  if (action === 'person-picker-select') { personPickerSelect(el.getAttribute('data-picker-base'), el.getAttribute('data-person-id') || '', el.getAttribute('data-person-name') || ''); return; }
+  if (action === 'person-picker-clear') { personPickerClear(el.getAttribute('data-picker-base')); return; }
+  if (action === 'toggle-maintenance') { toggleSeatMaintenance(el.getAttribute('data-seat-id')); return; }
   if (action === 'release-seat') { releaseSeat(el.getAttribute('data-seat-id')); return; }
   if (action === 'export-seats-scope') { exportSeatsScopeCsv(); return; }
   if (action === 'print-floorplan') { printFloorPlan(); return; }
@@ -8417,6 +8560,25 @@ function bootstrap(){
   initSessionTimeout();
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
+  document.addEventListener('focusin', function(e){
+    if (e.target && e.target.classList && e.target.classList.contains('person-picker-search')) {
+      var baseId = e.target.id.replace(/Search$/, '');
+      personPickerRenderMenu(baseId, e.target.value);
+    } else {
+      /* Close any open person-picker menus when focus leaves them */
+      var menus = document.querySelectorAll('.person-picker-menu');
+      for (var i = 0; i < menus.length; i++) {
+        if (e.target && (e.target.closest && e.target.closest('.person-picker') === menus[i].parentNode)) { continue; }
+        menus[i].style.display = 'none';
+      }
+    }
+  });
+  document.addEventListener('mousedown', function(e){
+    var inPicker = e.target && e.target.closest && e.target.closest('.person-picker');
+    if (inPicker) { return; }
+    var menus = document.querySelectorAll('.person-picker-menu');
+    for (var i = 0; i < menus.length; i++) { menus[i].style.display = 'none'; }
+  });
   document.addEventListener('fullscreenchange', updateFullscreenUI);
   document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
   initSortableHeaders();
