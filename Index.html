@@ -10086,6 +10086,29 @@ function getSORCountdown(row){
 }
 
 function renderSecurityAdmin(){
+  var secTab = APP.state.securityAdminTab || 'incidents';
+  var html = '';
+
+  html += '<div class="section-header"><h2>Security Administration</h2></div>';
+
+  /* Tab bar */
+  html += '<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px">';
+  [{ id: 'incidents', label: 'Incident Management' }, { id: 'records', label: 'Personnel Security Records' }].forEach(function(t){
+    var active = t.id === secTab;
+    html += '<button data-action="sec-admin-tab" data-tab="' + t.id + '" style="padding:8px 16px;border:none;background:' + (active ? 'var(--primary)' : 'transparent') + ';color:' + (active ? '#fff' : 'inherit') + ';cursor:pointer;font-size:13px;border-radius:4px 4px 0 0;font-weight:' + (active ? '600' : '400') + '">' + t.label + '</button>';
+  });
+  html += '</div>';
+
+  if (secTab === 'records') {
+    html += renderSecurityRecordsRoster();
+  } else {
+    html += renderSecurityIncidentsPanel();
+  }
+
+  setView(html);
+}
+
+function renderSecurityIncidentsPanel(){
   var html = '';
   var rows = APP.state.data.securityIncidents || [];
   var now = new Date();
@@ -10096,18 +10119,16 @@ function renderSecurityAdmin(){
   var resolved = rows.filter(function(r){ return String(r.Status || '').toLowerCase().indexOf('closed') >= 0; }).length;
   var thisMonth = rows.filter(function(r){ var d = parseDate(r.ReportedDate); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
   var closedThisMonth = rows.filter(function(r){ var d = parseDate(r.ClosedDate || r.ResolutionDate); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
-  var overdueActions = 0;
   var pendingSOR = sorRows.filter(function(r){ var c = getSORCountdown(r); return c && c.daysLeft >= 0; }).length;
 
-  html += '<div class="section-header"><h2>Security Administration</h2>';
-  html += '<div class="quick-actions">';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">';
   html += '<button class="btn primary" data-action="open-create-incident">Create Incident</button> ';
   html += '<button class="btn" data-action="open-notification-composer" data-source="Security">Send Notification</button> ';
   html += '<button class="btn" data-action="incident-batch-reminders">Batch Reminders</button> ';
   html += '<button class="btn" data-action="incident-bulk-status">Bulk Status</button> ';
   html += '<button class="btn" data-action="incident-print-view">Print View</button> ';
   html += '<button class="btn" data-action="export-incidents-csv">Export CSV</button>';
-  html += '</div></div>';
+  html += '</div>';
 
   /* IM-23: Dashboard widgets */
   html += '<div class="kpi-grid" style="margin-bottom:14px">';
@@ -10249,7 +10270,250 @@ function renderSecurityAdmin(){
   }
   html += '</div></div>';
 
-  setView(html);
+  return html;
+}
+
+function renderSecurityRecordsRoster(){
+  var html = '';
+  var secRecords = APP.state.data.securityRecords || [];
+  var people = APP.state.data.people || [];
+  var incidents = APP.state.data.securityIncidents || [];
+  var trainingRecords = APP.state.data.trainingRecords || [];
+  var catalog = APP.state.data.trainingCatalog || [];
+  var secTrainingNames = ['Annual Security', 'Insider Threat', 'CUI', 'Derivative Classification', 'Cyber Awareness', 'OPSEC'];
+
+  /* Build person-to-record map */
+  var personRecMap = {};
+  secRecords.forEach(function(r){
+    if (r.PersonID && r.PersonID.Id) { personRecMap[r.PersonID.Id] = r; }
+  });
+
+  /* Build incident count map */
+  var incidentCountMap = {};
+  incidents.forEach(function(inc){
+    if (inc.PersonID && inc.PersonID.Id) {
+      var pid = inc.PersonID.Id;
+      var s = String(inc.Status || '').toLowerCase();
+      if (s.indexOf('closed') < 0) { incidentCountMap[pid] = (incidentCountMap[pid] || 0) + 1; }
+    }
+  });
+
+  /* Stats */
+  var totalPeople = people.filter(function(p){ return (p.Status || '').toLowerCase() !== 'departed'; }).length;
+  var totalCleared = 0; var totalNotCleared = 0;
+  var levelCounts = {}; var statusCounts = {};
+  var prOverdue = 0; var cvEnrolled = 0; var trainDelinq = 0;
+  var activeRecords = [];
+
+  people.forEach(function(p){
+    if ((p.Status || '').toLowerCase() === 'departed') return;
+    var rec = personRecMap[p.Id];
+    if (!rec) { totalNotCleared++; return; }
+    var clrStatus = (rec.ClearanceStatus || '').toLowerCase();
+    if (clrStatus === 'active' || clrStatus === 'interim') { totalCleared++; }
+    else { totalNotCleared++; }
+    var level = rec.ClearanceLevel || 'None';
+    levelCounts[level] = (levelCounts[level] || 0) + 1;
+    statusCounts[rec.ClearanceStatus || 'Unknown'] = (statusCounts[rec.ClearanceStatus || 'Unknown'] || 0) + 1;
+    if (rec.PRDueDate && new Date(rec.PRDueDate) < new Date()) prOverdue++;
+    if (normalizeBoolean(rec.ContinuousEvaluation)) cvEnrolled++;
+
+    var trainCount = 0;
+    secTrainingNames.forEach(function(tName){
+      var catEntry = catalog.filter(function(c){ return (c.TrainingName || c.Title || '').toLowerCase().indexOf(tName.toLowerCase().split(' ')[0]) >= 0; })[0];
+      if (catEntry) {
+        var has = trainingRecords.some(function(r){ return r.PersonID && String(r.PersonID.Id) === String(p.Id) && r.TrainingID && String(r.TrainingID.Id) === String(catEntry.Id) && (r.Status || '').toLowerCase() === 'current'; });
+        if (has) trainCount++;
+      }
+    });
+    if (trainCount < secTrainingNames.length) trainDelinq++;
+
+    var trafficLight = 'green';
+    if (rec.PRDueDate) {
+      var prDays = Math.ceil((new Date(rec.PRDueDate) - new Date()) / 86400000);
+      if (prDays <= 0) trafficLight = 'red';
+      else if (prDays <= 90) trafficLight = 'yellow';
+    }
+    if (clrStatus === 'expired' || clrStatus === 'suspended' || clrStatus === 'revoked') trafficLight = 'red';
+    if (trainCount < secTrainingNames.length - 1) trafficLight = 'red';
+    else if (trainCount < secTrainingNames.length && trafficLight !== 'red') trafficLight = 'yellow';
+
+    activeRecords.push({ person: p, rec: rec, trafficLight: trafficLight, trainPct: Math.round((trainCount / secTrainingNames.length) * 100), incidentCount: incidentCountMap[p.Id] || 0 });
+  });
+
+  /* Bulk status cards */
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">';
+  html += '<button class="btn" data-action="open-create-sec-record">+ Add Security Record</button>';
+  html += '<button class="btn" data-action="export-sec-records-csv">Export CSV</button>';
+  html += '</div>';
+
+  html += '<div class="dash-kpis" style="margin-bottom:14px">';
+  html += '<div class="kpi-card"><div class="kpi-value">' + totalPeople + '</div><div class="kpi-label">Total Personnel</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + totalCleared + '</div><div class="kpi-label">Cleared</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + totalNotCleared + '</div><div class="kpi-label">Not Cleared</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + prOverdue + '</div><div class="kpi-label">PR Overdue</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + cvEnrolled + '</div><div class="kpi-label">CV Enrolled</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-value">' + trainDelinq + '</div><div class="kpi-label">Training Delinquent</div></div>';
+  html += '</div>';
+
+  /* By clearance level */
+  if (Object.keys(levelCounts).length) {
+    html += '<div class="card" style="margin-bottom:14px"><div class="card-header">By Clearance Level</div><div class="card-body"><div style="display:flex;flex-wrap:wrap;gap:12px">';
+    Object.keys(levelCounts).sort().forEach(function(lv){
+      html += '<div style="text-align:center;min-width:80px"><div style="font-size:20px;font-weight:700">' + levelCounts[lv] + '</div><div style="font-size:11px;color:var(--text-muted)">' + escHtml(lv) + '</div></div>';
+    });
+    html += '</div></div></div>';
+  }
+
+  /* Filters */
+  html += '<div class="card"><div class="card-header">Personnel Security Roster</div><div class="card-body">';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
+  var filterPills = ['All', 'Current', 'Interim', 'Expired', 'Suspended', 'Overdue PR', 'Training Delinquent'];
+  filterPills.forEach(function(f){
+    html += '<button class="btn btn-sm sec-roster-pill" data-filter="' + escAttr(f) + '"' + (f === 'All' ? ' style="font-weight:700"' : '') + '>' + escHtml(f) + '</button>';
+  });
+  html += '<input id="secRosterSearch" placeholder="Search name, org, clearance..." style="margin-left:auto;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;width:200px">';
+  html += '</div>';
+
+  if (!activeRecords.length) {
+    html += '<div class="empty">No security records found.</div>';
+  } else {
+    html += '<div class="table-wrap"><table id="secRecordTable"><thead><tr>';
+    html += '<th>Status</th><th>Name</th><th>Grade</th><th>Org</th><th>Clearance</th><th>Eligibility</th>';
+    html += '<th>Investigation</th><th>PR Due</th><th>Training %</th><th>Open Cases</th><th></th>';
+    html += '</tr></thead><tbody>';
+    activeRecords.sort(function(a,b){ return (a.person.LastName || '').localeCompare(b.person.LastName || ''); });
+    activeRecords.forEach(function(item){
+      var p = item.person;
+      var rec = item.rec;
+      var tl = item.trafficLight;
+      var tlColor = tl === 'red' ? '#c62828' : tl === 'yellow' ? '#f57c00' : '#2e7d32';
+      var prDue = rec.PRDueDate ? formatDate(rec.PRDueDate) : '—';
+      var prDays = rec.PRDueDate ? Math.ceil((new Date(rec.PRDueDate) - new Date()) / 86400000) : null;
+      var prClass = prDays !== null && prDays <= 0 ? 'color:#c62828;font-weight:700' : prDays !== null && prDays <= 90 ? 'color:#f57c00' : '';
+      var clrStatus = rec.ClearanceStatus || 'Unknown';
+
+      html += '<tr data-clr-status="' + escAttr(clrStatus) + '" data-train-pct="' + item.trainPct + '" data-pr-overdue="' + (prDays !== null && prDays <= 0 ? '1' : '0') + '" data-search="' + escAttr([formatPerson(p), p.OrgID && p.OrgID.Title || '', rec.ClearanceLevel || '', clrStatus].join(' ').toLowerCase()) + '">';
+      html += '<td><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:' + tlColor + '" title="' + escAttr(tl) + '"></span></td>';
+      html += '<td>' + escHtml(formatPerson(p)) + '</td>';
+      html += '<td>' + escHtml(p.Grade || p.Rank || '') + '</td>';
+      html += '<td>' + escHtml(p.OrgID && p.OrgID.Title ? p.OrgID.Title : '') + '</td>';
+      html += '<td>' + escHtml(rec.ClearanceLevel || '—') + '</td>';
+      html += '<td>' + statusBadge(clrStatus) + '</td>';
+      html += '<td>' + escHtml(rec.InvestigationType || '—') + '</td>';
+      html += '<td style="' + prClass + '">' + escHtml(prDue) + (prDays !== null ? ' <span style="font-size:10px">(' + prDays + 'd)</span>' : '') + '</td>';
+      html += '<td><span style="color:' + (item.trainPct >= 100 ? '#2e7d32' : item.trainPct >= 50 ? '#f57c00' : '#c62828') + ';font-weight:600">' + item.trainPct + '%</span></td>';
+      html += '<td>' + (item.incidentCount > 0 ? '<span style="color:#c62828;font-weight:700">' + item.incidentCount + '</span>' : '0') + '</td>';
+      html += '<td><button class="btn btn-sm" data-action="edit-sec-record" data-person-id="' + p.Id + '">Edit</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function openEditSecRecordModal(personId){
+  var people = APP.state.data.people || [];
+  var person = null;
+  people.some(function(p){ if (String(p.Id) === String(personId)) { person = p; return true; } return false; });
+  if (!person) { toast('Person not found.', 'danger'); return; }
+  var secRecords = APP.state.data.securityRecords || [];
+  var rec = null;
+  secRecords.some(function(r){ if (r.PersonID && String(r.PersonID.Id) === String(personId)) { rec = r; return true; } return false; });
+
+  var clrLevels = ['None','Confidential','Secret','Top Secret','TS/SCI'];
+  var clrStatuses = ['Active','Interim','Expired','Suspended','Revoked','Denied','Not Cleared'];
+  var invTypes = ['T1','T2','T3','T4','T5','T5R'];
+
+  var body = '<div class="form-grid">'
+    + formField('Person', '<input class="input" value="' + escAttr(formatPerson(person)) + '" disabled>')
+    + formField('Clearance Level', '<select id="sr-level" class="select">' + clrLevels.map(function(l){ return '<option' + (rec && rec.ClearanceLevel === l ? ' selected' : '') + '>' + l + '</option>'; }).join('') + '</select>')
+    + formField('Eligibility Status', '<select id="sr-status" class="select">' + clrStatuses.map(function(s){ return '<option' + (rec && rec.ClearanceStatus === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>')
+    + formField('Investigation Type', '<select id="sr-invtype" class="select"><option value="">—</option>' + invTypes.map(function(t){ return '<option' + (rec && rec.InvestigationType === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>')
+    + formField('Investigation Close Date', '<input id="sr-invclose" class="input" type="date" value="' + escAttr((rec && rec.InvestigationCloseDate || '').slice(0,10)) + '">')
+    + formField('PR Due Date', '<input id="sr-prdue" class="input" type="date" value="' + escAttr((rec && rec.PRDueDate || '').slice(0,10)) + '">')
+    + formField('SCI Access', '<input id="sr-sci" class="input" value="' + escAttr(rec && rec.SCIAccess || '') + '" placeholder="e.g. Yes/None">')
+    + formField('SAP Access', '<input id="sr-sap" class="input" value="' + escAttr(rec && rec.SAPAccess || '') + '" placeholder="e.g. Yes/None">')
+    + formField('Continuous Evaluation', '<select id="sr-ce" class="select"><option value="false"' + (rec && !normalizeBoolean(rec.ContinuousEvaluation) ? ' selected' : '') + '>No</option><option value="true"' + (rec && normalizeBoolean(rec.ContinuousEvaluation) ? ' selected' : '') + '>Yes</option></select>')
+    + formField('Briefed Date', '<input id="sr-briefed" class="input" type="date" value="' + escAttr((rec && rec.BriefedDate || '').slice(0,10)) + '">')
+    + formField('Granted Date', '<input id="sr-granted" class="input" type="date" value="' + escAttr((rec && rec.GrantedDate || '').slice(0,10)) + '">')
+    + formField('Expiration Date', '<input id="sr-expiration" class="input" type="date" value="' + escAttr((rec && rec.ExpirationDate || '').slice(0,10)) + '">')
+    + '<div class="full">' + formField('Notes', '<textarea id="sr-notes" class="textarea">' + escHtml(rec && rec.Notes || '') + '</textarea>') + '</div>'
+    + '</div>';
+
+  APP.modalState.secRecordEdit = { personId: personId, existingId: rec ? rec.Id : null };
+  openModal((rec ? 'Edit' : 'Create') + ' Security Record — ' + formatPerson(person), body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-sec-record">Save</button></div>');
+}
+
+function saveSecRecord(){
+  var st = APP.modalState.secRecordEdit;
+  if (!st) return;
+  var values = {
+    ClearanceLevel: document.getElementById('sr-level').value,
+    ClearanceStatus: document.getElementById('sr-status').value,
+    InvestigationType: document.getElementById('sr-invtype').value || null,
+    InvestigationCloseDate: document.getElementById('sr-invclose').value || null,
+    PRDueDate: document.getElementById('sr-prdue').value || null,
+    SCIAccess: document.getElementById('sr-sci').value || null,
+    SAPAccess: document.getElementById('sr-sap').value || null,
+    ContinuousEvaluation: document.getElementById('sr-ce').value === 'true',
+    BriefedDate: document.getElementById('sr-briefed').value || null,
+    GrantedDate: document.getElementById('sr-granted').value || null,
+    ExpirationDate: document.getElementById('sr-expiration').value || null,
+    Notes: document.getElementById('sr-notes').value
+  };
+
+  var promise;
+  if (st.existingId) {
+    var existing = (APP.state.data.securityRecords || []).filter(function(r){ return r.Id === st.existingId; })[0];
+    promise = updateListItem(APP.lists.SecurityRecords, st.existingId, values, { entityType: 'SecurityRecord', before: existing, reason: 'Edit security record' });
+  } else {
+    values.PersonID = Number(st.personId);
+    values.Title = 'Security Record';
+    promise = createListItem(APP.lists.SecurityRecords, values, { entityType: 'SecurityRecord', reason: 'Create security record' });
+  }
+  promise.then(function(){
+    toast('Security record saved.', 'ok');
+    closeModal();
+    APP.state.data.securityRecords = null;
+    return ensureSecurityRecordsLoaded(true).then(function(){ renderSecurity(); });
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Save failed.', 'danger'); });
+}
+
+function openCreateSecRecordModal(){
+  var people = APP.state.data.people || [];
+  var secRecords = APP.state.data.securityRecords || [];
+  var existingIds = {};
+  secRecords.forEach(function(r){ if (r.PersonID && r.PersonID.Id) existingIds[r.PersonID.Id] = true; });
+  var available = people.filter(function(p){ return (p.Status || '').toLowerCase() !== 'departed' && !existingIds[p.Id]; });
+  if (!available.length) { toast('All active personnel already have security records.', 'warn'); return; }
+  var opts = available.map(function(p){ return '<option value="' + p.Id + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
+  var body = formField('Select Person', '<select id="sr-new-person" class="select">' + opts + '</select>');
+  openModal('Create Security Record', body, '<div></div><button class="btn primary" data-action="confirm-create-sec-record">Continue</button> <button class="btn" data-action="close-modal">Cancel</button>');
+}
+
+function exportSecRecordsCSV(){
+  var secRecords = APP.state.data.securityRecords || [];
+  var people = APP.state.data.people || [];
+  var personMap = {};
+  people.forEach(function(p){ personMap[p.Id] = p; });
+  var csvLines = ['CUI — PRIVACY ACT PROTECTED — DO NOT DISTRIBUTE'];
+  csvLines.push('Name,Grade,Org,ClearanceLevel,ClearanceStatus,InvestigationType,InvestigationCloseDate,PRDueDate,ContinuousEvaluation,SCIAccess,SAPAccess,BriefedDate');
+  secRecords.forEach(function(r){
+    var pid = r.PersonID && r.PersonID.Id;
+    var p = pid ? personMap[pid] : null;
+    var name = p ? formatPerson(p) : (r.PersonID && r.PersonID.Title || '');
+    csvLines.push([name, p ? (p.Grade || '') : '', p && p.OrgID ? (p.OrgID.Title || '') : '', r.ClearanceLevel || '', r.ClearanceStatus || '', r.InvestigationType || '', (r.InvestigationCloseDate || '').slice(0,10), (r.PRDueDate || '').slice(0,10), normalizeBoolean(r.ContinuousEvaluation) ? 'Yes' : 'No', r.SCIAccess || '', r.SAPAccess || '', (r.BriefedDate || '').slice(0,10)].map(function(v){ return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','));
+  });
+  csvLines.push('CUI — PRIVACY ACT PROTECTED');
+  var blob = new Blob([csvLines.join('\n')], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'security_records_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  logAudit('Export', 'SecurityRecords', null, { rowCount: secRecords.length });
+  toast('Security records exported.', 'ok');
 }
 
 function filterIncidentTable(){
@@ -12347,6 +12611,17 @@ function handleClick(e){
   if (action === 'nav') { routeTo(el.getAttribute('data-route')); return; }
   if (action === 'refresh-route') { renderRoute(); return; }
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
+  if (action === 'sec-admin-tab') { APP.state.securityAdminTab = el.getAttribute('data-tab') || 'incidents'; renderSecurityAdmin(); return; }
+  if (action === 'edit-sec-record') { openEditSecRecordModal(el.getAttribute('data-person-id')); return; }
+  if (action === 'save-sec-record') { saveSecRecord(); return; }
+  if (action === 'open-create-sec-record') { openCreateSecRecordModal(); return; }
+  if (action === 'confirm-create-sec-record') {
+    var pid = document.getElementById('sr-new-person').value;
+    closeModal();
+    openEditSecRecordModal(pid);
+    return;
+  }
+  if (action === 'export-sec-records-csv') { exportSecRecordsCSV(); return; }
   if (action === 'open-create-incident') { openCreateIncidentModal(); return; }
   if (action === 'save-incident') { saveIncident(); return; }
   if (action === 'open-incident-detail') { openIncidentDetailModal(el.getAttribute('data-id')); return; }
