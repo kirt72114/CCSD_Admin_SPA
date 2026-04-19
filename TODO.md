@@ -252,7 +252,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you. All code-only changes.**
 
-- [ ] Room booking integration with Calendar conference room scheduling (depends on Section 1 lists)
+- [x] Room booking integration with Calendar conference room scheduling ✅ Done. Conference rooms appear as a Rooms tab in Calendar module with availability grid, booking modals, and conflict detection.
 - [ ] Floor plan: room boundary overlays (draw room outlines)
 
 ---
@@ -293,7 +293,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you.**
 
-- [ ] Scheduled data quality report (surface on Home)
+- [x] Scheduled data quality report (surface on Home) ✅ Done 2026-04-18. Data Quality summary added to System Health card on Home for admins. Shows total issues with critical count, color-coded, links to Admin module.
 
 ### Notification Framework (P1) — 🤝
 

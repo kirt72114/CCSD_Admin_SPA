@@ -3401,6 +3401,12 @@ function renderHome(){
       html += '<span>Telemetry Queue: <strong>' + health.telemetryQueued + '</strong></span>';
       html += '<span>Audit Queue: <strong>' + health.auditQueued + '</strong></span>';
       html += '<span>Version: <strong>' + escHtml(APP.version) + '</strong></span>';
+      try {
+        var dqIssues = runDataQualityChecks();
+        var dqDanger = dqIssues.filter(function(i){ return i.severity === 'danger'; }).length;
+        var dqColor = dqDanger > 0 ? 'var(--danger)' : dqIssues.length > 0 ? 'var(--warn,#e67e22)' : 'var(--ok)';
+        html += '<span style="cursor:pointer" data-action="nav" data-route="admin" title="Click to open Admin module">Data Quality: <strong style="color:' + dqColor + '">' + dqIssues.length + ' issue(s)' + (dqDanger ? ' (' + dqDanger + ' critical)' : '') + '</strong></span>';
+      } catch(e){}
       html += '</div></div>';
     }
     html += '</div></div></div>';
