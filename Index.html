@@ -9304,19 +9304,37 @@ function ensureIncidentActionsLoaded(incidentId){
   return queryList(APP.lists.IncidentActions, wanted, opts, 'ensureIncidentActionsLoaded').catch(function(){ return []; });
 }
 
+function ensureIncidentPartiesLoaded(incidentId){
+  var wanted = ['Title','IncidentID/Id','PersonID/Id','PersonID/Title','PartyRole','ExternalName','ExternalOrg','Notes'];
+  var opts = { filter: 'IncidentIDId eq ' + Number(incidentId), top: 100 };
+  return queryList(APP.lists.IncidentParties, wanted, opts, 'ensureIncidentPartiesLoaded').catch(function(){ return []; });
+}
+function ensureIncidentNotificationsLoaded(incidentId){
+  var wanted = ['Title','IncidentID/Id','NotificationID/Id','NotificationID/Title','SentDate','SentBy/Id','SentBy/Title','TemplateID','Notes'];
+  var opts = { filter: 'IncidentIDId eq ' + Number(incidentId), orderby: 'SentDate desc', top: 100 };
+  return queryList(APP.lists.IncidentNotifications, wanted, opts, 'ensureIncidentNotificationsLoaded').catch(function(){ return []; });
+}
+
 function openIncidentDetailModal(incidentId){
   if (!canManageSecurity() && !canViewIncident(findIncidentById(incidentId))) {
     toast('Access restricted.', 'danger'); return;
   }
   var incident = findIncidentById(incidentId);
   if (!incident) { toast('Incident not found.', 'danger'); return; }
-  /* IM-18: log view event */
   logAudit('View', 'SecurityIncident', null, { caseNumber: incident.CaseNumber }, { listTitle: APP.lists.SecurityIncidents, itemId: incidentId });
   openModal('Loading…', '<div class="loading">Loading incident…</div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', incident.CaseNumber || '');
-  Promise.all([ensureIncidentStatusHistoryLoaded(incidentId), ensureIncidentActionsLoaded(incidentId)]).then(function(all){
-    var history = all[0] || [];
-    var actions = all[1] || [];
-    APP.modalState.incidentDetail = { incidentId: incidentId, incident: incident, history: history, actions: actions };
+  Promise.all([
+    ensureIncidentStatusHistoryLoaded(incidentId),
+    ensureIncidentActionsLoaded(incidentId),
+    ensureIncidentPartiesLoaded(incidentId),
+    ensureIncidentNotificationsLoaded(incidentId)
+  ]).then(function(all){
+    APP.modalState.incidentDetail = {
+      incidentId: incidentId, incident: incident,
+      history: all[0] || [], actions: all[1] || [],
+      parties: all[2] || [], communications: all[3] || [],
+      activeTab: 'summary'
+    };
     renderIncidentDetailModal();
   }).catch(function(){
     toast('Failed to load incident detail.', 'danger');
@@ -9335,16 +9353,56 @@ function renderIncidentDetailModal(){
   if (!state) { return; }
   var inc = state.incident;
   var canManage = canManageSecurity();
+  var tab = state.activeTab || 'summary';
+
+  var tabs = [
+    { id: 'summary', label: 'Summary' },
+    { id: 'timeline', label: 'Timeline (' + (state.history || []).length + ')' },
+    { id: 'actions', label: 'Actions (' + (state.actions || []).length + ')' },
+    { id: 'comms', label: 'Communications (' + (state.communications || []).length + ')' },
+    { id: 'parties', label: 'Parties (' + (state.parties || []).length + ')' },
+    { id: 'attachments', label: 'Attachments' }
+  ];
+  var showSOR = ['SOR Issued','SOR Response Received','Appeal Filed','Appeal Decision','Resolved','Closed - Favorable','Closed - Unfavorable','Closed - Resigned','Closed - Admin'].indexOf(inc.Status) >= 0;
+  if (showSOR) { tabs.push({ id: 'sor', label: 'SOR' }); }
+
+  var body = '<div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:12px">';
+  tabs.forEach(function(t){
+    var active = t.id === tab;
+    body += '<button data-action="incident-tab" data-tab="' + t.id + '" style="padding:6px 12px;border:none;background:' + (active ? 'var(--primary)' : 'transparent') + ';color:' + (active ? '#fff' : 'inherit') + ';cursor:pointer;font-size:13px;border-radius:4px 4px 0 0;font-weight:' + (active ? '600' : '400') + '">' + t.label + '</button>';
+  });
+  body += '</div>';
+
+  if (tab === 'summary') {
+    body += renderIncidentSummaryTab(inc, canManage);
+  } else if (tab === 'timeline') {
+    body += renderIncidentTimelineTab(state);
+  } else if (tab === 'actions') {
+    body += renderIncidentActionsTab(state, canManage);
+  } else if (tab === 'comms') {
+    body += renderIncidentCommsTab(state, canManage, inc);
+  } else if (tab === 'parties') {
+    body += renderIncidentPartiesTab(state, canManage, inc);
+  } else if (tab === 'attachments') {
+    body += renderIncidentAttachmentsTab(inc, canManage);
+  } else if (tab === 'sor') {
+    body += renderIncidentSORTab(inc, canManage);
+  }
+
+  var footer = '<div></div><div>';
+  if (canManage) {
+    footer += '<button class="btn" data-action="open-notification-composer" data-source="Security" data-audience="Individual" data-person-id="' + escAttr(inc.PersonID && inc.PersonID.Id) + '">Send Notification</button> ';
+  }
+  footer += '<button class="btn" data-action="close-modal">Close</button></div>';
+  openModal('Incident Detail', body, footer, inc.CaseNumber || '');
+}
+
+function renderIncidentSummaryTab(inc, canManage){
   var subjectName = (inc.PersonID && inc.PersonID.Title) || '—';
   var assignedName = (inc.AssignedTo && inc.AssignedTo.Title) || 'Unassigned';
   var orgName = (inc.OrgID && inc.OrgID.Title) || '';
   var nextStatuses = INCIDENT_NEXT_STATUS[inc.Status] || [];
-  var statusOptions = '<option value="">— Select next status —</option>' + nextStatuses.map(function(s){
-    return '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>';
-  }).join('');
-
-  var body = '';
-  body += '<div class="kv">'
+  var html = '<div class="kv">'
     + '<div class="k">Case Number</div><div class="v"><strong>' + escHtml(inc.CaseNumber || ('#' + inc.Id)) + '</strong></div>'
     + '<div class="k">Subject</div><div class="v">' + escHtml(subjectName) + '</div>'
     + '<div class="k">Organization</div><div class="v">' + escHtml(orgName) + '</div>'
@@ -9357,15 +9415,17 @@ function renderIncidentDetailModal(){
     + '<div class="k">Discovered</div><div class="v">' + escHtml(formatDate(inc.DiscoveredDate)) + '</div>'
     + '<div class="k">Reported</div><div class="v">' + escHtml(formatDate(inc.ReportedDate)) + '</div>'
     + '<div class="k">Resolved</div><div class="v">' + escHtml(formatDate(inc.ResolutionDate)) + '</div>'
-    + '<div class="k">Assigned To</div><div class="v">' + escHtml(assignedName) + '</div>'
-    + '</div>';
+    + '<div class="k">Assigned To</div><div class="v">' + escHtml(assignedName) + '</div>';
+  if (inc.RelatedCases) { html += '<div class="k">Related Cases</div><div class="v">' + escHtml(inc.RelatedCases) + '</div>'; }
+  html += '</div>';
   if (canManage && inc.Description) {
-    body += '<div style="margin-top:12px"><div class="lbl">Description</div><div class="muted" style="white-space:pre-wrap">' + escHtml(inc.Description) + '</div></div>';
+    html += '<div style="margin-top:12px"><div class="lbl">Description</div><div class="muted" style="white-space:pre-wrap">' + escHtml(inc.Description) + '</div></div>';
   }
-
-  /* Status transition controls (IM-15) */
   if (canManage && nextStatuses.length) {
-    body += '<div style="margin-top:14px;padding:10px;border:1px solid var(--border,#ccc);border-radius:6px">'
+    var statusOptions = '<option value="">— Select next status —</option>' + nextStatuses.map(function(s){
+      return '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>';
+    }).join('');
+    html += '<div style="margin-top:14px;padding:10px;border:1px solid var(--border,#ccc);border-radius:6px">'
       + '<div class="lbl">Transition Status</div>'
       + '<div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:6px">'
       + '<select id="id-next-status" class="ipt">' + statusOptions + '</select>'
@@ -9374,51 +9434,143 @@ function renderIncidentDetailModal(){
       + '<div style="margin-top:8px">'
       + '<button class="btn primary" data-action="apply-status-transition">Apply Transition</button>'
       + '<label style="margin-left:14px"><input id="id-notify-subject" type="checkbox"> Notify subject</label>'
-      + '</div>'
-      + '</div>';
+      + '</div></div>';
   }
+  return html;
+}
 
-  /* Timeline */
-  body += '<div style="margin-top:18px"><div class="lbl">Status Timeline</div>';
+function renderIncidentTimelineTab(state){
+  var html = '';
   if (!state.history.length) {
-    body += '<div class="empty">No status transitions recorded.</div>';
-  } else {
-    body += '<div class="spotlight-list">';
-    state.history.forEach(function(h){
-      var changedBy = (h.ChangedBy && h.ChangedBy.Title) || '';
-      body += '<div class="spotlight-item"><div>'
-        + '<div class="l1">' + escHtml((h.FromStatus || '—') + ' → ' + (h.ToStatus || '?')) + '</div>'
-        + '<div class="l2">' + escHtml(formatDate(h.TransitionDate)) + (changedBy ? ' • ' + escHtml(changedBy) : '') + (h.Notes ? ' • ' + escHtml(trimText(h.Notes, 100)) : '') + '</div>'
-        + '</div></div>';
-    });
-    body += '</div>';
+    return '<div class="empty">No status transitions recorded.</div>';
   }
-  body += '</div>';
+  html += '<div class="spotlight-list">';
+  state.history.forEach(function(h){
+    var changedBy = (h.ChangedBy && h.ChangedBy.Title) || '';
+    var daysIn = h.DaysInPriorStatus ? ' (' + h.DaysInPriorStatus + ' days)' : '';
+    html += '<div class="spotlight-item"><div>'
+      + '<div class="l1">' + escHtml((h.FromStatus || '—') + ' → ' + (h.ToStatus || '?')) + escHtml(daysIn) + '</div>'
+      + '<div class="l2">' + escHtml(formatDate(h.TransitionDate)) + (changedBy ? ' • ' + escHtml(changedBy) : '') + (h.Notes ? ' • ' + escHtml(trimText(h.Notes, 100)) : '') + '</div>'
+      + '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
 
-  /* Actions */
-  body += '<div style="margin-top:18px"><div class="lbl">Action Items (' + state.actions.length + ')</div>';
-  if (!state.actions.length) {
-    body += '<div class="empty">No action items.</div>';
-  } else {
-    body += '<div class="table-wrap"><table><thead><tr><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Due</th></tr></thead><tbody>';
-    state.actions.forEach(function(a){
-      body += '<tr><td>' + escHtml(a.Title || '') + (normalizeBoolean(a.IsAutoGenerated) ? ' <span class="badge muted">auto</span>' : '') + '</td>'
-        + '<td>' + escHtml(a.ActionCategory || '') + '</td>'
-        + '<td>' + escHtml(a.Priority || '') + '</td>'
-        + '<td>' + statusBadge(a.Status || 'Pending') + '</td>'
-        + '<td>' + escHtml(formatDate(a.DueDate)) + '</td></tr>';
-    });
-    body += '</tbody></table></div>';
-  }
-  body += '</div>';
-
-  var footer = '<div></div><div>';
+function renderIncidentActionsTab(state, canManage){
+  var html = '';
   if (canManage) {
-    footer += '<button class="btn" data-action="open-notification-composer" data-source="Security" data-audience="Individual" data-person-id="' + escAttr(inc.PersonID && inc.PersonID.Id) + '">Send Notification</button> ';
+    html += '<div style="margin-bottom:10px"><button class="btn btn-sm" data-action="add-incident-action" data-id="' + state.incidentId + '">+ Add Action Item</button></div>';
   }
-  footer += '<button class="btn" data-action="close-modal">Close</button></div>';
+  if (!state.actions.length) {
+    return html + '<div class="empty">No action items.</div>';
+  }
+  html += '<div class="table-wrap"><table><thead><tr><th>Title</th><th>Category</th><th>Assigned</th><th>Priority</th><th>Status</th><th>Due</th>';
+  if (canManage) html += '<th></th>';
+  html += '</tr></thead><tbody>';
+  state.actions.forEach(function(a){
+    var overdue = a.DueDate && new Date(a.DueDate) < new Date() && (a.Status || '').toLowerCase() !== 'complete';
+    html += '<tr' + (overdue ? ' style="background:rgba(198,40,40,.08)"' : '') + '>';
+    html += '<td>' + escHtml(a.Title || '') + (normalizeBoolean(a.IsAutoGenerated) ? ' <span class="badge muted">auto</span>' : '') + '</td>'
+      + '<td>' + escHtml(a.ActionCategory || '') + '</td>'
+      + '<td>' + escHtml(a.AssignedTo && a.AssignedTo.Title ? a.AssignedTo.Title : '') + '</td>'
+      + '<td>' + escHtml(a.Priority || '') + '</td>'
+      + '<td>' + statusBadge(a.Status || 'Pending') + '</td>'
+      + '<td>' + escHtml(formatDate(a.DueDate)) + '</td>';
+    if (canManage) {
+      html += '<td>';
+      if ((a.Status || '').toLowerCase() !== 'complete') {
+        html += '<button class="btn btn-sm" data-action="complete-incident-action" data-id="' + a.Id + '">Complete</button>';
+      }
+      html += '</td>';
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
 
-  openModal('Incident Detail', body, footer, inc.CaseNumber || '');
+function renderIncidentCommsTab(state, canManage, inc){
+  var html = '';
+  if (canManage) {
+    html += '<div style="margin-bottom:10px"><button class="btn btn-sm" data-action="open-notification-composer" data-source="Security" data-audience="Individual" data-person-id="' + escAttr(inc.PersonID && inc.PersonID.Id) + '">Send Notification</button></div>';
+  }
+  if (!state.communications.length) {
+    return html + '<div class="empty">No communications recorded for this case.</div>';
+  }
+  html += '<div class="spotlight-list">';
+  state.communications.forEach(function(c){
+    var sentBy = c.SentBy && c.SentBy.Title ? c.SentBy.Title : 'System';
+    var title = c.NotificationID && c.NotificationID.Title ? c.NotificationID.Title : c.Title || '';
+    html += '<div class="spotlight-item"><div>'
+      + '<div class="l1">' + escHtml(title) + (c.TemplateID ? ' <span class="badge muted">' + escHtml(c.TemplateID) + '</span>' : '') + '</div>'
+      + '<div class="l2">' + escHtml(formatDate(c.SentDate)) + ' • Sent by ' + escHtml(sentBy) + (c.Notes ? ' • ' + escHtml(trimText(c.Notes, 80)) : '') + '</div>'
+      + '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderIncidentPartiesTab(state, canManage, inc){
+  var html = '';
+  if (canManage) {
+    html += '<div style="margin-bottom:10px"><button class="btn btn-sm" data-action="add-incident-party" data-id="' + inc.Id + '">+ Add Party</button></div>';
+  }
+  if (!state.parties.length) {
+    return html + '<div class="empty">No parties recorded for this case.</div>';
+  }
+  html += '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Role</th><th>Notes</th></tr></thead><tbody>';
+  state.parties.forEach(function(p){
+    var name = p.PersonID && p.PersonID.Title ? p.PersonID.Title : (p.ExternalName || '—');
+    var org = p.ExternalOrg ? ' (' + escHtml(p.ExternalOrg) + ')' : '';
+    html += '<tr><td>' + escHtml(name) + org + '</td><td>' + escHtml(p.PartyRole || '') + '</td><td>' + escHtml(p.Notes || '') + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderIncidentAttachmentsTab(inc, canManage){
+  var html = '<div id="incident-attachments-area"><div class="loading">Loading attachments…</div></div>';
+  loadIncidentAttachments(inc.Id);
+  return html;
+}
+function loadIncidentAttachments(incidentId){
+  var url = apiUrl("/web/lists/GetByTitle('" + escOData(APP.lists.SecurityIncidents) + "')/items(" + incidentId + ")/AttachmentFiles");
+  xhr({ method: 'GET', url: url, headers: { 'Accept': 'application/json;odata=verbose' } }).then(function(resp){
+    var files = resp && resp.d && resp.d.results ? resp.d.results : [];
+    var area = document.getElementById('incident-attachments-area');
+    if (!area) return;
+    if (!files.length) { area.innerHTML = '<div class="empty">No attachments.</div>'; return; }
+    var tbl = '<table class="data-table"><thead><tr><th>Filename</th><th>Action</th></tr></thead><tbody>';
+    files.forEach(function(f){
+      tbl += '<tr><td>' + escHtml(f.FileName || '') + '</td><td><a href="' + escAttr(f.ServerRelativeUrl || '') + '" target="_blank" class="btn btn-sm">Download</a></td></tr>';
+    });
+    tbl += '</tbody></table>';
+    area.innerHTML = tbl;
+  }).catch(function(){
+    var area = document.getElementById('incident-attachments-area');
+    if (area) area.innerHTML = '<div class="empty">Failed to load attachments.</div>';
+  });
+}
+
+function renderIncidentSORTab(inc, canManage){
+  var html = '<div class="kv">';
+  html += '<div class="k">SOR Issued Date</div><div class="v">' + escHtml(formatDate(inc.SORIssuedDate)) + '</div>';
+  html += '<div class="k">Response Deadline</div><div class="v">' + escHtml(formatDate(inc.SORResponseDeadline)) + '</div>';
+  var countdown = typeof getSORCountdown === 'function' ? getSORCountdown(inc) : null;
+  if (countdown !== null) {
+    var cdColor = countdown <= 0 ? '#c62828' : countdown <= 7 ? '#f57c00' : '#2e7d32';
+    html += '<div class="k">Days Remaining</div><div class="v" style="color:' + cdColor + ';font-weight:700">' + countdown + '</div>';
+  }
+  html += '<div class="k">Response Received</div><div class="v">' + escHtml(formatDate(inc.SORResponseDate)) + '</div>';
+  html += '<div class="k">Appeal Filed</div><div class="v">' + escHtml(formatDate(inc.AppealDate)) + '</div>';
+  html += '<div class="k">Appeal Decision</div><div class="v">' + escHtml(inc.AppealDecision || '—') + '</div>';
+  html += '<div class="k">Appeal Decision Date</div><div class="v">' + escHtml(formatDate(inc.AppealDecisionDate)) + '</div>';
+  html += '</div>';
+  if (canManage && inc.SORNarrative) {
+    html += '<div style="margin-top:12px"><div class="lbl">SOR Narrative</div><div class="muted" style="white-space:pre-wrap">' + escHtml(inc.SORNarrative) + '</div></div>';
+  }
+  return html;
 }
 
 /* IM-15: status transition with audit + status history + optional notification (NF-14). */
@@ -11690,6 +11842,90 @@ function handleClick(e){
   if (action === 'save-incident') { saveIncident(); return; }
   if (action === 'open-incident-detail') { openIncidentDetailModal(el.getAttribute('data-id')); return; }
   if (action === 'apply-status-transition') { applyIncidentStatusTransition(); return; }
+  if (action === 'incident-tab') {
+    if (APP.modalState.incidentDetail) {
+      APP.modalState.incidentDetail.activeTab = el.getAttribute('data-tab') || 'summary';
+      renderIncidentDetailModal();
+    }
+    return;
+  }
+  if (action === 'complete-incident-action') {
+    var actionItemId = Number(el.getAttribute('data-id'));
+    updateListItem(APP.lists.IncidentActions, actionItemId, { Status: 'Complete', CompletedDate: new Date().toISOString() }, { entityType: 'IncidentAction', reason: 'Completed action item' }).then(function(){
+      toast('Action item completed.', 'ok');
+      if (APP.modalState.incidentDetail) {
+        ensureIncidentActionsLoaded(APP.modalState.incidentDetail.incidentId).then(function(acts){
+          APP.modalState.incidentDetail.actions = acts;
+          APP.modalState.incidentDetail.activeTab = 'actions';
+          renderIncidentDetailModal();
+        });
+      }
+    }).catch(function(){ toast('Failed to complete action.', 'danger'); });
+    return;
+  }
+  if (action === 'add-incident-action') {
+    var iid = el.getAttribute('data-id');
+    var incObj = findIncidentById(iid);
+    var actionBody = '<div class="form-row"><label class="lbl">Title</label><input class="ipt" id="id-action-title" type="text" placeholder="Action item title"></div>'
+      + '<div class="form-row"><label class="lbl">Category</label><select class="ipt" id="id-action-cat"><option>Investigation</option><option>Documentation</option><option>Notification</option><option>Follow-Up</option><option>Remediation</option><option>Other</option></select></div>'
+      + '<div class="form-row"><label class="lbl">Priority</label><select class="ipt" id="id-action-pri"><option>Normal</option><option>High</option><option>Low</option></select></div>'
+      + '<div class="form-row"><label class="lbl">Due Date</label><input class="ipt" id="id-action-due" type="date"></div>';
+    openModal('Add Action Item', actionBody, '<div></div><button class="btn primary" data-action="save-incident-action" data-incident-id="' + iid + '">Save</button> <button class="btn" data-action="close-modal">Cancel</button>');
+    return;
+  }
+  if (action === 'save-incident-action') {
+    var saveIid = el.getAttribute('data-incident-id');
+    var saveInc = findIncidentById(saveIid);
+    var title = document.getElementById('id-action-title').value.trim();
+    if (!title) { toast('Title is required.', 'danger'); return; }
+    createListItem(APP.lists.IncidentActions, {
+      Title: title, IncidentID: Number(saveIid),
+      CaseNumber: saveInc ? saveInc.CaseNumber || '' : '',
+      ActionCategory: document.getElementById('id-action-cat').value,
+      Priority: document.getElementById('id-action-pri').value,
+      DueDate: document.getElementById('id-action-due').value || null,
+      Status: 'Pending', IsAutoGenerated: false
+    }, { entityType: 'IncidentAction', reason: 'Manual action item' }).then(function(){
+      toast('Action item added.', 'ok');
+      closeModal();
+      openIncidentDetailModal(saveIid);
+    }).catch(function(){ toast('Failed to add action.', 'danger'); });
+    return;
+  }
+  if (action === 'add-incident-party') {
+    var partyIid = el.getAttribute('data-id');
+    var partyBody = '<div class="form-row"><label class="lbl">Role</label><select class="ipt" id="id-party-role"><option>Subject</option><option>Witness</option><option>Investigator</option><option>Reporting Official</option><option>Legal Counsel</option><option>Other</option></select></div>'
+      + '<div class="form-row"><label class="lbl">Internal Person (optional)</label><input class="ipt" id="id-party-person" type="text" placeholder="Type name to search..."></div>'
+      + '<div class="form-row"><label class="lbl">External Name</label><input class="ipt" id="id-party-ext-name" type="text" placeholder="For external parties"></div>'
+      + '<div class="form-row"><label class="lbl">External Org</label><input class="ipt" id="id-party-ext-org" type="text" placeholder="Organization"></div>'
+      + '<div class="form-row"><label class="lbl">Notes</label><input class="ipt" id="id-party-notes" type="text" placeholder="Notes"></div>';
+    openModal('Add Party', partyBody, '<div></div><button class="btn primary" data-action="save-incident-party" data-incident-id="' + partyIid + '">Save</button> <button class="btn" data-action="close-modal">Cancel</button>');
+    return;
+  }
+  if (action === 'save-incident-party') {
+    var spIid = el.getAttribute('data-incident-id');
+    var personName = (document.getElementById('id-party-person').value || '').trim();
+    var extName = (document.getElementById('id-party-ext-name').value || '').trim();
+    if (!personName && !extName) { toast('Provide either an internal person or external name.', 'danger'); return; }
+    var partyValues = {
+      Title: personName || extName,
+      IncidentID: Number(spIid),
+      PartyRole: document.getElementById('id-party-role').value,
+      ExternalName: extName,
+      ExternalOrg: (document.getElementById('id-party-ext-org').value || '').trim(),
+      Notes: (document.getElementById('id-party-notes').value || '').trim()
+    };
+    if (personName) {
+      var match = (APP.state.data.people || []).filter(function(p){ return formatPerson(p).toLowerCase().indexOf(personName.toLowerCase()) >= 0; })[0];
+      if (match) { partyValues.PersonID = match.Id; partyValues.Title = formatPerson(match); }
+    }
+    createListItem(APP.lists.IncidentParties, partyValues, { entityType: 'IncidentParty', reason: 'Added party to incident' }).then(function(){
+      toast('Party added.', 'ok');
+      closeModal();
+      openIncidentDetailModal(spIid);
+    }).catch(function(){ toast('Failed to add party.', 'danger'); });
+    return;
+  }
   if (action === 'open-notification-composer') {
     var defaults = {};
     var src = el.getAttribute('data-source');
