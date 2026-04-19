@@ -11324,6 +11324,7 @@ function filterAssetTables(term){
 var debouncedFilterCards = debounce(function(selector, value){ filterCards(selector, value); }, 180);
 var debouncedOrgSearch = debounce(function(value){ ensureOrgChartUi(); APP.state.orgUi.search = value || ''; renderOrganizationsView(); }, 250);
 var debouncedAssetFilter = debounce(function(value){ getAssetUi(); APP.state.assetUi.search = value || ''; filterAssetTables(value); }, 180);
+var debouncedCalendarSearch = debounce(function(value){ ensureCalendarUi().search = value || ''; renderCalendar(); }, 250);
 function handleInput(e){
   var id = e.target && e.target.id;
   if (id === 'peopleSearchInput') { debouncedFilterCards('#peopleGrid', e.target.value); }
@@ -11335,7 +11336,7 @@ function handleInput(e){
   if (id === 'seatSidebarSearch') { filterSeatSidebar(e.target.value); return; }
   if (id === 'calOrgScope') { var ui = ensureCalendarUi(); ui.scopeOrgId = e.target.value ? Number(e.target.value) : null; renderCalendar(); return; }
   if (id === 'calTypeFilter') { ensureCalendarUi().typeFilter = e.target.value; renderCalendar(); return; }
-  if (id === 'calSearchInput') { ensureCalendarUi().search = e.target.value; renderCalendar(); return; }
+  if (id === 'calSearchInput') { debouncedCalendarSearch(e.target.value); return; }
 }
 function findActionEl(start){
   var el = start;
@@ -11627,6 +11628,15 @@ function bootstrap(){
   initSortableHeaders();
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') { closeModal(); return; }
+    /* Arrow key navigation in calendar (no modifier keys) */
+    if (APP.state.route === 'calendar' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); calNavigate('prev'); return; }
+        if (e.key === 'ArrowRight') { e.preventDefault(); calNavigate('next'); return; }
+        if (e.key === 'Home') { e.preventDefault(); calToday(); return; }
+      }
+    }
     if (!e.altKey) { return; }
     var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', c: 'calendar', a: 'assets', s: 'security' };
     if (canSeeAdmin()) { shortcuts.d = 'diagnostics'; }

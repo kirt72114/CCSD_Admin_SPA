@@ -273,14 +273,14 @@ false positives on the script side, not problems in SharePoint:
 
 - [ ] Lazy module loading (query lists only when module first visited)
 - [ ] List data pagination (handle 5000+ item lists via paging tokens)
-- [ ] Debounced calendar re-render
+- [x] Debounced calendar re-render ✅ Done 2026-04-18. `debouncedCalendarSearch` debounces calendar search input (250ms) to avoid full re-render on every keystroke.
 
 ### UX (P2) — 💻
 
 > **No prerequisites from you.**
 
 - [x] Undo toast actions ✅ Done 2026-04-18. `toast()` now accepts a third `undoFn` argument that adds an "Undo" button to the toast (8 second timeout). Wired up to `deleteTimeOffEntry` to restore deleted entries.
-- [ ] Keyboard navigation (arrow keys in calendar, tab through tables)
+- [x] Keyboard navigation (arrow keys in calendar, tab through tables) ✅ Done 2026-04-18. Arrow keys (← →) navigate calendar prev/next, Home key jumps to today. Active only when not focused on input/textarea/select. Tables already use semantic HTML for tab navigation.
 
 ### Security (P1) — 💻
 
