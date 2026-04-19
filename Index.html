@@ -6846,6 +6846,7 @@ function renderRoomSchedulingView(ui){
   html += '<option value="Whiteboard"' + (equipFilter === 'Whiteboard' ? ' selected' : '') + '>Whiteboard</option>';
   html += '</select>';
   html += '<button class="btn subtle" data-action="room-apply-filters" style="padding:4px 12px;font-size:11px">Apply</button>';
+  html += '<button class="btn" data-action="room-recurring-booking" style="padding:6px 12px;font-size:11px;margin-left:8px">Recurring</button>';
   html += '<button class="btn primary" data-action="room-book-new" style="padding:6px 12px;font-size:11px;margin-left:auto">+ Book Room</button>';
   html += '</div>';
 
@@ -9242,6 +9243,7 @@ function renderSecurityAdmin(){
   html += '<button class="btn primary" data-action="open-create-incident">Create Incident</button> ';
   html += '<button class="btn" data-action="open-notification-composer" data-source="Security">Send Notification</button> ';
   html += '<button class="btn" data-action="incident-batch-reminders">Batch Reminders</button> ';
+  html += '<button class="btn" data-action="incident-bulk-status">Bulk Status</button> ';
   html += '<button class="btn" data-action="incident-print-view">Print View</button> ';
   html += '<button class="btn" data-action="export-incidents-csv">Export CSV</button>';
   html += '</div></div>';
@@ -9705,6 +9707,9 @@ function renderSupervisorHubContent(){
   html += '<button class="btn" data-action="sup-manning-visibility">Manning/Positions</button>';
   html += '<button class="btn" data-action="sup-telework-tracker">Telework Agreements</button>';
   html += '<button class="btn" data-action="sup-awards-tracker">Awards</button>';
+  html += '<button class="btn" data-action="sup-task-board">Tasks/Suspenses</button>';
+  html += '<button class="btn" data-action="sup-idp-tracker">IDP Tracking</button>';
+  html += '<button class="btn" data-action="sup-send-notification">Send Team Notification</button>';
   html += '</div></div></div>';
 
   /* SH-15: Cross-module quick navigation */
@@ -10327,6 +10332,334 @@ function denyLeaveRequest(timeOffId){
   });
 }
 
+/* SH-27: Task / Suspense Management */
+function openTaskBoard(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var teamIds = {};
+  team.forEach(function(p){ teamIds[p.Id] = true; });
+  var tasks = (APP.state.data.taskAssignments || []).filter(function(t){
+    var assignedId = t.AssignedTo && t.AssignedTo.Id ? t.AssignedTo.Id : null;
+    var originatorId = t.Originator && t.Originator.Id ? t.Originator.Id : null;
+    return (assignedId && teamIds[assignedId]) || String(originatorId) === String(currentPersonId);
+  });
+  var open = tasks.filter(function(t){ return String(t.Status || '').toLowerCase() === 'open'; });
+  var inProgress = tasks.filter(function(t){ return String(t.Status || '').toLowerCase() === 'in progress'; });
+  var complete = tasks.filter(function(t){ return String(t.Status || '').toLowerCase() === 'complete' || String(t.Status || '').toLowerCase() === 'completed'; });
+  var overdue = tasks.filter(function(t){
+    var d = daysUntil(t.SuspenseDate);
+    var s = String(t.Status || '').toLowerCase();
+    return d != null && d < 0 && s !== 'complete' && s !== 'completed' && s !== 'cancelled';
+  });
+
+  var body = '<div style="display:flex;gap:12px;margin-bottom:10px">';
+  body += '<div style="padding:6px 12px;background:var(--bg-alt);border-radius:4px"><strong>' + open.length + '</strong> Open</div>';
+  body += '<div style="padding:6px 12px;background:var(--accent-bg,#3498db22);border-radius:4px"><strong>' + inProgress.length + '</strong> In Progress</div>';
+  body += '<div style="padding:6px 12px;background:var(--success-bg,#27ae6022);border-radius:4px"><strong>' + complete.length + '</strong> Complete</div>';
+  body += '<div style="padding:6px 12px;background:var(--danger-bg,#e74c3c22);border-radius:4px"><strong>' + overdue.length + '</strong> Overdue</div>';
+  body += '</div>';
+  body += '<div style="margin-bottom:8px"><button class="btn primary btn-sm" data-action="open-create-task">+ New Task</button></div>';
+
+  var activeTasks = tasks.filter(function(t){ var s = String(t.Status || '').toLowerCase(); return s !== 'complete' && s !== 'completed' && s !== 'cancelled'; });
+  activeTasks.sort(function(a,b){
+    var ad = daysUntil(a.SuspenseDate); var bd = daysUntil(b.SuspenseDate);
+    if (ad == null) ad = 999; if (bd == null) bd = 999;
+    return ad - bd;
+  });
+  body += '<table class="data-table"><thead><tr><th>Task</th><th>Assigned To</th><th>Priority</th><th>Suspense</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  activeTasks.forEach(function(t){
+    var d = daysUntil(t.SuspenseDate);
+    var color = d != null && d < 0 ? 'color:var(--danger,#c00);font-weight:700' : d != null && d <= 3 ? 'color:var(--warning,#e67e22)' : '';
+    body += '<tr><td><strong>' + escHtml(t.Title || '') + '</strong></td>'
+      + '<td>' + escHtml((t.AssignedTo && t.AssignedTo.Title) || '') + '</td>'
+      + '<td>' + escHtml(t.Priority || '') + '</td>'
+      + '<td style="' + color + '">' + escHtml(formatDate(t.SuspenseDate)) + (d != null && d < 0 ? ' (OVERDUE)' : '') + '</td>'
+      + '<td>' + statusBadge(t.Status || 'Open') + '</td>'
+      + '<td><button class="btn subtle success btn-sm" data-action="complete-task" data-id="' + escAttr(t.Id) + '">Done</button></td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('Task / Suspense Board', body, '<button class="btn" data-action="close-modal">Close</button>');
+}
+
+function openCreateTaskModal(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var opts = team.map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
+  var body = '<div class="form-grid">'
+    + '<label>Title</label><input id="taskTitle" placeholder="Task title">'
+    + '<label>Description</label><textarea id="taskDesc" rows="2"></textarea>'
+    + '<label>Assign To</label><select id="taskAssignedTo">' + opts + '</select>'
+    + '<label>Priority</label><select id="taskPriority"><option>Normal</option><option>High</option><option>Urgent</option><option>Low</option></select>'
+    + '<label>Suspense Date</label><input type="date" id="taskSuspense">'
+    + '<label>Category</label><input id="taskCategory" placeholder="Optional category">'
+    + '</div>';
+  openModal('Create Task', body, '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-task">Create Task</button>');
+}
+
+function saveTask(){
+  var title = (document.getElementById('taskTitle').value || '').trim();
+  if (!title) { toast('Title is required.', 'warn'); return; }
+  var payload = {
+    Title: title,
+    Description: (document.getElementById('taskDesc').value || '').trim(),
+    AssignedTo: Number(document.getElementById('taskAssignedTo').value),
+    Originator: APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null,
+    Priority: document.getElementById('taskPriority').value,
+    Status: 'Open',
+    Category: (document.getElementById('taskCategory').value || '').trim()
+  };
+  var suspense = document.getElementById('taskSuspense').value;
+  if (suspense) { payload.SuspenseDate = new Date(suspense + 'T17:00:00').toISOString(); }
+  createListItem(APP.lists.TaskAssignments, payload, { entityType: 'TaskAssignment', reason: 'New task' }).then(function(){
+    closeModal();
+    toast('Task created.', 'ok');
+    ensureTaskAssignmentsLoaded(true).then(function(){ openTaskBoard(); });
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to create task.', 'danger'); });
+}
+
+function completeTask(taskId){
+  updateListItem(APP.lists.TaskAssignments, taskId, { Status: 'Complete', CompletionDate: new Date().toISOString() }, { entityType: 'TaskAssignment', reason: 'Completed' }).then(function(){
+    toast('Task completed.', 'ok');
+    ensureTaskAssignmentsLoaded(true).then(function(){ openTaskBoard(); });
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to complete task.', 'danger'); });
+}
+
+/* IM-24: Case-to-case linking */
+function openCaseLinkModal(incidentId){
+  var rows = APP.state.data.securityIncidents || [];
+  var current = rows.filter(function(r){ return String(r.Id) === String(incidentId); })[0];
+  if (!current) { toast('Incident not found.', 'danger'); return; }
+  var others = rows.filter(function(r){ return String(r.Id) !== String(incidentId); });
+  var existing = (current.RelatedCases || '').split(',').filter(Boolean);
+  var body = '<p>Link case <strong>' + escHtml(current.CaseNumber || '') + '</strong> to related cases:</p>';
+  body += '<div style="max-height:300px;overflow:auto">';
+  others.forEach(function(r){
+    var checked = existing.indexOf(String(r.Id)) >= 0 ? ' checked' : '';
+    body += '<label style="display:block;padding:3px 0"><input type="checkbox" class="case-link-cb" value="' + escAttr(r.Id) + '"' + checked + '> '
+      + escHtml(r.CaseNumber || '#' + r.Id) + ' — ' + escHtml((r.PersonID && r.PersonID.Title) || '') + ' (' + escHtml(r.Status || '') + ')</label>';
+  });
+  body += '</div>';
+  var footer = '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-case-links" data-id="' + escAttr(incidentId) + '">Save Links</button>';
+  openModal('Related Cases', body, footer);
+}
+
+function saveCaseLinks(){
+  var btn = document.querySelector('[data-action="save-case-links"]');
+  var incidentId = btn ? btn.getAttribute('data-id') : null;
+  if (!incidentId) return;
+  var checks = document.querySelectorAll('.case-link-cb:checked');
+  var ids = [];
+  for (var i = 0; i < checks.length; i++) { ids.push(checks[i].value); }
+  updateListItem(APP.lists.SecurityIncidents, incidentId, { RelatedCases: ids.join(',') }, { entityType: 'SecurityIncident', reason: 'Link related cases' }).then(function(){
+    closeModal();
+    toast('Case links saved.', 'ok');
+    ensureSecurityIncidentsLoaded(true);
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to save links.', 'danger'); });
+}
+
+/* IM-26: Bulk status update */
+function openBulkStatusUpdateModal(){
+  if (!canManageSecurity()) { return; }
+  var rows = APP.state.data.securityIncidents || [];
+  var open = rows.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('admin') < 0; });
+  var body = '<p>Select cases and choose a new status:</p>';
+  body += '<div style="margin-bottom:8px"><select id="bulkNewStatus">';
+  ['Closed — Favorable','Closed — Adverse Action','Closed — Mitigated','Administrative Withdrawal'].forEach(function(s){ body += '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>'; });
+  body += '</select></div>';
+  body += '<div style="max-height:250px;overflow:auto">';
+  open.forEach(function(r){
+    body += '<label style="display:block;padding:3px 0"><input type="checkbox" class="bulk-status-cb" value="' + escAttr(r.Id) + '"> '
+      + escHtml(r.CaseNumber || '#' + r.Id) + ' — ' + escHtml((r.PersonID && r.PersonID.Title) || '') + ' (' + escHtml(r.Status || '') + ')</label>';
+  });
+  body += '</div>';
+  var footer = '<button class="btn" data-action="close-modal">Cancel</button>';
+  if (open.length) { footer += ' <button class="btn primary" data-action="apply-bulk-status">Apply Status</button>'; }
+  openModal('Bulk Status Update', body, footer);
+}
+
+function applyBulkStatusUpdate(){
+  var newStatus = (document.getElementById('bulkNewStatus') || {}).value;
+  if (!newStatus) { toast('Select a status.', 'warn'); return; }
+  var checks = document.querySelectorAll('.bulk-status-cb:checked');
+  if (!checks.length) { toast('Select at least one case.', 'warn'); return; }
+  var notes = window.prompt('Notes for this bulk update:', '') || '';
+  var promises = [];
+  for (var i = 0; i < checks.length; i++){
+    var caseId = Number(checks[i].value);
+    var payload = { Status: newStatus };
+    if (newStatus.indexOf('Closed') >= 0) {
+      payload.ClosedDate = new Date().toISOString();
+      payload.ResolutionDate = new Date().toISOString();
+    }
+    promises.push(updateListItem(APP.lists.SecurityIncidents, caseId, payload, { entityType: 'SecurityIncident', reason: 'Bulk status update to ' + newStatus + (notes ? ': ' + notes : '') }));
+  }
+  Promise.all(promises).then(function(){
+    closeModal();
+    toast(checks.length + ' case(s) updated to ' + newStatus + '.', 'ok');
+    ensureSecurityIncidentsLoaded(true).then(function(){ if (APP.state.route === 'security') renderSecurity(); });
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Bulk update failed.', 'danger'); });
+}
+
+/* SH-17: Supervisor Hub notification integration */
+function openSupNotificationPanel(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var body = '<p>Send a notification to your team:</p>';
+  body += '<div class="form-grid">';
+  body += '<label>Audience</label><select id="supNotifAudience"><option value="team">All Team Members (' + team.length + ')</option>';
+  team.forEach(function(p){ body += '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; });
+  body += '</select>';
+  body += '<label>Subject</label><input id="supNotifTitle" placeholder="Notification subject">';
+  body += '<label>Message</label><textarea id="supNotifBody" rows="3" placeholder="Enter notification message"></textarea>';
+  body += '</div>';
+  openModal('Send Team Notification', body, '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="send-sup-notification">Send</button>');
+}
+
+function sendSupNotification(){
+  var audience = (document.getElementById('supNotifAudience') || {}).value;
+  var title = (document.getElementById('supNotifTitle').value || '').trim();
+  var bodyText = (document.getElementById('supNotifBody').value || '').trim();
+  if (!title || !bodyText) { toast('Subject and message are required.', 'warn'); return; }
+  var opts = {
+    title: title,
+    body: bodyText,
+    notificationType: 'General',
+    sourceModule: 'SupervisorHub',
+    sensitivityLevel: 'Internal',
+    isSystemGenerated: false
+  };
+  if (audience === 'team') {
+    opts.audienceType = 'Organization';
+    opts.recipientOrgId = getCurrentOrgId();
+    if (!opts.recipientOrgId) { toast('Cannot determine your organization.', 'danger'); return; }
+  } else {
+    opts.audienceType = 'Individual';
+    opts.recipientPersonId = Number(audience);
+  }
+  sendNotification(opts).then(function(result){
+    closeModal();
+    toast('Notification sent to ' + (result.recipientCount || 0) + ' recipient(s).', 'ok');
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to send notification.', 'danger'); });
+}
+
+/* SH-30: IDP tracking — uses IDPOnFile and IDPLastUpdated columns on CCSD_Personnel */
+function openIDPTracker(){
+  var people = APP.state.data.people || [];
+  var currentPersonId = APP.state.currentPersonnel ? APP.state.currentPersonnel.Id : null;
+  var scope = APP.state.supervisorScope || 'direct';
+  var team = getTeamForScope(scope, currentPersonId, people);
+  var body = '<h3>Individual Development Plans</h3>';
+  var hasIDP = 0; var noIDP = 0; var dueForUpdate = 0;
+  var sorted = team.slice().sort(function(a,b){ return (a.LastName || '').localeCompare(b.LastName || ''); });
+  sorted.forEach(function(p){
+    var onFile = normalizeBoolean(p.IDPOnFile);
+    var lastUpdated = parseDate(p.IDPLastUpdated);
+    if (onFile) {
+      hasIDP++;
+      if (lastUpdated) {
+        var monthsSince = Math.round((Date.now() - lastUpdated.getTime()) / (86400000 * 30));
+        if (monthsSince > 12) { dueForUpdate++; }
+      } else { dueForUpdate++; }
+    } else { noIDP++; }
+  });
+  body += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+  body += '<div style="padding:6px 12px;background:var(--success-bg,#27ae6022);border-radius:4px"><strong>' + hasIDP + '</strong> IDP On File</div>';
+  body += '<div style="padding:6px 12px;background:var(--danger-bg,#e74c3c22);border-radius:4px"><strong>' + noIDP + '</strong> No IDP</div>';
+  body += '<div style="padding:6px 12px;background:var(--warning-bg,#f39c1222);border-radius:4px"><strong>' + dueForUpdate + '</strong> Due for Update</div>';
+  body += '</div>';
+  body += '<table class="data-table"><thead><tr><th>Name</th><th>IDP On File</th><th>Last Updated</th><th>Status</th></tr></thead><tbody>';
+  sorted.forEach(function(p){
+    var onFile = normalizeBoolean(p.IDPOnFile);
+    var lastUpdated = parseDate(p.IDPLastUpdated);
+    var status = 'No IDP';
+    if (onFile && lastUpdated) {
+      var monthsSince = Math.round((Date.now() - lastUpdated.getTime()) / (86400000 * 30));
+      status = monthsSince <= 12 ? 'Current' : 'Due for Update';
+    } else if (onFile) { status = 'Due for Update'; }
+    var color = status === 'Current' ? 'var(--success,#27ae60)' : status === 'No IDP' ? 'var(--danger,#c00)' : 'var(--warning,#e67e22)';
+    body += '<tr><td>' + escHtml(formatPerson(p)) + '</td>'
+      + '<td>' + (onFile ? 'Yes' : 'No') + '</td>'
+      + '<td>' + (lastUpdated ? formatDate(p.IDPLastUpdated) : '—') + '</td>'
+      + '<td style="color:' + color + ';font-weight:700">' + escHtml(status) + '</td></tr>';
+  });
+  body += '</tbody></table>';
+  openModal('IDP Tracking', body, '<button class="btn" data-action="close-modal">Close</button>');
+}
+
+/* Recurring meeting support — conference room reservations */
+function openRecurringBookingModal(defaults){
+  ensureConferenceRoomsLoaded().then(function(){
+    var rooms = APP.state.data.conferenceRooms || [];
+    var roomOpts = rooms.map(function(r){ return '<option value="' + escAttr(r.Id) + '">' + escHtml(r.RoomName || r.Title || '') + '</option>'; }).join('');
+    var body = '<div class="form-grid">'
+      + '<label>Room</label><select id="recurRoomId">' + roomOpts + '</select>'
+      + '<label>Subject</label><input id="recurSubject" placeholder="Meeting name">'
+      + '<label>Start Date</label><input type="date" id="recurStartDate">'
+      + '<label>End Date (series)</label><input type="date" id="recurEndDate">'
+      + '<label>Start Time</label><input type="time" id="recurStartTime" value="09:00">'
+      + '<label>End Time</label><input type="time" id="recurEndTime" value="10:00">'
+      + '<label>Pattern</label><select id="recurPattern"><option value="daily">Daily (weekdays)</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly (same day)</option></select>'
+      + '<label>Notes</label><textarea id="recurNotes" rows="2"></textarea>'
+      + '</div>';
+    openModal('Recurring Booking', body, '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-recurring-booking">Create Series</button>');
+  });
+}
+
+function saveRecurringBooking(){
+  var roomId = Number(document.getElementById('recurRoomId').value);
+  var subject = (document.getElementById('recurSubject').value || '').trim();
+  var startDate = document.getElementById('recurStartDate').value;
+  var endDate = document.getElementById('recurEndDate').value;
+  var startTime = document.getElementById('recurStartTime').value;
+  var endTime = document.getElementById('recurEndTime').value;
+  var pattern = document.getElementById('recurPattern').value;
+  var notes = (document.getElementById('recurNotes').value || '').trim();
+  if (!roomId || !subject || !startDate || !endDate || !startTime || !endTime) {
+    toast('All fields except notes are required.', 'warn'); return;
+  }
+  var dates = [];
+  var current = new Date(startDate + 'T00:00:00');
+  var end = new Date(endDate + 'T00:00:00');
+  while (current <= end) {
+    var dow = current.getDay();
+    if (dow !== 0 && dow !== 6) { dates.push(new Date(current)); }
+    if (pattern === 'daily') { current.setDate(current.getDate() + 1); }
+    else if (pattern === 'weekly') { current.setDate(current.getDate() + 7); }
+    else if (pattern === 'biweekly') { current.setDate(current.getDate() + 14); }
+    else if (pattern === 'monthly') { current.setMonth(current.getMonth() + 1); }
+    else { current.setDate(current.getDate() + 1); }
+  }
+  if (!dates.length) { toast('No valid dates in the range.', 'warn'); return; }
+  if (dates.length > 52) { toast('Series too long (max 52 occurrences).', 'warn'); return; }
+  toast('Creating ' + dates.length + ' reservations...', 'ok');
+  var promises = dates.map(function(d){
+    var ds = d.toISOString().split('T')[0];
+    return createListItem(APP.lists.RoomReservations, {
+      Title: subject,
+      ConferenceRoomID: roomId,
+      ReservedBy: APP.state.currentUser ? APP.state.currentUser.id : null,
+      StartTime: new Date(ds + 'T' + startTime + ':00').toISOString(),
+      EndTime: new Date(ds + 'T' + endTime + ':00').toISOString(),
+      Subject: subject,
+      Notes: notes,
+      IsRecurring: true,
+      RecurrencePattern: pattern,
+      Status: 'Confirmed'
+    }, { entityType: 'RoomReservation', reason: 'Recurring booking', noAudit: true });
+  });
+  Promise.all(promises).then(function(){
+    closeModal();
+    toast(dates.length + ' recurring reservation(s) created.', 'ok');
+    ensureRoomReservationsLoaded(true);
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to create recurring bookings.', 'danger'); });
+}
+
 /* SH-13: SF-182 approval workflow */
 function sf182SupervisorAction(sf182Id, newStatus){
   if (!canSeeSupervisorHub()) { toast('Access restricted.', 'danger'); return; }
@@ -10916,6 +11249,19 @@ function handleClick(e){
   if (action === 'sup-manning-visibility') { ensurePositionsLoaded().then(function(){ openManningVisibility(); }); return; }
   if (action === 'sup-telework-tracker') { ensureTeleworkAgreementsLoaded().then(function(){ openTeleworkTracker(); }); return; }
   if (action === 'sup-awards-tracker') { ensureAwardsLoaded().then(function(){ openAwardsTracker(); }); return; }
+  if (action === 'sup-task-board') { ensureTaskAssignmentsLoaded().then(function(){ openTaskBoard(); }); return; }
+  if (action === 'open-create-task') { openCreateTaskModal(); return; }
+  if (action === 'save-task') { saveTask(); return; }
+  if (action === 'complete-task') { completeTask(el.getAttribute('data-id')); return; }
+  if (action === 'sup-idp-tracker') { openIDPTracker(); return; }
+  if (action === 'sup-send-notification') { openSupNotificationPanel(); return; }
+  if (action === 'send-sup-notification') { sendSupNotification(); return; }
+  if (action === 'incident-bulk-status') { openBulkStatusUpdateModal(); return; }
+  if (action === 'apply-bulk-status') { applyBulkStatusUpdate(); return; }
+  if (action === 'link-cases') { openCaseLinkModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-case-links') { saveCaseLinks(); return; }
+  if (action === 'room-recurring-booking') { openRecurringBookingModal(); return; }
+  if (action === 'save-recurring-booking') { saveRecurringBooking(); return; }
 }
 function detectEmbeddedMode(){
   var isEmbedded = false;

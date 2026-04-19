@@ -84,7 +84,7 @@ false positives on the script side, not problems in SharePoint:
 
 - [x] **Build room availability grid** — 💻 ✅ Done 2026-04-18. `renderRoomSchedulingView()` added as "Rooms" tab in Calendar module. Time grid (7AM–6PM, 30-min slots) with color-coded availability per room. Date picker, capacity/equipment filters.
 - [x] **Book / cancel reservation modals** — 💻 ✅ Done 2026-04-18. `openBookRoomModal()` with room/date/time selectors, subject/notes. `saveRoomBooking()` creates reservation. `cancelRoomReservation()` sets status to Cancelled.
-- [ ] **Recurring meeting support** — 💻
+- [x] **Recurring meeting support** — 💻 ✅ Done 2026-04-18. `openRecurringBookingModal()` supports daily/weekly/biweekly/monthly patterns. `saveRecurringBooking()` creates individual reservations for each occurrence (max 52). "Recurring" button on rooms view.
 - [x] **Conflict detection (double-booking prevention)** — 💻 ✅ Done 2026-04-18. `getRoomConflicts()` checks overlapping reservations. Booking is blocked with visible warning if conflict exists.
 - [x] **Room search by capacity and equipment** — 💻 ✅ Done 2026-04-18. Filter controls for min capacity and equipment (Projector/VTC/Phone/Whiteboard) on the Rooms view.
 - [x] **Room calendar view (per-room day/week timeline)** — 💻 ✅ Done 2026-04-18. Single-day grid view integrated into Calendar module as the "Rooms" tab. Shows all rooms with 30-min time slots. Upcoming reservations table below grid.
@@ -1553,9 +1553,9 @@ function formatCaseNumber(sharePointItemId, incidentCategory) {
 - [x] **IM-21: SOR deadline tracking** — 💻 ✅ Done 2026-04-18. `getSORCountdown()` computes days left. SOR Deadline Tracking card on Security Admin with color-coded countdown (red overdue, orange ≤7 days).
 - [x] **IM-22: Stage duration monitoring** — 💻 ✅ Done 2026-04-18. `INCIDENT_STAGE_DURATIONS` map with expected days per status. `getIncidentStagePct()` computes progress. Progress bars in incident table: yellow at 75%, red at 100%.
 - [x] **IM-23: Incident dashboard widgets** — 💻 ✅ Done 2026-04-18. Enhanced KPI grid (Total/Open/SOR Pending/Closed/Opened This Month/Closed This Month). Open Cases by Status horizontal bar chart. Avg Days to Close by Category table.
-- [ ] **IM-24: Case-to-case linking** — 💻 "Related Cases" field on incident record. Useful when a new incident arises from a prior case.
+- [x] **IM-24: Case-to-case linking** — 💻 ✅ Done 2026-04-18. `openCaseLinkModal()` shows checkboxes of all other cases. `saveCaseLinks()` stores comma-separated IDs in RelatedCases field.
 - [x] **IM-25: Incident CSV export** — 💻 ✅ Done 2026-04-18. `exportIncidentCSV()` with CUI banner header + footer. Wired to `Export Incidents (CSV)` button on Security Admin view. Logged via `logAudit('Export', 'SecurityIncidents', ...)`.
-- [ ] **IM-26: Bulk status update** — 💻 Select multiple `Administrative Withdrawal` cases when multiple people depart simultaneously.
+- [x] **IM-26: Bulk status update** — 💻 ✅ Done 2026-04-18. `openBulkStatusUpdateModal()` with multi-select + status dropdown. `applyBulkStatusUpdate()` applies chosen status to all selected cases with notes. "Bulk Status" button on Security admin toolbar.
 - [ ] **IM-27: Power Automate email integration** — 👤 Create a flow: trigger on `CCSD_Notifications` item created where `NotificationType = 'Security'`. Send email via O365 connector.
 - [x] **IM-28: Incident print view** — 💻 ✅ Done 2026-04-18. `openIncidentPrintView()` generates printable popup with CUI banners, open cases table, and print/close buttons.
 
@@ -2451,7 +2451,7 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 - [x] **SH-14: Build in-processing step sign-off** — 💻 ✅ Done 2026-04-18. `completeInOutStep()` marks steps complete with CompletedBy/CompletedOn. Wired into handleClick and unified action queue.
 - [x] **SH-15: Build cross-module links** — 💻 ✅ Done 2026-04-18. "Quick Navigation" card added to Supervisor Hub with icon-labeled links to Calendar, Training, Requests, In/Out Processing, Assets, Facilities, Security (gated), and Reports. Each passes context via route navigation.
 - [x] **SH-16: Build reports** — 💻 ✅ Done 2026-04-18. Reports card in Supervisor Hub with 4 reports: Team Summary (`openSupTeamSummaryReport`), Training Compliance Matrix (`openSupTrainingMatrix`), Leave Utilization (`openSupLeaveUtilization`), Equipment Accountability (`openSupEquipmentReport`). Plus DPMAP, Manning, Telework, and Awards trackers.
-- [ ] **SH-17: Integrate with Notification Framework** — 💻 Per 12h spec. Supervisor notification templates, team notification sending, Hub notification panel. Depends on NF-04 (Section 9) being built.
+- [x] **SH-17: Integrate with Notification Framework** — 💻 ✅ Done 2026-04-18. `openSupNotificationPanel()` lets supervisors send notifications to individual team members or entire team. `sendSupNotification()` routes through NF-04 `sendNotification()`. "Send Team Notification" button in Reports card.
 
 ##### Should-Have (Build After Core — Requires New Lists/Columns)
 
@@ -2464,13 +2464,13 @@ The Must-Have features (12a-12h) operate entirely on existing lists:
 - [x] **SH-24: Create `CCSD_Awards` list** — 👤 ✅ Created 2026-04-18. ~10 columns per data dependencies table.
 - [x] **SH-25: Build awards tracker** — 💻 ✅ Done 2026-04-18. `openAwardsTracker()` shows Pending/Approved/Total KPIs, award equity view (horizontal bar chart per person), and full awards table sorted by nomination date.
 - [x] **SH-26: Create `CCSD_TaskAssignments` list** — 👤 ✅ Created 2026-04-18. ~12 columns per data dependencies table.
-- [ ] **SH-27: Build task/suspense management** — 💻 Per 12n spec. Task board, views, notifications, recurring tasks.
+- [x] **SH-27: Build task/suspense management** — 💻 ✅ Done 2026-04-18. `openTaskBoard()` shows team tasks with Open/InProgress/Complete/Overdue KPIs. `openCreateTaskModal()` + `saveTask()` for new tasks. `completeTask()` marks done. Color-coded due dates.
 
 ##### Future Enhancement (Build Only When Approved)
 
 - [x] **SH-28: Create `CCSD_DisciplinaryActions` list** — 👤 ✅ Created 2026-04-18. Per 12o spec. ⚠️ Requires ER/Privacy officer approval.
 - [ ] **SH-29: Build disciplinary action tracker** — 💻 Per 12o spec.
-- [ ] **SH-30: Build IDP tracking** — 💻 Per 12p spec. Columns on `CCSD_Personnel`.
+- [x] **SH-30: Build IDP tracking** — 💻 ✅ Done 2026-04-18. `openIDPTracker()` shows IDP On File / No IDP / Due for Update KPIs and per-person status table using `IDPOnFile` and `IDPLastUpdated` columns on CCSD_Personnel.
 - [ ] **SH-31: Build overtime authorization** — 💻 Per 12q spec.
 - [ ] **SH-32: Build sponsorship program** — 💻 Per 12r spec. Uses existing `CCSD_InOutStepStatus`.
 
