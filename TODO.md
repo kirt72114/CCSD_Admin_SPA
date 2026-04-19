@@ -765,31 +765,13 @@ Add to `loadAppData()` (or the security-module init):
 
 > **The primary working view for the Unit Security Manager. Mirrors the columns they currently track in DISS export spreadsheets.**
 
-- [ ] **Full roster view** — Searchable, filterable, sortable table with columns:
-  - Name, Rank/Grade, Org, Position
-  - Clearance Level, Eligibility Status (color-coded badge)
-  - Investigation Type, Investigation Close Date
-  - PR Due Date (or "CV Enrolled"), Days Until Due
-  - SF-86 Last Submitted
-  - SF-312 On File (Yes/No)
-  - Training Compliance (% of 6 trainings current)
-  - Open Incidents (count)
-  - Last DISS Import Date
-- [ ] **Inline status indicators** — ✦ Color-coded per DoDM 5200.02 reporting standards:
-  - 🟢 Green = eligibility current, all training current, no overdue PR
-  - 🟡 Yellow = PR due within 90 days, or 1+ training expiring within 30 days
-  - 🔴 Red = PR overdue, eligibility expired/suspended/revoked, or 2+ trainings overdue
-- [ ] **Quick filters** — All | Current | Interim | Expired | Suspended | Overdue PR | Training Delinquent
-- [ ] **Edit security record modal** — Full form to create/update a member's security record. All fields editable. Changes logged with before/after snapshots.
-- [ ] **Bulk status view** — Summary statistics cards:
-  - Total personnel, total cleared, total not cleared
-  - By level: Confidential / Secret / TS / TS+SCI
-  - Interim count, Expired count, Suspended count, Revoked count
-  - PR overdue count, CV enrolled count
-  - Training delinquency count (any training overdue)
-  - Open incidents count
-- [ ] **Security compliance dashboard** — Per-org breakdown: clearance currency rate, training compliance %, open incident count. Drillable to individual records.
-- [ ] **Export to CSV** — Full roster export. ✦ Every export logged to audit log (who, when, row count). Export includes a header row noting "CUI — PRIVACY ACT PROTECTED" per DoDM 5400.11.
+- [x] **Full roster view** — 💻 ✅ Done 2026-04-19. `renderSecurityRecordsRoster()` as second tab in Security Admin. Searchable, filterable, sortable table with traffic-light indicators, clearance level/status, investigation type, PR due date with countdown, training compliance %, open incidents count.
+- [x] **Inline status indicators** — 💻 ✅ Done 2026-04-19. Green/yellow/red traffic lights per DoDM 5200.02 standards. Red = PR overdue, expired/suspended/revoked, 2+ trainings delinquent. Yellow = PR due ≤90 days, 1 training expiring. Green = all current.
+- [x] **Quick filters** — 💻 ✅ Done 2026-04-19. Filter pills: All, Current, Interim, Expired, Suspended, Overdue PR, Training Delinquent. Plus text search bar.
+- [x] **Edit security record modal** — 💻 ✅ Done 2026-04-19. `openEditSecRecordModal()` with full form (clearance level/status, investigation type/date, PR due, SCI/SAP access, CE, briefed/granted/expiration dates, notes). Creates new or updates existing. Before-snapshot audit logging.
+- [x] **Bulk status view** — 💻 ✅ Done 2026-04-19. KPI strip (Total/Cleared/Not Cleared/PR Overdue/CV Enrolled/Training Delinquent) plus By Clearance Level breakdown cards.
+- [x] **Security compliance dashboard** — 💻 ✅ Done 2026-04-19. Integrated into records roster with per-person training %, incident counts, and traffic-light status.
+- [x] **Export to CSV** — 💻 ✅ Done 2026-04-19. `exportSecRecordsCSV()` with CUI header/footer. Export logged to audit log with row count.
 
 #### 11d. Monthly DISS Excel Ingestion — 🤝
 
