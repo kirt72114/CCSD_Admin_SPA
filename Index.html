@@ -243,6 +243,7 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .person-picker-empty{padding:10px 12px;color:var(--muted);font-size:11px;text-align:center;font-style:italic}
 .person-picker-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
 .person-picker-clear:hover{background:rgba(255,255,255,.2);color:var(--text)}
+kbd{display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);font-family:inherit;font-size:11px;font-weight:600;color:var(--text)}
 .floorplan-sidebar .sb-filters{padding:8px 10px 6px;border-bottom:1px solid var(--line);display:flex;gap:4px;flex-wrap:wrap}
 .floorplan-sidebar .sb-chip{padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;transition:.15s}
 .floorplan-sidebar .sb-chip:hover{background:rgba(101,213,255,.1);color:var(--text)}
@@ -4513,10 +4514,9 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
       html += '<button class="btn primary" data-action="enter-seat-picker">Edit Seat Map</button>';
       html += '<button class="btn subtle" data-action="enter-floorplan-url">Set Floor Plan URL</button>';
       html += '<button class="btn subtle" data-action="print-floorplan" title="Print the current seat map">Print</button>';
+      html += '<button class="btn subtle" data-action="show-seat-map-help" title="Keyboard shortcuts and tips">?</button>';
     }
     html += '</div>';
-  } else {
-    html += '<div class="picker-toolbar"><button class="btn subtle" data-action="print-floorplan" title="Print the current seat map">Print</button></div>';
     if (isPicker) {
       if (ui.pendingPlaceSeatId) {
         var pendingSeat = null;
@@ -4527,6 +4527,15 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
         html += '<div class="picker-hint"><strong>Click</strong> empty space to create a new seat. <strong>Click</strong> an existing seat to edit or delete it. <strong>Drag</strong> a seat to reposition it. <strong>Click</strong> an unplaced seat in the sidebar to drop it on the map. Scroll/pinch to zoom.</div>';
       }
     }
+  } else {
+    html += '<div class="picker-toolbar"><button class="btn subtle" data-action="print-floorplan" title="Print the current seat map">Print</button><button class="btn subtle" data-action="show-seat-map-help" title="Keyboard shortcuts and tips">?</button></div>';
+  }
+  if (ui.pendingSwapSeatId && canSeeAdmin()) {
+    var swapSeat = null;
+    seats.some(function(s){ if (String(s.Id) === String(ui.pendingSwapSeatId)) { swapSeat = s; return true; } return false; });
+    var swapLabel = swapSeat ? (swapSeat.SeatLabel || swapSeat.SeatID || 'seat') : 'seat';
+    var swapOcc = (swapSeat && swapSeat.CurrentPersonID && swapSeat.CurrentPersonID.Title) || '(empty)';
+    html += '<div class="picker-hint" style="background:rgba(101,213,255,.12);border-color:rgba(101,213,255,.35)"><strong>Swap:</strong> click another seat to trade occupants with ' + escHtml(swapLabel) + ' (' + escHtml(swapOcc) + '). <button class="btn subtle" data-action="swap-seat-cancel" style="margin-left:12px;padding:4px 10px">Cancel swap</button></div>';
   }
   html += '<div class="floorplan-wrapper print-floorplan-scope">';
   html += '<div class="floorplan-main">';
@@ -4754,6 +4763,11 @@ function initFloorPlanInteraction(){
     /* Suppress synthesized click that follows a touch tap (~300ms) */
     if (_fpTouchEndAt && (Date.now() - _fpTouchEndAt) < 500) { return; }
     if (_fpDrag.moved || _fpDrag.seatMoved) { return; }
+    if (ui.pendingSwapSeatId && canSeeAdmin()) {
+      var swapMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
+      if (swapMarker) { performSeatSwap(ui.pendingSwapSeatId, swapMarker.getAttribute('data-seat-id')); return; }
+      return;
+    }
     if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
       if (ui.pendingPlaceSeatId) {
         var onMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
@@ -4993,6 +5007,9 @@ function buildSeatTooltipHtml(data, showActions){
     if (canSeeAdmin()) {
       if (data.occupant) {
         html += '<button data-action="release-seat" data-seat-id="' + escAttr(data.seatId) + '" title="Clear the assigned person">Release</button>';
+        html += '<button data-action="swap-seat-start" data-seat-id="' + escAttr(data.seatId) + '" title="Swap occupant with another seat">Swap\u2026</button>';
+      } else {
+        html += '<button data-action="quick-assign-open" data-seat-id="' + escAttr(data.seatId) + '" title="Assign a person to this seat">Assign\u2026</button>';
       }
       var isMaint = String(data.status || '').toLowerCase() === 'maintenance';
       html += '<button data-action="toggle-maintenance" data-seat-id="' + escAttr(data.seatId) + '" title="' + (isMaint ? 'Return this seat to service' : 'Flag this seat for maintenance') + '">' + (isMaint ? 'In Service' : 'Maintenance') + '</button>';
@@ -5146,6 +5163,23 @@ function deleteSeat(seatId){
     },
     { danger: true });
 }
+function openSeatMapHelpModal(){
+  var body = '<div style="line-height:1.7;font-size:13px">'
+    + '<div style="font-weight:700;margin-bottom:8px;color:var(--accent)">Seat Map Tips</div>'
+    + '<div class="kv" style="grid-template-columns:140px 1fr;gap:6px 14px">'
+    + '<div class="k">Mouse</div><div class="v">Click a seat to see its details. Drag the plan to pan. Scroll to zoom.</div>'
+    + '<div class="k">Touch</div><div class="v">One finger to pan. Two fingers to pinch-zoom. Tap a seat for details.</div>'
+    + '<div class="k">Keyboard</div><div class="v">Tab to a seat, then <kbd>Enter</kbd> or <kbd>Space</kbd> to open it. <kbd>Esc</kbd> closes the tooltip. <kbd>?</kbd> shows this help.</div>'
+    + '<div class="k">Chips</div><div class="v">The sidebar chips (Occupied / Available / Maint / Unplaced) filter both the list <em>and</em> the map at once.</div>'
+    + '<div class="k">Search</div><div class="v">Type a name or seat label in the sidebar search — it filters live.</div>'
+    + (canSeeAdmin() ? '<div class="k">Admin: edit</div><div class="v">"Edit Seat Map" puts the plan in placement mode. Click empty space to create, drag a seat to move, click a seat to edit or delete.</div>' : '')
+    + (canSeeAdmin() ? '<div class="k">Admin: swap</div><div class="v">From any seat tooltip, use <strong>Swap…</strong>, then click another seat to trade occupants.</div>' : '')
+    + (canSeeAdmin() ? '<div class="k">Admin: assign</div><div class="v">Empty seats show <strong>Assign…</strong>. The picker searches by name, email, or organization.</div>' : '')
+    + '<div class="k">Print</div><div class="v">The <strong>Print</strong> button prints just the floor plan (no sidebar/toolbar) for briefings.</div>'
+    + '<div class="k">Export</div><div class="v">The top-right "Export…" button saves the current room or building seats as CSV.</div>'
+    + '</div></div>';
+  openModal('Seat Map Help', body, '<div></div><button class="btn primary" data-action="close-modal">Got it</button>');
+}
 function printFloorPlan(){
   var scope = document.querySelector('.print-floorplan-scope');
   if (!scope) { toast('Nothing to print — open a seat map first.', 'warn'); return; }
@@ -5172,6 +5206,85 @@ function printFloorPlan(){
   };
   window.addEventListener('afterprint', cleanup);
   setTimeout(function(){ try { window.print(); } catch (e) { cleanup(); toast('Print failed.', 'danger'); } }, 100);
+}
+function openQuickAssignModal(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  hideSeatTooltip();
+  APP.modalState.quickAssignSeatId = seatId;
+  var label = seat.SeatLabel || seat.SeatID || 'Seat';
+  var currentId = seat.CurrentPersonID ? (seat.CurrentPersonID.Id || seat.CurrentPersonID) : '';
+  var body = '<div class="form-grid">'
+    + formField('Seat', '<input class="input" value="' + escAttr(label) + '" disabled />')
+    + formField('Assign Person', renderPersonPicker('quickAssignPerson', currentId, 'Search by name, email, or org...', true))
+    + '</div>'
+    + '<div class="small-note" style="margin-top:10px">Use the full Edit dialog for port, phone, and network changes.</div>';
+  openModal('Quick Assign: ' + label, body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="quick-assign-save">Save Assignment</button></div>');
+}
+function saveQuickAssign(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seatId = APP.modalState.quickAssignSeatId;
+  if (!seatId) { return; }
+  var personId = getPersonPickerValue('quickAssignPerson');
+  var values = personId
+    ? { CurrentPersonID: parseInt(personId, 10), SeatStatus: 'Occupied' }
+    : { CurrentPersonID: null, SeatStatus: 'Available' };
+  updateListItem(APP.lists.Seats, seatId, values, { entityType: 'Seat', reason: 'Quick assign' }).then(function(){
+    toast(personId ? 'Seat assigned.' : 'Seat cleared.', 'ok');
+    closeModal();
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Assignment failed.', 'danger'); });
+}
+function startSeatSwap(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var ui = ensureFacilityUi();
+  ui.pendingSwapSeatId = seatId;
+  hideSeatTooltip();
+  renderFacilities();
+}
+function cancelSeatSwap(){
+  var ui = ensureFacilityUi();
+  ui.pendingSwapSeatId = null;
+  renderFacilities();
+}
+function performSeatSwap(seatAId, seatBId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  if (String(seatAId) === String(seatBId)) { toast('Pick a different seat to swap with.', 'warn'); return; }
+  var seats = APP.state.data.seats || [];
+  var a = null, b = null;
+  for (var i = 0; i < seats.length; i++) {
+    if (String(seats[i].Id) === String(seatAId)) { a = seats[i]; }
+    if (String(seats[i].Id) === String(seatBId)) { b = seats[i]; }
+  }
+  if (!a || !b) { toast('Seat not found.', 'danger'); return; }
+  var aOccId = a.CurrentPersonID ? (a.CurrentPersonID.Id || a.CurrentPersonID) : null;
+  var bOccId = b.CurrentPersonID ? (b.CurrentPersonID.Id || b.CurrentPersonID) : null;
+  var aName = a.SeatLabel || a.SeatID || 'Seat A';
+  var bName = b.SeatLabel || b.SeatID || 'Seat B';
+  var aOccName = (a.CurrentPersonID && a.CurrentPersonID.Title) || '(empty)';
+  var bOccName = (b.CurrentPersonID && b.CurrentPersonID.Title) || '(empty)';
+  confirmDialog('Swap these seats?',
+    'Move "' + aOccName + '" from ' + aName + ' to ' + bName + ', and move "' + bOccName + '" from ' + bName + ' to ' + aName + '?',
+    'Swap',
+    function(){
+      var updA = updateListItem(APP.lists.Seats, seatAId, { CurrentPersonID: bOccId, SeatStatus: bOccId ? 'Occupied' : 'Available' }, { entityType: 'Seat', before: a, reason: 'Seat swap' });
+      var updB = updateListItem(APP.lists.Seats, seatBId, { CurrentPersonID: aOccId, SeatStatus: aOccId ? 'Occupied' : 'Available' }, { entityType: 'Seat', before: b, reason: 'Seat swap' });
+      Promise.all([updA.then(function(){ return { ok: true }; }, function(err){ return { ok: false, err: err }; }), updB.then(function(){ return { ok: true }; }, function(err){ return { ok: false, err: err }; })]).then(function(results){
+        var ui = ensureFacilityUi();
+        ui.pendingSwapSeatId = null;
+        var failed = results.filter(function(r){ return !r.ok; });
+        if (failed.length) { toast('Swap partially failed — ' + failed.length + '/2 updates errored. Refresh recommended.', 'danger'); }
+        else { toast('Seats swapped.', 'ok'); }
+        return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+      });
+    });
 }
 function toggleSeatMaintenance(seatId){
   if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
@@ -5291,6 +5404,7 @@ function saveSeatPosition(seatId, x, y, marker, origX, origY){
 }
 function highlightSeatOnMap(seatId, x, y){
   var ui = ensureFacilityUi();
+  if (ui.pendingSwapSeatId && canSeeAdmin()) { performSeatSwap(ui.pendingSwapSeatId, seatId); return; }
   if (x === '' || x == null) {
     if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
       ui.pendingPlaceSeatId = seatId;
@@ -8435,6 +8549,11 @@ function handleClick(e){
   if (action === 'person-picker-select') { personPickerSelect(el.getAttribute('data-picker-base'), el.getAttribute('data-person-id') || '', el.getAttribute('data-person-name') || ''); return; }
   if (action === 'person-picker-clear') { personPickerClear(el.getAttribute('data-picker-base')); return; }
   if (action === 'toggle-maintenance') { toggleSeatMaintenance(el.getAttribute('data-seat-id')); return; }
+  if (action === 'quick-assign-open') { openQuickAssignModal(el.getAttribute('data-seat-id')); return; }
+  if (action === 'quick-assign-save') { saveQuickAssign(); return; }
+  if (action === 'swap-seat-start') { startSeatSwap(el.getAttribute('data-seat-id')); return; }
+  if (action === 'swap-seat-cancel') { cancelSeatSwap(); return; }
+  if (action === 'show-seat-map-help') { openSeatMapHelpModal(); return; }
   if (action === 'release-seat') { releaseSeat(el.getAttribute('data-seat-id')); return; }
   if (action === 'export-seats-scope') { exportSeatsScopeCsv(); return; }
   if (action === 'print-floorplan') { printFloorPlan(); return; }
@@ -8584,6 +8703,12 @@ function bootstrap(){
   initSortableHeaders();
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') { closeModal(); return; }
+    if (e.key === '?' && APP.state.route === 'facilities') {
+      var tag = (e.target && e.target.tagName || '').toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea' && !(e.target && e.target.isContentEditable)) {
+        e.preventDefault(); openSeatMapHelpModal(); return;
+      }
+    }
     if (!e.altKey) { return; }
     var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', c: 'calendar', a: 'assets', s: 'security' };
     if (canSeeAdmin()) { shortcuts.d = 'diagnostics'; }
