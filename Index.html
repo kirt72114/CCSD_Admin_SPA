@@ -4404,9 +4404,10 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
     if (isPicker) { cls += ' draggable'; }
     var justPlaced = ui._justPlacedId && String(ui._justPlacedId) === String(s.Id);
     if (justPlaced) { cls += ' just-placed'; }
-    var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
-    var tooltip = JSON.stringify({ label: s.SeatLabel || s.SeatID || 'Seat', occupant: occupant, port: s.PortNumber || '', phone: s.PhoneNumber || '', networks: networks.trim(), vtc: normalizeBoolean(s.VTCEnabled), status: s.SeatStatus || (occupant ? 'Occupied' : 'Available'), notes: s.Notes || '', seatId: s.Id });
-    html += '<div class="seat-marker ' + cls + '" style="left:' + s.XCoord + 'px;top:' + s.YCoord + 'px" data-seat-tooltip="' + escAttr(tooltip) + '" data-seat-id="' + escAttr(s.Id) + '"><span class="seat-marker-label">' + escHtml(s.SeatLabel || s.SeatID || '') + '</span></div>';
+    var statusText = s.SeatStatus || (occupant ? 'Occupied' : 'Available');
+    var seatLabel = s.SeatLabel || s.SeatID || 'Seat';
+    var ariaLabel = 'Seat ' + seatLabel + ': ' + (occupant || 'unoccupied') + ', ' + statusText;
+    html += '<div class="seat-marker ' + cls + '" style="left:' + s.XCoord + 'px;top:' + s.YCoord + 'px" data-seat-id="' + escAttr(s.Id) + '" role="button" tabindex="0" aria-label="' + escAttr(ariaLabel) + '"><span class="seat-marker-label">' + escHtml(seatLabel) + '</span></div>';
   });
   if (isPicker && ui.pickerPending) {
     html += '<div class="picker-pending" style="left:' + ui.pickerPending.x + 'px;top:' + ui.pickerPending.y + 'px"></div>';
@@ -4455,6 +4456,9 @@ function onFloorPlanLoad(){
   ui.panX = 0; ui.panY = 0;
   applyFloorPlanTransform();
   initFloorPlanInteraction();
+  if (ui._justPlacedId) {
+    setTimeout(function(){ var u = ensureFacilityUi(); u._justPlacedId = null; }, 600);
+  }
 }
 function onFloorPlanError(){
   var container = document.getElementById('floorplanContainer');
@@ -4466,44 +4470,26 @@ function applyFloorPlanTransform(){
   var ui = ensureFacilityUi();
   inner.style.transform = 'translate(' + ui.panX + 'px,' + ui.panY + 'px) scale(' + ui.zoom + ')';
 }
-function initFloorPlanInteraction(){
-  var container = document.getElementById('floorplanContainer');
-  if (!container || container._fpInit) { return; }
-  container._fpInit = true;
-  var ui = ensureFacilityUi();
-  var dragging = false; var startX = 0; var startY = 0; var startPanX = 0; var startPanY = 0; var moved = false;
-  var seatDragging = null; var seatDragStartX = 0; var seatDragStartY = 0; var seatOrigX = 0; var seatOrigY = 0; var seatMoved = false;
-  container.addEventListener('mousedown', function(e){
-    if (e.button !== 0) { return; }
-    /* Seat drag in picker mode */
-    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
-      var marker = e.target.closest ? e.target.closest('.seat-marker.draggable') : null;
-      if (marker) {
-        seatDragging = marker; seatMoved = false;
-        seatDragStartX = e.clientX; seatDragStartY = e.clientY;
-        seatOrigX = parseInt(marker.style.left, 10) || 0;
-        seatOrigY = parseInt(marker.style.top, 10) || 0;
-        marker.classList.add('dragging-seat');
-        e.preventDefault(); e.stopPropagation();
-        return;
-      }
-      return;
-    }
-    dragging = true; moved = false; startX = e.clientX; startY = e.clientY; startPanX = ui.panX; startPanY = ui.panY;
-    container.classList.add('dragging');
-    e.preventDefault();
-  });
+/* Module-level drag state — shared between container and document listeners */
+var _fpDrag = { dragging: false, moved: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0, seatDragging: null, seatMoved: false, seatDragStartX: 0, seatDragStartY: 0, seatOrigX: 0, seatOrigY: 0 };
+var _fpDocListenersAttached = false;
+var MOVE_THRESHOLD = 3;
+function ensureFloorPlanDocListeners(){
+  if (_fpDocListenersAttached) { return; }
+  _fpDocListenersAttached = true;
   document.addEventListener('mousemove', function(e){
-    /* Seat dragging */
-    if (seatDragging) {
-      var dx = (e.clientX - seatDragStartX) / ui.zoom;
-      var dy = (e.clientY - seatDragStartY) / ui.zoom;
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { seatMoved = true; }
-      seatDragging.style.left = Math.round(seatOrigX + dx) + 'px';
-      seatDragging.style.top = Math.round(seatOrigY + dy) + 'px';
+    var container = document.getElementById('floorplanContainer');
+    if (!container) { return; }
+    var ui = ensureFacilityUi();
+    if (_fpDrag.seatDragging) {
+      if (!document.body.contains(_fpDrag.seatDragging)) { _fpDrag.seatDragging = null; return; }
+      var dx = (e.clientX - _fpDrag.seatDragStartX) / ui.zoom;
+      var dy = (e.clientY - _fpDrag.seatDragStartY) / ui.zoom;
+      if (Math.abs(dx) > MOVE_THRESHOLD || Math.abs(dy) > MOVE_THRESHOLD) { _fpDrag.seatMoved = true; }
+      _fpDrag.seatDragging.style.left = Math.round(_fpDrag.seatOrigX + dx) + 'px';
+      _fpDrag.seatDragging.style.top = Math.round(_fpDrag.seatOrigY + dy) + 'px';
       return;
     }
-    /* Crosshair tracking in picker mode */
     if (ui.floorPlanMode === 'picker') {
       var chH = document.getElementById('fpCrosshairH');
       var chV = document.getElementById('fpCrosshairV');
@@ -4523,34 +4509,87 @@ function initFloorPlanInteraction(){
         }
       }
     }
-    if (!dragging) { return; }
-    var ddx = e.clientX - startX; var ddy = e.clientY - startY;
-    if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) { moved = true; }
-    ui.panX = startPanX + ddx; ui.panY = startPanY + ddy;
+    if (!_fpDrag.dragging) { return; }
+    var ddx = e.clientX - _fpDrag.startX; var ddy = e.clientY - _fpDrag.startY;
+    if (Math.abs(ddx) > MOVE_THRESHOLD || Math.abs(ddy) > MOVE_THRESHOLD) { _fpDrag.moved = true; }
+    ui.panX = _fpDrag.startPanX + ddx; ui.panY = _fpDrag.startPanY + ddy;
+    clampFloorPlanPan();
     applyFloorPlanTransform();
   });
-  document.addEventListener('mouseup', function(e){
-    if (seatDragging) {
-      seatDragging.classList.remove('dragging-seat');
-      if (seatMoved) {
-        var newX = parseInt(seatDragging.style.left, 10);
-        var newY = parseInt(seatDragging.style.top, 10);
-        var seatId = seatDragging.getAttribute('data-seat-id');
-        saveSeatPosition(seatId, newX, newY);
+  document.addEventListener('mouseup', function(){
+    var container = document.getElementById('floorplanContainer');
+    if (_fpDrag.seatDragging) {
+      var marker = _fpDrag.seatDragging;
+      marker.classList.remove('dragging-seat');
+      if (_fpDrag.seatMoved) {
+        var newX = parseInt(marker.style.left, 10);
+        var newY = parseInt(marker.style.top, 10);
+        saveSeatPosition(marker.getAttribute('data-seat-id'), newX, newY, marker, _fpDrag.seatOrigX, _fpDrag.seatOrigY);
       }
-      seatDragging = null; seatMoved = false;
+      _fpDrag.seatDragging = null; _fpDrag.seatMoved = false;
       return;
     }
-    if (dragging) { dragging = false; container.classList.remove('dragging'); }
+    if (_fpDrag.dragging) {
+      _fpDrag.dragging = false;
+      if (container) { container.classList.remove('dragging'); }
+    }
+  });
+}
+function clampFloorPlanPan(){
+  var container = document.getElementById('floorplanContainer');
+  var img = document.getElementById('floorplanImg');
+  if (!container || !img || !img.naturalWidth) { return; }
+  var ui = ensureFacilityUi();
+  var cw = container.clientWidth, ch = container.clientHeight;
+  var iw = img.naturalWidth * ui.zoom, ih = img.naturalHeight * ui.zoom;
+  var margin = 80;
+  ui.panX = Math.max(Math.min(ui.panX, cw - margin), margin - iw);
+  ui.panY = Math.max(Math.min(ui.panY, ch - margin), margin - ih);
+}
+function initFloorPlanInteraction(){
+  ensureFloorPlanDocListeners();
+  var container = document.getElementById('floorplanContainer');
+  if (!container || container._fpInit) { return; }
+  container._fpInit = true;
+  var ui = ensureFacilityUi();
+  container.addEventListener('mousedown', function(e){
+    if (e.button !== 0) { return; }
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      var marker = e.target.closest ? e.target.closest('.seat-marker.draggable') : null;
+      if (marker) {
+        _fpDrag.seatDragging = marker; _fpDrag.seatMoved = false;
+        _fpDrag.seatDragStartX = e.clientX; _fpDrag.seatDragStartY = e.clientY;
+        _fpDrag.seatOrigX = parseInt(marker.style.left, 10) || 0;
+        _fpDrag.seatOrigY = parseInt(marker.style.top, 10) || 0;
+        marker.classList.add('dragging-seat');
+        e.preventDefault(); e.stopPropagation();
+        return;
+      }
+      return;
+    }
+    _fpDrag.dragging = true; _fpDrag.moved = false;
+    _fpDrag.startX = e.clientX; _fpDrag.startY = e.clientY;
+    _fpDrag.startPanX = ui.panX; _fpDrag.startPanY = ui.panY;
+    container.classList.add('dragging');
+    e.preventDefault();
   });
   container.addEventListener('wheel', function(e){
     e.preventDefault();
-    var delta = e.deltaY > 0 ? -0.1 : 0.1;
-    ui.zoom = Math.max(0.15, Math.min(5, ui.zoom + delta));
+    var oldZoom = ui.zoom;
+    var factor = e.deltaY > 0 ? 0.9 : 1.1;
+    var newZoom = Math.max(0.15, Math.min(5, oldZoom * factor));
+    if (newZoom === oldZoom) { return; }
+    var cr = container.getBoundingClientRect();
+    var mx = e.clientX - cr.left;
+    var my = e.clientY - cr.top;
+    ui.panX = mx - ((mx - ui.panX) * (newZoom / oldZoom));
+    ui.panY = my - ((my - ui.panY) * (newZoom / oldZoom));
+    ui.zoom = newZoom;
+    clampFloorPlanPan();
     applyFloorPlanTransform();
   }, { passive: false });
   container.addEventListener('click', function(e){
-    if (moved || seatMoved) { return; }
+    if (_fpDrag.moved || _fpDrag.seatMoved) { return; }
     if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
       var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
       if (marker) { openSeatEditModal(marker.getAttribute('data-seat-id')); return; }
@@ -4572,6 +4611,17 @@ function initFloorPlanInteraction(){
     if (!marker && e.target.classList && e.target.classList.contains('seat-marker')) { marker = e.target; }
     if (marker) { hideSeatTooltip(); }
   });
+  container.addEventListener('keydown', function(e){
+    var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
+    if (!marker) { return; }
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      if (ui.floorPlanMode === 'picker' && canSeeAdmin()) { openSeatEditModal(marker.getAttribute('data-seat-id')); }
+      else { showSeatTooltipPinned(marker, e); }
+    } else if (e.key === 'Escape') {
+      hideSeatTooltip();
+    }
+  });
 }
 function floorPlanZoom(direction){
   var ui = ensureFacilityUi();
@@ -4582,10 +4632,21 @@ function floorPlanZoom(direction){
 }
 
 /* ─── Seat Tooltip ─── */
-function showSeatTooltip(marker, e){
-  var raw = marker.getAttribute('data-seat-tooltip');
-  if (!raw) { return; }
-  var data; try { data = JSON.parse(raw); } catch(err) { return; }
+function getSeatTooltipData(seatId){
+  var seats = APP.state.data.seats || [];
+  for (var i = 0; i < seats.length; i++) {
+    if (String(seats[i].Id) === String(seatId)) {
+      var s = seats[i];
+      var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
+      var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
+      return { label: s.SeatLabel || s.SeatID || 'Seat', occupant: occupant, port: s.PortNumber || '', phone: s.PhoneNumber || '', networks: networks.trim(), vtc: normalizeBoolean(s.VTCEnabled), status: s.SeatStatus || (occupant ? 'Occupied' : 'Available'), notes: s.Notes || '', seatId: s.Id };
+    }
+  }
+  return null;
+}
+function showSeatTooltip(marker){
+  var data = getSeatTooltipData(marker.getAttribute('data-seat-id'));
+  if (!data) { return; }
   var tip = document.getElementById('seatTooltip');
   if (!tip) { return; }
   tip.style.pointerEvents = 'none';
@@ -4593,10 +4654,9 @@ function showSeatTooltip(marker, e){
   tip.style.display = 'block';
   positionTooltip(tip, marker);
 }
-function showSeatTooltipPinned(marker, e){
-  var raw = marker.getAttribute('data-seat-tooltip');
-  if (!raw) { return; }
-  var data; try { data = JSON.parse(raw); } catch(err) { return; }
+function showSeatTooltipPinned(marker){
+  var data = getSeatTooltipData(marker.getAttribute('data-seat-id'));
+  if (!data) { return; }
   var tip = document.getElementById('seatTooltip');
   if (!tip) { return; }
   var prev = document.querySelector('.seat-marker.selected');
@@ -4623,8 +4683,14 @@ function buildSeatTooltipHtml(data, showActions){
 }
 function positionTooltip(tip, marker){
   var rect = marker.getBoundingClientRect();
-  tip.style.left = Math.min(rect.left + 20, window.innerWidth - 340) + 'px';
-  tip.style.top = Math.max(10, rect.top - 10) + 'px';
+  var tipW = tip.offsetWidth || 240;
+  var tipH = tip.offsetHeight || 120;
+  var left = rect.left + 20;
+  if (left + tipW > window.innerWidth - 10) { left = Math.max(10, rect.left - tipW - 10); }
+  var top = rect.top - 10;
+  if (top + tipH > window.innerHeight - 10) { top = Math.max(10, window.innerHeight - tipH - 10); }
+  tip.style.left = Math.max(10, left) + 'px';
+  tip.style.top = Math.max(10, top) + 'px';
 }
 function hideSeatTooltip(){
   var tip = document.getElementById('seatTooltip');
@@ -4635,6 +4701,7 @@ function hideSeatTooltip(){
 
 /* ─── Seat Edit / Delete / Reposition ─── */
 function openSeatEditModal(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var seats = APP.state.data.seats || [];
   var seat = null;
   for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
@@ -4669,6 +4736,7 @@ function openSeatEditModal(seatId){
     'Edit seat properties and assignments');
 }
 function saveSeatEdit(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var seatId = APP.modalState.editSeatId;
   if (!seatId) { return; }
   var seatLabel = document.getElementById('editSeatLabel').value;
@@ -4697,6 +4765,7 @@ function saveSeatEdit(){
   }).catch(function(){ toast('Seat update failed.', 'danger'); });
 }
 function deleteSeat(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   if (!confirm('Delete this seat permanently? This cannot be undone.')) { return; }
   deleteListItem(APP.lists.Seats, seatId, { entityType: 'Seat', reason: 'Seat deletion' }).then(function(){
     toast('Seat deleted.', 'ok');
@@ -4705,12 +4774,15 @@ function deleteSeat(seatId){
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
   }).catch(function(){ toast('Delete failed.', 'danger'); });
 }
-function saveSeatPosition(seatId, x, y){
+function saveSeatPosition(seatId, x, y, marker, origX, origY){
   updateListItem(APP.lists.Seats, seatId, { XCoord: String(x), YCoord: String(y) }, { entityType: 'Seat', reason: 'Drag reposition' }).then(function(){
     toast('Seat repositioned to (' + x + ', ' + y + ').', 'ok');
     var seats = APP.state.data.seats || [];
     for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seats[i].XCoord = String(x); seats[i].YCoord = String(y); break; } }
-  }).catch(function(){ toast('Reposition failed — refresh to see actual position.', 'danger'); });
+  }).catch(function(){
+    if (marker && marker.style) { marker.style.left = origX + 'px'; marker.style.top = origY + 'px'; }
+    toast('Reposition failed — seat returned to original position.', 'danger');
+  });
 }
 function highlightSeatOnMap(seatId, x, y){
   if (x === '' || x == null) { toast('This seat is not placed on the map yet.', 'warn'); return; }
@@ -4741,17 +4813,24 @@ function filterSeatSidebar(query){
 function getNextSeatLabel(){
   var seats = APP.state.data.seats || [];
   var ui = ensureFacilityUi();
-  var facilitySeats = seats.filter(function(s){
+  var scopedSeats = seats.filter(function(s){
     if (ui.selectedRoomId) { return s.RoomID && (s.RoomID.Id || s.RoomID) == ui.selectedRoomId; }
     return true;
   });
+  var bestPrefix = '';
+  var bestWidth = 0;
   var maxNum = 0;
-  facilitySeats.forEach(function(s){
-    var label = s.SeatLabel || '';
-    var m = label.match(/(\d+)\s*$/);
-    if (m) { var n = parseInt(m[1], 10); if (n > maxNum) { maxNum = n; } }
+  scopedSeats.forEach(function(s){
+    var label = String(s.SeatLabel || '');
+    var m = label.match(/^(.*?)(\d+)\s*$/);
+    if (m) {
+      var n = parseInt(m[2], 10);
+      if (n > maxNum) { maxNum = n; bestPrefix = m[1]; bestWidth = m[2].length; }
+    }
   });
-  return String(maxNum + 1);
+  var nextNum = String(maxNum + 1);
+  while (nextNum.length < bestWidth) { nextNum = '0' + nextNum; }
+  return bestPrefix + nextNum;
 }
 
 /* ─── Coordinate Picker Tool ─── */
@@ -4798,8 +4877,10 @@ function openSeatPlacementModal(x, y){
 function clearPickerPending(){
   var ui = ensureFacilityUi();
   ui.pickerPending = null;
+  if (APP.modalState) { APP.modalState.pickerCoords = null; }
 }
 function savePickerSeat(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var coords = APP.modalState.pickerCoords;
   if (!coords) { toast('Missing coordinate data.', 'danger'); return; }
   var roomId = document.getElementById('pickerRoom').value;
@@ -4844,27 +4925,51 @@ function savePickerSeat(){
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
   }).catch(function(){ toast('Seat creation failed.', 'danger'); });
 }
+function isValidFloorPlanUrl(url){
+  if (!url) { return false; }
+  return /^(https?:\/\/|\/)/i.test(url);
+}
 function setFloorPlanUrl(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var ui = ensureFacilityUi();
   var facility = null;
   (APP.state.data.facilities || []).some(function(f){ if (f.Id === ui.selectedFacilityId) { facility = f; return true; } return false; });
   if (!facility) { toast('Select a facility first.', 'danger'); return; }
-  var currentUrl = facility.FloorPlanUrl || '';
+  var room = null;
+  if (ui.selectedRoomId) {
+    (APP.state.data.rooms || []).some(function(r){ if (r.Id === ui.selectedRoomId) { room = r; return true; } return false; });
+  }
+  var target = room || facility;
+  var targetLabel = room ? ('Room ' + (room.RoomNumber || room.Title || '')) : (facility.BuildingNumber || facility.Title || 'Building');
+  var currentUrl = (target.FloorPlanUrl) || '';
+  var scopeNote = room
+    ? 'This URL will override the facility floor plan for this room only.'
+    : 'This URL applies to the whole facility (rooms can override it).';
   var body = '<div class="form-grid">'
-    + formField('Building', '<input class="input" value="' + escAttr(facility.BuildingNumber || facility.Title || '') + '" disabled />')
+    + formField('Target', '<input class="input" value="' + escAttr(targetLabel) + '" disabled />')
     + '<div class="full">' + formField('Floor Plan Image URL', '<input id="floorPlanUrlInput" class="input" placeholder="e.g., /sites/CCSDAdminSPA/SiteAssets/Images/Building Plans/Bldg 2028 Floor 1.jpg" value="' + escAttr(currentUrl) + '" />') + '</div>'
-    + '<div class="full"><div class="small-note">Enter the SharePoint-relative or full URL to the floor plan image (JPG/PNG). This will be stored on the facility record.</div></div>'
+    + '<div class="full"><div class="small-note">Must start with <code>http://</code>, <code>https://</code>, or <code>/</code> (site-relative). ' + escHtml(scopeNote) + '</div></div>'
     + '</div>';
-  openModal('Set Floor Plan URL', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-floorplan-url">Save URL</button></div>', facility.BuildingNumber || '');
+  APP.modalState.floorPlanTarget = room ? { kind: 'room', id: room.Id } : { kind: 'facility', id: facility.Id };
+  openModal('Set Floor Plan URL', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-floorplan-url">Save URL</button></div>', targetLabel);
 }
 function saveFloorPlanUrl(){
-  var ui = ensureFacilityUi();
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var url = (document.getElementById('floorPlanUrlInput').value || '').trim();
   if (!url) { toast('URL is required.', 'danger'); return; }
-  var facility = null;
-  (APP.state.data.facilities || []).some(function(f){ if (f.Id === ui.selectedFacilityId) { facility = f; return true; } return false; });
-  if (!facility) { toast('No facility selected.', 'danger'); return; }
-  updateListItem(APP.lists.Facilities, facility.Id, { FloorPlanUrl: url }, { entityType: 'Facility', before: facility, reason: 'Set floor plan URL' }).then(function(){
+  if (!isValidFloorPlanUrl(url)) { toast('URL must start with http://, https://, or /.', 'danger'); return; }
+  var target = APP.modalState && APP.modalState.floorPlanTarget;
+  if (!target) { toast('No target selected.', 'danger'); return; }
+  var list, record;
+  if (target.kind === 'room') {
+    list = APP.lists.Rooms;
+    (APP.state.data.rooms || []).some(function(r){ if (r.Id === target.id) { record = r; return true; } return false; });
+  } else {
+    list = APP.lists.Facilities;
+    (APP.state.data.facilities || []).some(function(f){ if (f.Id === target.id) { record = f; return true; } return false; });
+  }
+  if (!record) { toast('Target record not found.', 'danger'); return; }
+  updateListItem(list, record.Id, { FloorPlanUrl: url }, { entityType: target.kind === 'room' ? 'Room' : 'Facility', before: record, reason: 'Set floor plan URL' }).then(function(){
     toast('Floor plan URL saved.', 'ok');
     closeModal();
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
@@ -4953,7 +5058,6 @@ function renderFacilities(){
         });
         html += '<div class="org-detail-hero" style="margin-bottom:16px"><div class="org-detail-title">' + escHtml((selFacility.BuildingNumber || selFacility.Title || 'Building') + ' — Full Floor Plan') + '</div><div class="org-detail-sub">All seats across all rooms shown on the building floor plan. Select a room above to filter.</div></div>';
         html += renderFloorPlanView(allFacSeats, null, selFacility, fpUrl);
-        html += '<div id="seatTooltip" class="seat-tooltip" style="display:none"></div>';
       } else {
         html += '<div class="empty">Select a room from the facility panel to view its seat map.' + (canSeeAdmin() ? ' Or <button class="btn subtle" data-action="enter-floorplan-url" style="display:inline">set a floor plan image URL</button> for this building.' : '') + '</div>';
       }
@@ -4967,36 +5071,59 @@ function renderFacilities(){
 
 /* ─── Bulk Seat Import from CSV ─── */
 function openBulkSeatImportModal(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var rooms = APP.state.data.rooms || [];
   var roomOptions = rooms.map(function(r){ return '<option value="' + escAttr(r.Id) + '">' + escHtml((r.RoomNumber || r.Title || 'Room') + (r.FacilityID ? ' @ ' + (r.FacilityID.Title || '') : '')) + '</option>'; }).join('');
-  var body = '<div style="margin-bottom:12px">Bulk-create seats. Format: <code>SeatLabel, X%, Y%</code></div>'
+  var body = '<div style="margin-bottom:12px">Bulk-create seats. Format per line: <code>SeatLabel, X, Y</code> where X/Y are pixel coordinates on the floor-plan image. Omit X/Y to create unplaced seats.</div>'
     + '<div class="form-grid">' + formField('Room', '<select id="bulkSeatRoom" class="select"><option value="">-- Select Room --</option>' + roomOptions + '</select>') + '</div>'
-    + '<div style="margin-top:12px">' + formField('CSV Data', '<textarea id="bulkSeatCsv" class="textarea" rows="8" placeholder="A-101, 25.5, 42.3\nA-102, 30.2, 42.3\nA-103, 35.0, 42.3"></textarea>') + '</div>';
+    + '<div style="margin-top:12px">' + formField('CSV Data', '<textarea id="bulkSeatCsv" class="textarea" rows="8" placeholder="A-101, 120, 240&#10;A-102, 160, 240&#10;A-103"></textarea>') + '</div>';
   openModal('Bulk Seat Import', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-seats">Import</button></div>');
 }
 function saveBulkSeats(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var roomId = document.getElementById('bulkSeatRoom').value;
   if (!roomId) { toast('Please select a room.', 'danger'); return; }
   var raw = (document.getElementById('bulkSeatCsv').value || '').trim();
   if (!raw) { toast('No data provided.', 'danger'); return; }
   var lines = raw.split('\n').filter(function(l){ return l.trim(); });
-  var promises = lines.map(function(line){
+  var rowErrors = [];
+  var promises = lines.map(function(line, idx){
     var parts = line.split(',').map(function(s){ return s.trim(); });
-    if (parts.length < 1) { return Promise.resolve(); }
-    return createListItem(APP.lists.Seats, {
-      Title: parts[0] || 'Seat',
+    var label = parts[0];
+    if (!label) { rowErrors.push('Line ' + (idx + 1) + ': missing seat label'); return Promise.resolve({ skipped: true }); }
+    var values = {
+      Title: label,
+      SeatLabel: label,
+      SeatID: label,
       RoomID: parseInt(roomId, 10),
-      SeatX: parts[1] ? parseFloat(parts[1]) : 0,
-      SeatY: parts[2] ? parseFloat(parts[2]) : 0,
-      SeatType: 'Standard'
-    }, { entityType: 'Seat', reason: 'Bulk import' });
+      HasNIPR: false,
+      HasSIPR: false,
+      HasJWICS: false,
+      VTCEnabled: false,
+      SeatStatus: 'Available'
+    };
+    if (parts[1] !== undefined && parts[1] !== '' && parts[2] !== undefined && parts[2] !== '') {
+      var x = parseInt(parts[1], 10);
+      var y = parseInt(parts[2], 10);
+      if (isNaN(x) || isNaN(y)) { rowErrors.push('Line ' + (idx + 1) + ' (' + label + '): invalid X/Y'); return Promise.resolve({ skipped: true }); }
+      values.XCoord = String(x);
+      values.YCoord = String(y);
+    }
+    return createListItem(APP.lists.Seats, values, { entityType: 'Seat', reason: 'Bulk import' });
   });
   toast('Importing ' + lines.length + ' seats...', 'ok');
-  Promise.all(promises).then(function(){
-    toast(lines.length + ' seats imported.', 'ok');
+  Promise.all(promises.map(function(p){ return p.then(function(r){ return { ok: !(r && r.skipped) }; }, function(err){ return { ok: false, err: err }; }); })).then(function(results){
+    var created = 0, failed = rowErrors.length;
+    results.forEach(function(r, i){ if (r.ok) { created++; } else if (!r.err) { /* already counted in rowErrors */ } else { failed++; rowErrors.push('Line ' + (i + 1) + ': ' + (r.err && r.err.message ? r.err.message : 'create failed')); } });
     closeModal();
+    if (failed) {
+      toast(created + ' imported, ' + failed + ' failed.', 'warn');
+      console.warn('[Seat bulk import]', rowErrors);
+    } else {
+      toast(created + ' seats imported.', 'ok');
+    }
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
-  }).catch(function(){ toast('Some imports may have failed.', 'danger'); });
+  });
 }
 
 /* ─── Multi-Floor Navigation ─── */
@@ -7646,6 +7773,7 @@ function filterAssetTables(term){
   }
 }
 var debouncedFilterCards = debounce(function(selector, value){ filterCards(selector, value); }, 180);
+var debouncedFilterSeatSidebar = debounce(function(value){ filterSeatSidebar(value); }, 140);
 var debouncedOrgSearch = debounce(function(value){ ensureOrgChartUi(); APP.state.orgUi.search = value || ''; renderOrganizationsView(); }, 250);
 var debouncedAssetFilter = debounce(function(value){ getAssetUi(); APP.state.assetUi.search = value || ''; filterAssetTables(value); }, 180);
 function handleInput(e){
@@ -7656,7 +7784,7 @@ function handleInput(e){
   if (id === 'requestsSearchInput') { debouncedFilterCards('#requestTableBody', e.target.value); }
   if (id === 'facilitiesSearchInput') { debouncedFilterCards('#facilitiesTableBody', e.target.value); }
   if (id === 'assetSearchInput') { debouncedAssetFilter(e.target.value); return; }
-  if (id === 'seatSidebarSearch') { filterSeatSidebar(e.target.value); return; }
+  if (id === 'seatSidebarSearch') { debouncedFilterSeatSidebar(e.target.value); return; }
   if (id === 'calOrgScope') { var ui = ensureCalendarUi(); ui.scopeOrgId = e.target.value ? Number(e.target.value) : null; renderCalendar(); return; }
   if (id === 'calTypeFilter') { ensureCalendarUi().typeFilter = e.target.value; renderCalendar(); return; }
   if (id === 'calSearchInput') { ensureCalendarUi().search = e.target.value; renderCalendar(); return; }
@@ -7729,7 +7857,7 @@ function handleClick(e){
   if (action === 'refresh-all') { refreshAll(); return; }
   if (action === 'select-facility') { ensureFacilityUi(); var fid = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = APP.state.facilityUi.selectedFacilityId === fid ? null : fid; APP.state.facilityUi.selectedRoomId = null; renderFacilities(); return; }
   if (action === 'select-room') { ensureFacilityUi(); APP.state.facilityUi.selectedRoomId = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = Number(el.getAttribute('data-facility')); renderFacilities(); return; }
-  if (action === 'enter-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
+  if (action === 'enter-seat-picker') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
   if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; renderFacilities(); return; }
   if (action === 'save-picker-seat') { savePickerSeat(); return; }
   if (action === 'edit-seat-inline') { openSeatEditModal(el.getAttribute('data-seat-id')); return; }
