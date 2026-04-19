@@ -253,7 +253,7 @@ false positives on the script side, not problems in SharePoint:
 > **No prerequisites from you. All code-only changes.**
 
 - [x] Room booking integration with Calendar conference room scheduling ✅ Done. Conference rooms appear as a Rooms tab in Calendar module with availability grid, booking modals, and conflict detection.
-- [ ] Floor plan: room boundary overlays (draw room outlines)
+- [x] Floor plan: room boundary overlays (draw room outlines) ✅ Done 2026-04-19. SVG polygon overlays on floor plan images, color-coded (SCIF=red, standard=blue). Admin drawing tool: enter drawing mode, click corners, save to CCSD_Config. `loadRoomBoundaries()` loads on facilities render.
 
 ---
 
