@@ -8658,20 +8658,38 @@ function saveSF182Edit(){
 
 /* ─── Asset Assignment Creation ─── */
 function openCreateHardwareAssignmentModal(){
-  return Promise.all([ensureAssetsLoaded(), ensurePeopleLoaded()]).then(function(){
+  return Promise.all([ensureAssetsLoaded(), ensurePeopleLoaded(), ensureFacilitiesLoaded()]).then(function(){
     var idx = buildAssetIndex();
     var hwOpts = idx.hardwareAssets.map(function(a){ return '<option value="' + escAttr(a.Id) + '">' + escHtml((a.AssetTag || a.Title || a.HardwareAssetID || 'Asset') + ' - ' + (a.Make || '') + ' ' + (a.Model || '')) + '</option>'; }).join('');
     var personOpts = (APP.state.data.people || []).map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
     var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){ return '<option value="' + escAttr(e) + '">' + escHtml(e) + '</option>'; }).join('');
+    var seats = APP.state.data.seats || [];
+    var seatOpts = '<option value="">— Auto-suggest from person —</option>' + seats.map(function(s){ return '<option value="' + escAttr(s.Id) + '">' + escHtml((s.SeatLabel || s.SeatID || 'Seat') + (s.RoomID && s.RoomID.Title ? ' (' + s.RoomID.Title + ')' : '')) + '</option>'; }).join('');
     var body = '<div class="form-grid">'
       + formField('Hardware Asset', '<select id="hwAssignAsset" class="select"><option value="">-- Select --</option>' + hwOpts + '</select>')
-      + formField('Assign To Person', '<select id="hwAssignPerson" class="select"><option value="">-- Select --</option>' + personOpts + '</select>')
+      + formField('Assign To Person', '<select id="hwAssignPerson" class="select" onchange="suggestSeatForPerson(this.value)"><option value="">-- Select --</option>' + personOpts + '</select>')
+      + formField('Seat (auto-suggested)', '<select id="hwAssignSeat" class="select">' + seatOpts + '</select><div id="hwSeatHint" style="font-size:10px;color:var(--text-muted);margin-top:2px"></div>')
       + formField('Environment', '<select id="hwAssignEnv" class="select">' + envOpts + '</select>')
       + formField('Assigned Date', '<input id="hwAssignDate" type="date" class="input" value="' + escAttr(new Date().toISOString().slice(0,10)) + '" />')
       + '<div class="full">' + formField('Notes', '<textarea id="hwAssignNotes" class="textarea" style="min-height:60px" placeholder="Assignment context, justification, or ticket reference."></textarea>') + '</div>'
       + '</div>';
     openModal('New Hardware Assignment', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-hw-assignment">Create Assignment</button></div>', 'Links a hardware asset to a person');
   });
+}
+
+function suggestSeatForPerson(personId){
+  if (!personId) { return; }
+  var seats = APP.state.data.seats || [];
+  var match = seats.filter(function(s){ return s.CurrentPersonID && String(s.CurrentPersonID.Id) === String(personId); })[0];
+  var sel = document.getElementById('hwAssignSeat');
+  var hint = document.getElementById('hwSeatHint');
+  if (sel && match) {
+    sel.value = String(match.Id);
+    if (hint) { hint.textContent = '✓ Auto-suggested seat: ' + (match.SeatLabel || match.SeatID || '') + (match.RoomID && match.RoomID.Title ? ' in ' + match.RoomID.Title : ''); hint.style.color = 'var(--success,#27ae60)'; }
+  } else if (hint) {
+    hint.textContent = 'No seat assigned to this person — leave blank or select manually.';
+    hint.style.color = 'var(--text-muted)';
+  }
 }
 function saveHardwareAssignment(){
   var assetId = document.getElementById('hwAssignAsset').value;
@@ -8690,6 +8708,8 @@ function saveHardwareAssignment(){
     Status: 'Active',
     Notes: document.getElementById('hwAssignNotes').value
   };
+  var seatSel = document.getElementById('hwAssignSeat');
+  if (seatSel && seatSel.value) { values.SeatID = parseInt(seatSel.value, 10); }
   createListItem(APP.lists.HardwareAssignments, values, { entityType: 'Hardware Assignment', reason: 'SPA new assignment' }).then(function(){
     toast('Hardware assignment created.', 'ok');
     closeModal();
@@ -11668,6 +11688,8 @@ window.ensureRolesLoaded = ensureRolesLoaded;
 window.ensurePeopleLoaded = ensurePeopleLoaded;
 window.ensureMyPersonnelLoaded = ensureMyPersonnelLoaded;
 window.ensureCurrentPersonnelLoaded = ensureCurrentPersonnelLoaded;
+window.suggestSeatForPerson = suggestSeatForPerson;
+window.filterIncidentTable = filterIncidentTable;
 window.CCSD_APP = APP;
 
 bootstrap();

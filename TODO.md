@@ -198,7 +198,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you. All code-only.**
 
-- [ ] Seat-to-asset auto-suggestion
+- [x] Seat-to-asset auto-suggestion ✅ Done 2026-04-18. New Seat dropdown in Hardware Assignment modal. `suggestSeatForPerson()` auto-fills seat when person is selected (looks up CurrentPersonID on Seats list). Hint text shows when seat is auto-suggested or when person has no seat.
 
 ---
 
