@@ -131,7 +131,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you. These are all code-only changes.**
 
-- [ ] Drag-to-create time-off entries (click + drag across days)
+- [x] Drag-to-create time-off entries (click + drag across days) ✅ Done 2026-04-19. `initCalendarDragToCreate()` adds mousedown/mousemove/mouseup handlers to month view day cells. Drag highlights date range with outline, mouseup opens Add Time Off modal pre-filled with selected dates.
 - [x] Multi-day entry visual spanning ✅ Done 2026-04-18. Multi-day entries now show ◄ / ► continuation arrows and connected border-radius (rounded ends, square middle) to give a visual span effect. Tooltip shows full date range.
 
 ---
