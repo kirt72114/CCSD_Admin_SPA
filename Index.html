@@ -1578,6 +1578,38 @@ function attachFileToListItem(listTitle, itemId, file){
   });
 }
 
+function deleteListItem(listTitle, itemId, meta){
+  meta = meta || {};
+  function send(forceDigest){
+    return ensureFormDigest(forceDigest).then(function(digest){
+      var headers = {
+        'Accept': 'application/json;odata=verbose',
+        'IF-MATCH': '*',
+        'X-HTTP-Method': 'DELETE'
+      };
+      if (digest) { headers['X-RequestDigest'] = digest; }
+      return xhr({
+        method: 'POST',
+        url: apiUrl("/web/lists/GetByTitle('" + escOData(listTitle) + "')/items(" + itemId + ")"),
+        headers: headers,
+        body: null
+      });
+    });
+  }
+  return send(false).catch(function(err){
+    if (isDigestFailure(err)) { return send(true); }
+    throw err;
+  }).then(function(data){
+    if (!(meta && meta.noAudit) && listTitle !== APP.lists.AppAudit && listTitle !== APP.lists.AppTelemetry) {
+      logAudit('Delete', meta && meta.entityType ? meta.entityType : listTitle, meta && meta.before ? meta.before : null, null, { listTitle: listTitle, itemId: itemId, reason: meta && meta.reason, correlationId: meta && meta.correlationId });
+    }
+    return data;
+  }).catch(function(err){
+    addDiagnostic('error', 'deleteListItem:' + listTitle, 'Delete failed for ' + listTitle + ' #' + itemId, { detail: err && err.text ? err.text : err, spMessage: extractSpErrorMessage(err), listTitle: listTitle, itemId: itemId });
+    throw err;
+  });
+}
+
 function updateListItem(listTitle, itemId, values, meta){
   meta = meta || {};
   return Promise.all([buildWritePayload(listTitle, values), getListEntityType(listTitle)]).then(function(all){

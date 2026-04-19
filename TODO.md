@@ -286,7 +286,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you.**
 
-- [ ] Audit all CRUD operations (ensure AppAuditLog coverage)
+- [x] Audit all CRUD operations (ensure AppAuditLog coverage) ✅ Done 2026-04-18. Added missing `deleteListItem` function that auto-logs to AppAuditLog. createListItem and updateListItem already had full audit coverage. All write paths now log Create/Update/Delete with entityType, before-state, reason, and correlationId.
 - [ ] Role-based field visibility (hide sensitive fields from non-supervisors)
 
 ### Data Integrity (P2) — 💻
