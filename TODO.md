@@ -340,8 +340,303 @@ No action — log to run history and exit.
 
 ## 5. Scheduled Report Email (P3) — 🤝
 
-- [ ] **Requires Power Automate** — See Section 4 notes. Generate PDF/CSV reports
-  on schedule and email to configured recipients.
+> **Requires Power Automate. Sends a weekly summary email to configured
+> recipients with key organizational metrics pulled directly from SharePoint
+> lists. Power Automate cannot render the SPA's in-browser reports, so this
+> flow builds an HTML summary table from list queries.**
+
+- [ ] **Create CCSD_Config entries for report recipients** — 👤
+  - Key: `ScheduledReport-Recipients`, Value: semicolon-separated emails
+    (e.g. `admin@ccsd.mil;supervisor@ccsd.mil`)
+  - Key: `ScheduledReport-Enabled`, Value: `true` or `false`
+
+- [ ] **Create Power Automate flow: "CCSD – Weekly Summary Report"** — 👤
+
+### Flow: CCSD – Weekly Summary Report
+
+**Flow type:** Scheduled cloud flow
+**Connection references:** SharePoint (site owner account), Office 365 Outlook
+
+---
+
+#### Trigger — Recurrence
+
+| Setting | Value |
+|---|---|
+| **Connector** | Schedule |
+| **Trigger** | Recurrence |
+| **Interval** | `1` |
+| **Frequency** | Week |
+| **On these days** | Monday |
+| **At these hours** | `7` |
+| **At these minutes** | `0` |
+| **Time zone** | (Select your local time zone) |
+
+---
+
+#### Step 1 — Get items: Check if reporting is enabled
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_Config` |
+| **Filter Query** | `Title eq 'ScheduledReport-Enabled'` |
+| **Top Count** | `1` |
+
+---
+
+#### Step 2 — Condition: Is reporting enabled?
+
+| Left Side | Operator | Right Side |
+|---|---|---|
+| `@{first(body('Get_items_-_Check_if_reporting_is_enabled')?['value'])?['Value']}` | is equal to | `true` |
+
+##### If No → Terminate (Status: Cancelled, Message: "Scheduled reporting is disabled")
+
+##### If Yes → Continue below
+
+---
+
+#### Step 3 — Get items: Get recipient list
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_Config` |
+| **Filter Query** | `Title eq 'ScheduledReport-Recipients'` |
+| **Top Count** | `1` |
+
+---
+
+#### Step 4 — Initialize variable: `varRecipientList`
+
+| Setting | Value |
+|---|---|
+| **Action** | Initialize variable |
+| **Name** | `varRecipientList` |
+| **Type** | String |
+| **Value** | `@{first(body('Get_items_-_Get_recipient_list')?['value'])?['Value']}` |
+
+---
+
+#### Step 5 — Condition: Do we have recipients?
+
+| Left Side | Operator | Right Side |
+|---|---|---|
+| `@{variables('varRecipientList')}` | is not equal to | *(empty)* |
+
+##### If No → Terminate (Status: Cancelled, Message: "No recipients configured")
+
+##### If Yes → Continue below
+
+---
+
+#### Step 6 — Initialize variable: `varReportHTML`
+
+| Setting | Value |
+|---|---|
+| **Action** | Initialize variable |
+| **Name** | `varReportHTML` |
+| **Type** | String |
+| **Value** | *(empty)* |
+
+---
+
+#### Step 7 — Initialize variable: `varReportDate`
+
+| Setting | Value |
+|---|---|
+| **Action** | Initialize variable |
+| **Name** | `varReportDate` |
+| **Type** | String |
+| **Value** | `@{formatDateTime(utcNow(), 'yyyy-MM-dd')}` |
+
+---
+
+#### Step 8 — Parallel branch: Query all data sources
+
+> Run these Get items actions in parallel (add a parallel branch for each).
+
+##### Step 8a — Get items: All active personnel
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_Personnel` |
+| **Filter Query** | `Status ne 'Departed'` |
+| **Top Count** | `5000` |
+
+##### Step 8b — Get items: Overdue training records
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_TrainingRecords` |
+| **Filter Query** | `ExpirationDate lt '@{formatDateTime(utcNow(), 'yyyy-MM-ddTHH:mm:ssZ')}'` |
+| **Top Count** | `5000` |
+
+##### Step 8c — Get items: Open requests
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_Requests` |
+| **Filter Query** | `Status ne 'Completed' and Status ne 'Cancelled' and Status ne 'Rejected'` |
+| **Top Count** | `5000` |
+
+##### Step 8d — Get items: Open security incidents
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_SecurityIncidents` |
+| **Filter Query** | `Status ne 'Closed' and Status ne 'Resolved'` |
+| **Top Count** | `500` |
+
+##### Step 8e — Get items: Pending notifications (last 7 days)
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_Notifications` |
+| **Filter Query** | `SentDate ge '@{addDays(utcNow(), -7, 'yyyy-MM-ddTHH:mm:ssZ')}'` |
+| **Top Count** | `5000` |
+
+---
+
+#### Step 9 — Compose: Build report HTML
+
+| Setting | Value |
+|---|---|
+| **Action** | Compose |
+| **Inputs** | (see HTML template below) |
+
+```html
+<html>
+<head>
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; color: #333; }
+  h1 { color: #1a365d; border-bottom: 2px solid #6ee0ff; padding-bottom: 8px; }
+  h2 { color: #2c5282; margin-top: 24px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th { background: #1a365d; color: white; padding: 8px 12px; text-align: left; }
+  td { border: 1px solid #ddd; padding: 6px 12px; }
+  tr:nth-child(even) { background: #f7fafc; }
+  .kpi-row { display: flex; gap: 16px; margin: 16px 0; }
+  .kpi { background: #edf2f7; border-radius: 8px; padding: 16px; text-align: center; flex: 1; }
+  .kpi-value { font-size: 28px; font-weight: 700; color: #1a365d; }
+  .kpi-label { font-size: 12px; color: #718096; margin-top: 4px; }
+  .green { color: #38a169; } .yellow { color: #d69e2e; } .red { color: #e53e3e; }
+</style>
+</head>
+<body>
+<h1>CCSD Weekly Summary Report — @{variables('varReportDate')}</h1>
+
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-value">@{length(body('Get_items_-_All_active_personnel')?['value'])}</div>
+    <div class="kpi-label">Active Personnel</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-value">@{length(body('Get_items_-_Overdue_training_records')?['value'])}</div>
+    <div class="kpi-label">Overdue Trainings</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-value">@{length(body('Get_items_-_Open_requests')?['value'])}</div>
+    <div class="kpi-label">Open Requests</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-value">@{length(body('Get_items_-_Open_security_incidents')?['value'])}</div>
+    <div class="kpi-label">Open Security Incidents</div>
+  </div>
+</div>
+
+<h2>Notifications Sent (Last 7 Days)</h2>
+<p>@{length(body('Get_items_-_Pending_notifications')?['value'])} notifications dispatched.</p>
+
+<h2>Open Request Breakdown</h2>
+<table>
+<tr><th>Request Title</th><th>Status</th><th>Assigned To</th><th>Created</th></tr>
+<!-- Power Automate cannot natively loop inside Compose.
+     Use an Apply to each before this step to build an HTML
+     table variable, then reference it here. See Step 9a below. -->
+</table>
+
+<hr/>
+<p style="font-size:11px;color:#a0aec0;">
+This is an automated report from the CCSD Admin application.
+Do not reply to this email. Log in to the application for full details.
+</p>
+</body>
+</html>
+```
+
+> **Important:** Because Power Automate Compose cannot loop, you need to
+> build the request table rows separately:
+
+##### Step 9a — Initialize variable: `varRequestRows` (String, empty)
+
+*(Place this at the top with other variable initializations, after Step 7.)*
+
+##### Step 9b — Apply to each: Build request table rows
+
+| Setting | Value |
+|---|---|
+| **Action** | Apply to each |
+| **Select an output from previous steps** | `@{body('Get_items_-_Open_requests')?['value']}` |
+
+Inside the loop:
+
+**Append to string variable: `varRequestRows`**
+
+| Setting | Value |
+|---|---|
+| **Action** | Append to string variable |
+| **Name** | `varRequestRows` |
+| **Value** | `<tr><td>@{items('Apply_to_each_-_Build_request_table_rows')?['Title']}</td><td>@{items('Apply_to_each_-_Build_request_table_rows')?['Status']}</td><td>@{items('Apply_to_each_-_Build_request_table_rows')?['AssignedTo']}</td><td>@{formatDateTime(items('Apply_to_each_-_Build_request_table_rows')?['Created'], 'yyyy-MM-dd')}</td></tr>` |
+
+> Then in the Compose step (Step 9), replace the `<!-- comment -->` with
+> `@{variables('varRequestRows')}`.
+
+---
+
+#### Step 10 — Send an email (V2): Deliver report
+
+| Setting | Value |
+|---|---|
+| **Action** | Office 365 Outlook – Send an email (V2) |
+| **To** | `@{variables('varRecipientList')}` |
+| **Subject** | `CCSD Weekly Summary Report — @{variables('varReportDate')}` |
+| **Body** | `@{outputs('Compose_-_Build_report_HTML')}` |
+| **Importance** | Normal |
+| **Is HTML** | Yes |
+
+---
+
+#### Flow Settings & Notes
+
+| Setting | Recommendation |
+|---|---|
+| **Concurrency** | Set Apply to each concurrency to **1** (order matters for HTML) |
+| **Timeout** | Default is fine |
+| **Error handling** | Add a "Configure run after → has failed" scope around the Send email step; inside, send a failure alert to flow owner |
+| **Disabling** | Set `ScheduledReport-Enabled` to `false` in CCSD_Config to pause without editing the flow |
+| **Recipient changes** | Update `ScheduledReport-Recipients` in CCSD_Config — no flow edit needed |
+
+#### Testing Checklist
+
+- [ ] Create `ScheduledReport-Enabled` = `true` and `ScheduledReport-Recipients` = your email in CCSD_Config
+- [ ] Manually trigger the flow (click "Run" in PA) → verify email received with KPI strip and request table
+- [ ] Set `ScheduledReport-Enabled` = `false` → run flow → verify it terminates with "Cancelled"
+- [ ] Remove Recipients value → run flow → verify it terminates with "No recipients configured"
+- [ ] Verify overdue training count matches what the SPA reports module shows
 
 ---
 
