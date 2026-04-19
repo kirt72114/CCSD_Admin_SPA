@@ -9920,6 +9920,92 @@ function renderSupervisorHubContent(){
   html += '<div class="kpi-card"><div class="kpi-value">' + onTraining + '</div><div class="kpi-label">Training</div></div>';
   html += '</div>';
 
+  /* SH-07: Readiness scorecard */
+  var trainingRecords = APP.state.data.trainingRecords || [];
+  var catalog = APP.state.data.trainingCatalog || [];
+  var requiredCourses = catalog.filter(function(c){ return normalizeBoolean(c.IsRequired); });
+  var trainCompTeam = 0; var trainTotalTeam = 0;
+  var dpmapData = APP.state.data.performanceTracking || [];
+  var currentFY = new Date().getMonth() >= 9 ? new Date().getFullYear() + 1 : new Date().getFullYear();
+  var dpmapOnTrack = 0;
+  var idpOnFile = 0;
+  teamMembers.forEach(function(p){
+    if (requiredCourses.length > 0) {
+      var myRecs = trainingRecords.filter(function(r){ return r.PersonID && String(r.PersonID.Id) === String(p.Id) && String(r.Status || '').toLowerCase() === 'current'; });
+      requiredCourses.forEach(function(c){
+        trainTotalTeam++;
+        var has = myRecs.some(function(r){ return r.TrainingID && String(r.TrainingID.Id) === String(c.Id); });
+        if (has) trainCompTeam++;
+      });
+    }
+    var dpmap = dpmapData.filter(function(d){ return d.PersonID && String(d.PersonID.Id) === String(p.Id) && String(d.FiscalYear || '') === String(currentFY); });
+    if (dpmap.length > 0) dpmapOnTrack++;
+    if (normalizeBoolean(p.IDPOnFile)) idpOnFile++;
+  });
+  var trainPct = trainTotalTeam > 0 ? Math.round((trainCompTeam / trainTotalTeam) * 100) : 100;
+  var dpmapPct = totalCount > 0 ? Math.round((dpmapOnTrack / totalCount) * 100) : 100;
+  var idpPct = totalCount > 0 ? Math.round((idpOnFile / totalCount) * 100) : 100;
+
+  function scorecardColor(pct){ return pct >= 90 ? '#2e7d32' : pct >= 70 ? '#f57c00' : '#c62828'; }
+
+  html += '<div class="card" style="margin-top:16px"><div class="card-header">Readiness Scorecard</div>';
+  html += '<div class="card-body"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
+
+  html += '<div style="border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center">';
+  html += '<div style="font-size:28px;font-weight:700;color:' + scorecardColor(trainPct) + '">' + trainPct + '%</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted)">Training Compliance</div>';
+  html += '<div style="background:var(--border);border-radius:4px;height:6px;margin-top:6px"><div style="background:' + scorecardColor(trainPct) + ';width:' + trainPct + '%;height:100%;border-radius:4px"></div></div>';
+  html += '</div>';
+
+  html += '<div style="border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center">';
+  html += '<div style="font-size:28px;font-weight:700;color:' + scorecardColor(dpmapPct) + '">' + dpmapPct + '%</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted)">DPMAP On Track (FY' + currentFY + ')</div>';
+  html += '<div style="background:var(--border);border-radius:4px;height:6px;margin-top:6px"><div style="background:' + scorecardColor(dpmapPct) + ';width:' + dpmapPct + '%;height:100%;border-radius:4px"></div></div>';
+  html += '</div>';
+
+  html += '<div style="border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center">';
+  html += '<div style="font-size:28px;font-weight:700;color:' + scorecardColor(idpPct) + '">' + idpPct + '%</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted)">IDP On File</div>';
+  html += '<div style="background:var(--border);border-radius:4px;height:6px;margin-top:6px"><div style="background:' + scorecardColor(idpPct) + ';width:' + idpPct + '%;height:100%;border-radius:4px"></div></div>';
+  html += '</div>';
+
+  var presentPct = totalCount > 0 ? Math.round((present / totalCount) * 100) : 100;
+  html += '<div style="border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center">';
+  html += '<div style="font-size:28px;font-weight:700;color:' + scorecardColor(presentPct) + '">' + presentPct + '%</div>';
+  html += '<div style="font-size:12px;color:var(--text-muted)">Present for Duty</div>';
+  html += '<div style="background:var(--border);border-radius:4px;height:6px;margin-top:6px"><div style="background:' + scorecardColor(presentPct) + ';width:' + presentPct + '%;height:100%;border-radius:4px"></div></div>';
+  html += '</div>';
+
+  html += '</div></div></div>';
+
+  /* SH-07: Recent activity feed */
+  var auditLogs = APP.state.data.auditLogs || [];
+  var recentTeamLogs = auditLogs.filter(function(log){
+    var actorId = log.PersonID && log.PersonID.Id ? String(log.PersonID.Id) : '';
+    return teamIds[actorId] || String(actorId) === String(currentPersonId);
+  }).sort(function(a,b){
+    return new Date(b.Created || b.ActionDate || 0) - new Date(a.Created || a.ActionDate || 0);
+  }).slice(0, 10);
+
+  if (recentTeamLogs.length > 0) {
+    html += '<div class="card" style="margin-top:16px"><div class="card-header">Recent Activity</div>';
+    html += '<div class="card-body" style="max-height:260px;overflow-y:auto">';
+    recentTeamLogs.forEach(function(log){
+      var when = log.Created || log.ActionDate || '';
+      var dateStr = when ? new Date(when).toLocaleDateString() + ' ' + new Date(when).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+      var actor = log.PersonID && log.PersonID.Title ? log.PersonID.Title : 'System';
+      var action = log.Action || log.ActionType || '';
+      var entity = log.EntityType || '';
+      var detail = log.Details || log.Notes || '';
+      html += '<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">';
+      html += '<span style="min-width:130px;color:var(--text-muted)">' + escHtml(dateStr) + '</span>';
+      html += '<span style="min-width:100px;font-weight:500">' + escHtml(actor) + '</span>';
+      html += '<span>' + escHtml(action) + ' ' + escHtml(entity) + (detail ? ' — ' + escHtml(detail.substring(0, 80)) : '') + '</span>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  }
+
   /* Pending actions summary */
   var pendingLeave = timeOffData.filter(function(t){
     var pid = t.PersonID && t.PersonID.Id ? t.PersonID.Id : null;
