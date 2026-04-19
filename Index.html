@@ -8929,6 +8929,43 @@ function redactIncidentForMember(incident){
   };
 }
 
+/* Role-based field visibility helper.
+ * Returns true if the current user can see a sensitive field on a person record.
+ * Supervisors see their direct reports; HR/App Admin see all; otherwise a person
+ * sees only their own sensitive fields. */
+function canSeeSensitiveField(targetPersonId, fieldName){
+  if (hasAnyRole(['App Admin','HR'])) { return true; }
+  var current = APP.state.currentPersonnel;
+  if (!current) { return false; }
+  if (String(current.Id) === String(targetPersonId)) { return true; }
+  /* Supervisor relationship: target.SupervisorPersonID === current */
+  var people = APP.state.data.people || [];
+  var target = people.filter(function(p){ return String(p.Id) === String(targetPersonId); })[0];
+  if (target && target.SupervisorPersonID && String(target.SupervisorPersonID.Id) === String(current.Id)) {
+    /* Supervisor can see most fields, but not extremely sensitive ones */
+    var supervisorBlocked = ['SSN','SocialSecurity','SecurityClearanceLevel','MedicalNotes'];
+    return supervisorBlocked.indexOf(fieldName) < 0;
+  }
+  /* Public fields visible to all */
+  var publicFields = ['FirstName','LastName','Email','Phone','PositionTitle','Rank','Grade','OrgID'];
+  return publicFields.indexOf(fieldName) >= 0;
+}
+
+/* Redact a person record according to viewer's role. Returns a copy with
+ * sensitive fields cleared where viewer lacks permission. */
+function redactPersonForViewer(person){
+  if (!person) { return person; }
+  if (hasAnyRole(['App Admin','HR'])) { return person; }
+  var copy = {};
+  Object.keys(person).forEach(function(k){
+    if (canSeeSensitiveField(person.Id, k)) { copy[k] = person[k]; }
+    else { copy[k] = null; }
+  });
+  copy.Id = person.Id;
+  copy._redacted = true;
+  return copy;
+}
+
 /* IM-25: Incident CSV export with CUI banner header. */
 function exportIncidentCSV(){
   if (!canManageSecurity()) { toast('Access restricted to Security role.', 'danger'); return; }
