@@ -86,15 +86,255 @@ Use `database-audit-webpart.html` any time a new list or column is added to re-v
 ## 4. Email Notification Integration (P1) — 🤝
 
 > **Requires Power Automate flow. Enables email delivery of in-app notifications.**
-
-- [ ] **Create Power Automate flow** — 👤
-  - Trigger: When an item is created in `CCSD_Notifications`
-  - Condition: `NotificationType = 'Security'` (or configurable filter)
-  - Action: Send an email (V2) via O365 connector
-  - For `Sensitive` notifications, use generic email body: "You have a notification. Please log in."
-  - Do NOT include PII or notification body in the email
+> The SPA already writes to `CCSD_Notifications` and `CCSD_NotificationReceipts`.
+> This flow watches for new notifications, resolves recipient email addresses,
+> and sends an email — then stamps the receipt so the SPA knows email was sent.
 
 - [ ] **Build admin config panel for email flow settings** — 💻
+
+- [ ] **Create Power Automate flow: "CCSD – Email Notification Dispatcher"** — 👤
+
+### Flow: CCSD – Email Notification Dispatcher
+
+**Flow type:** Automated cloud flow
+**Connection references:** SharePoint (site owner account), Office 365 Outlook
+
+---
+
+#### Trigger
+
+| Setting | Value |
+|---|---|
+| **Connector** | SharePoint |
+| **Trigger** | When an item is created |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_Notifications` |
+
+---
+
+#### Step 1 — Initialize variable: `varRecipientEmails`
+
+| Setting | Value |
+|---|---|
+| **Action** | Initialize variable |
+| **Name** | `varRecipientEmails` |
+| **Type** | String |
+| **Value** | *(empty)* |
+
+---
+
+#### Step 2 — Initialize variable: `varEmailSubject`
+
+| Setting | Value |
+|---|---|
+| **Action** | Initialize variable |
+| **Name** | `varEmailSubject` |
+| **Type** | String |
+| **Value** | *(empty)* |
+
+---
+
+#### Step 3 — Initialize variable: `varEmailBody`
+
+| Setting | Value |
+|---|---|
+| **Action** | Initialize variable |
+| **Name** | `varEmailBody` |
+| **Type** | String |
+| **Value** | *(empty)* |
+
+---
+
+#### Step 4 — Set variable: `varEmailSubject`
+
+| Setting | Value |
+|---|---|
+| **Action** | Set variable |
+| **Name** | `varEmailSubject` |
+| **Value** | `CCSD Notification: @{triggerOutputs()?['body/Title']}` |
+
+---
+
+#### Step 5 — Condition: Is Sensitivity Sensitive?
+
+| Left Side | Operator | Right Side |
+|---|---|---|
+| `@{triggerOutputs()?['body/SensitivityLevel/Value']}` | is equal to | `Sensitive` |
+
+##### If Yes (Sensitive — generic body, no PII)
+
+###### Step 5a — Set variable: `varEmailBody`
+
+| Setting | Value |
+|---|---|
+| **Action** | Set variable |
+| **Name** | `varEmailBody` |
+| **Value** | (see HTML below) |
+
+```html
+<p>You have a new notification in the CCSD Admin application.</p>
+<p><strong>Category:</strong> @{triggerOutputs()?['body/NotificationType/Value']}</p>
+<p>For security reasons, notification details are not included in this email.
+Please log in to the application to view the full message.</p>
+<p><a href="https://<tenant>.sharepoint.com/sites/Database/SitePages/CCSD-Admin.aspx">
+Open CCSD Admin</a></p>
+```
+
+##### If No (Public/Internal — include body)
+
+###### Step 5b — Set variable: `varEmailBody`
+
+| Setting | Value |
+|---|---|
+| **Action** | Set variable |
+| **Name** | `varEmailBody` |
+| **Value** | (see HTML below) |
+
+```html
+<p>You have a new notification in the CCSD Admin application.</p>
+<p><strong>Category:</strong> @{triggerOutputs()?['body/NotificationType/Value']}</p>
+<p><strong>Details:</strong></p>
+<p>@{triggerOutputs()?['body/Body']}</p>
+<hr/>
+<p><a href="https://<tenant>.sharepoint.com/sites/Database/SitePages/CCSD-Admin.aspx">
+Open CCSD Admin</a></p>
+```
+
+---
+
+#### Step 6 — Condition: Route by AudienceType
+
+> Power Automate does not support `switch` natively in all plans. Use nested
+> conditions or a Switch control (available under "Add an action" > "Switch").
+> Below uses **Switch** for clarity.
+
+**Switch on:** `@{triggerOutputs()?['body/AudienceType/Value']}`
+
+---
+
+##### Case: `Individual`
+
+###### Step 6a-1 — Get items: Lookup Recipient from CCSD_NotificationReceipts
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_NotificationReceipts` |
+| **Filter Query** | `NotificationIDId eq @{triggerOutputs()?['body/ID']}` |
+| **Top Count** | `100` |
+
+###### Step 6a-2 — Apply to each: `value` (from Get items above)
+
+Inside the loop:
+
+**Step 6a-2a — Get item: Lookup personnel email**
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get item |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_Personnel` |
+| **Id** | `@{items('Apply_to_each')?['RecipientPersonIDId']}` |
+
+**Step 6a-2b — Condition: Does person have an email?**
+
+| Left Side | Operator | Right Side |
+|---|---|---|
+| `@{body('Get_item')?['Email']}` | is not equal to | *(empty)* |
+
+If Yes:
+
+**Step 6a-2c — Send an email (V2)**
+
+| Setting | Value |
+|---|---|
+| **Action** | Office 365 Outlook – Send an email (V2) |
+| **To** | `@{body('Get_item')?['Email']}` |
+| **Subject** | `@{variables('varEmailSubject')}` |
+| **Body** | `@{variables('varEmailBody')}` |
+| **Importance** | Normal |
+| **Is HTML** | Yes |
+
+**Step 6a-2d — Update item: Stamp receipt with email sent**
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Update item |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_NotificationReceipts` |
+| **Id** | `@{items('Apply_to_each')?['ID']}` |
+| **DeliveryChannel** | `Both` |
+| **EmailSentDate** | `@{utcNow()}` |
+
+---
+
+##### Case: `Role`
+
+###### Step 6b-1 — Get items: Lookup personnel by role
+
+| Setting | Value |
+|---|---|
+| **Action** | SharePoint – Get items |
+| **Site Address** | `https://<tenant>.sharepoint.com/sites/Database` |
+| **List Name** | `CCSD_NotificationReceipts` |
+| **Filter Query** | `NotificationIDId eq @{triggerOutputs()?['body/ID']}` |
+| **Top Count** | `500` |
+
+> The SPA already created receipts for all role members when the notification
+> was sent. This step retrieves them. The Apply to each loop is identical to
+> the Individual case (steps 6a-2a through 6a-2d).
+
+###### Step 6b-2 — Apply to each (same as Step 6a-2)
+
+*(Duplicate the Apply to each block from the Individual case above.)*
+
+---
+
+##### Case: `Organization`
+
+> Same pattern as Role. The SPA resolves all org members into individual
+> receipts at send time. Retrieve receipts and loop.
+
+###### Step 6c — Same as Role case (steps 6b-1 and 6b-2)
+
+---
+
+##### Case: `All`
+
+> Same pattern. The SPA creates receipts for every active person.
+> ⚠️ For large audiences (500+), consider adding a Concurrency Control
+> setting on the Apply to each loop (set Degree of Parallelism to 20)
+> to avoid throttling.
+
+###### Step 6d — Same as Role case (steps 6b-1 and 6b-2)
+
+---
+
+##### Default (no match)
+
+No action — log to run history and exit.
+
+---
+
+#### Flow Settings & Notes
+
+| Setting | Recommendation |
+|---|---|
+| **Concurrency** | Turn on concurrency for Apply to each; set to **20** |
+| **Timeout** | Default (30 days) is fine; individual actions timeout at 2 min |
+| **Retry policy** | Use default retry for SharePoint connector (4 retries) |
+| **Run after** | For Send email: configure "Run after" → "has succeeded" only |
+| **Error handling** | Add a parallel branch after Send email with "Run after → has failed" that updates the receipt's DeliveryChannel to `InApp` (email failed, in-app only) |
+| **Turn off** | Disable flow when doing bulk imports to avoid email storms |
+
+#### Testing Checklist
+
+- [ ] Create a test notification with AudienceType = `Individual`, SensitivityLevel = `Public` → verify email received with body
+- [ ] Create a test notification with SensitivityLevel = `Sensitive` → verify email has generic body only
+- [ ] Create a notification with AudienceType = `Role`, RecipientRole = `Admin` → verify all admins receive email
+- [ ] Verify `DeliveryChannel` is updated to `Both` and `EmailSentDate` is stamped on each receipt
+- [ ] Create a notification for a person with no Email field → verify no error, receipt stays `InApp`
 
 ---
 
