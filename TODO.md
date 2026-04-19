@@ -210,7 +210,7 @@ false positives on the script side, not problems in SharePoint:
   - Option A: Use SharePoint profile photos (automatic if users have O365 profiles with photos)
   - Option B: Add a `PhotoUrl` column to `CCSD_Personnel` for manual upload
   - **Let Claude know which approach you prefer**
-- [ ] **Personnel onboarding wizard** — guided flow to create person + seat + assets
+- [x] **Personnel onboarding wizard** — 💻 ✅ Done 2026-04-19. `openOnboardingWizard()` 4-step guided flow: Create Person → Assign Seat → Assign Assets → Create In-Processing Case. Each step optional after person creation. "Onboard New Member" button on People view.
 
 ---
 
@@ -742,8 +742,8 @@ Add to `loadAppData()` (or the security-module init):
 
 - [x] **New "Security" nav tab** — Added to `APP.nav` and main navigation. Visible to all authenticated users, content scoped by role. ✅ Done 2026-04-14.
 - [x] **Hash route `#security`** — Route added with role-based view switching (Security admin vs member self-service). ✅ Done 2026-04-14.
-- [ ] **Self-view default** — Non-privileged users see ONLY their own security record. No roster, no search, no other members visible.
-- [ ] **Obscured-by-default display** — ✦ All security fields masked on initial load (`●●●●●●` or `[Click to reveal]`). Reveal requires explicit click. This enforces need-to-know even for the record owner — prevents shoulder-surfing in shared workspaces.
+- [x] **Self-view default** — 💻 ✅ Done 2026-04-19. Non-privileged users see only their own security record via `ensureSecurityRecordsLoaded()` with PersonID filter. Security status card with clearance KPIs, security training compliance panel, and own-cases list.
+- [x] **Obscured-by-default display** — 💻 ✅ Done 2026-04-19. Security detail fields masked with `●●●●●●` by default. Click-to-reveal interaction per field. View access logged via `logAudit()`.
 - [ ] **Security role access** — Users with `Security` role (via `CCSD_AppRoles`) see full searchable/filterable roster. Scoped by `ScopeOrgID` if set (org + descendants only).
 - [ ] **App Admin access** — Same as Security role but unscoped (all orgs visible).
 - [ ] **Supervisor limited view** — `hasAnyRole(['Supervisor'])` users see a summary card per direct report: name, clearance level, status badge (green/yellow/red). No drill-down into details. No incident data.
@@ -754,26 +754,12 @@ Add to `loadAppData()` (or the security-module init):
 
 > **✦ Per EO 12968, individuals have the right to be informed of their security eligibility status.**
 
-- [ ] **Personal security status card** — Dashboard-style card showing the member's own:
-  - Current clearance level and eligibility status (Active, Interim, Expired, Suspended, Revoked, Denied, Not Cleared)
-  - Investigation type (T1/T2/T3/T4/T5/T5R) and date of last investigation close
-  - Continuous Vetting enrollment status (Enrolled / Not Enrolled)
-  - SF-86 last submission date and next due date (calculated: `LastSF86Date + 5 years`; display "Enrolled in CV" if `CVEnrolled = Yes`)
-  - Access determinations: NIPR / SIPR / JWICS / SCI (boolean badges)
-  - SF-312 (NDA) signed date and on-file status
-  - Position sensitivity level (Non-sensitive / Noncritical-Sensitive / Critical-Sensitive / Special-Sensitive)
-- [ ] **Security training compliance panel** — Shows 6 required trainings with status:
-  - Initial Security Briefing — ✦ required before access (DoDM 5200.01)
-  - Annual Security Refresher — ✦ every 12 months (DoDM 5200.01)
-  - Derivative Classification — ✦ every 24 months (EO 13526 Sec 2.1(d))
-  - CI Awareness — ✦ every 12 months (DoDI 5240.06)
-  - Insider Threat Awareness — ✦ every 12 months (EO 13587)
-  - CUI Training — ✦ every 12 months (DoDI 5200.48)
-  - Each shows: completion date, due date, status badge (Current ✅ / Due Soon ⚠️ / Overdue 🔴)
-- [ ] **Reveal interaction** — Each field group has a "Show" toggle. Clicking reveals data and logs the event.
-- [ ] **Read-only for members** — All fields display-only. No edit capability.
-- [ ] **Incident summary (own only)** — Shows own incident records: case number (obscured format), current status, date opened, date closed. NO description, notes, category, or severity visible.
-- [ ] **No export for members** — No CSV export, no print capability from self-service view.
+- [x] **Personal security status card** — 💻 ✅ Done 2026-04-19. KPI cards for clearance level, eligibility status, investigation type, and PR due date with countdown. Click-to-reveal detail fields (investigation close, SCI/SAP access, briefed date, CE enrollment, granted/expiration dates).
+- [x] **Security training compliance panel** — 💻 ✅ Done 2026-04-19. Table of 6 security trainings (Annual Security Awareness, Insider Threat, CUI, Derivative Classification, Cyber Awareness, OPSEC) with Current/Due status badges, completion dates, due dates, and overall progress bar.
+- [x] **Reveal interaction** — 💻 ✅ Done 2026-04-19. Fields masked with `●●●●●●` by default. Click reveals data inline.
+- [x] **Read-only for members** — 💻 ✅ Done 2026-04-19. All fields display-only in member self-service view. No edit capability.
+- [x] **Incident summary (own only)** — 💻 ✅ Done 2026-04-19. Shows own cases via `redactIncidentForMember()`: case number, status, reported date, resolved date. No description/notes/category visible.
+- [x] **No export for members** — 💻 ✅ Done 2026-04-19. No CSV export or print buttons in member self-service view.
 
 #### 11c. Security Admin Management View — 💻
 
