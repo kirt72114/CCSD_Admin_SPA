@@ -88,7 +88,7 @@ false positives on the script side, not problems in SharePoint:
 - [x] **Conflict detection (double-booking prevention)** — 💻 ✅ Done 2026-04-18. `getRoomConflicts()` checks overlapping reservations. Booking is blocked with visible warning if conflict exists.
 - [x] **Room search by capacity and equipment** — 💻 ✅ Done 2026-04-18. Filter controls for min capacity and equipment (Projector/VTC/Phone/Whiteboard) on the Rooms view.
 - [x] **Room calendar view (per-room day/week timeline)** — 💻 ✅ Done 2026-04-18. Single-day grid view integrated into Calendar module as the "Rooms" tab. Shows all rooms with 30-min time slots. Upcoming reservations table below grid.
-- [ ] **Integration with Facilities module** — 💻
+- [x] **Integration with Facilities module** — 💻 ✅ Done 2026-04-18. Facility filter dropdown added to rooms view; rooms filter by FacilityID. Each room row shows its facility name. Facilities loaded when entering Rooms tab.
 
 ### Microsoft Graph API — Outlook Calendar Integration (P2) — 🤝
 

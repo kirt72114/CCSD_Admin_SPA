@@ -6840,9 +6840,17 @@ function renderRoomSchedulingView(ui){
   /* Room filter controls */
   var capacityFilter = APP.state.roomCapacityFilter || 0;
   var equipFilter = APP.state.roomEquipFilter || '';
+  var facilityFilter = APP.state.roomFacilityFilter || '';
+  var facilities = APP.state.data.facilities || [];
   html += '<div style="display:flex;gap:8px;align-items:center;margin:12px 0;flex-wrap:wrap">';
   html += '<label style="font-size:12px;font-weight:600">Date:</label>';
   html += '<input type="date" id="roomViewDate" value="' + selStr + '" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)" />';
+  if (facilities.length) {
+    html += '<label style="font-size:12px;font-weight:600;margin-left:12px">Facility:</label>';
+    html += '<select id="roomFacilityFilter" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)"><option value="">All Facilities</option>';
+    facilities.forEach(function(f){ html += '<option value="' + escAttr(f.Id) + '"' + (String(facilityFilter) === String(f.Id) ? ' selected' : '') + '>' + escHtml(f.Title || '') + '</option>'; });
+    html += '</select>';
+  }
   html += '<label style="font-size:12px;font-weight:600;margin-left:12px">Min Capacity:</label>';
   html += '<input type="number" id="roomCapacityFilter" value="' + (capacityFilter || '') + '" min="0" max="999" placeholder="Any" style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)" />';
   html += '<label style="font-size:12px;font-weight:600;margin-left:12px">Equipment:</label>';
@@ -6860,6 +6868,8 @@ function renderRoomSchedulingView(ui){
 
   /* Filter rooms */
   var filtered = rooms.filter(function(rm){
+    if (facilityFilter && rm.FacilityID && String(rm.FacilityID.Id) !== String(facilityFilter)) return false;
+    if (facilityFilter && !rm.FacilityID) return false;
     if (capacityFilter > 0 && (rm.Capacity || 0) < capacityFilter) return false;
     if (equipFilter === 'Projector' && !normalizeBoolean(rm.HasProjector)) return false;
     if (equipFilter === 'VTC' && !normalizeBoolean(rm.HasVTC)) return false;
@@ -6911,8 +6921,9 @@ function renderRoomSchedulingView(ui){
     if (normalizeBoolean(rm.HasVTC)) equipment.push('📹');
     if (normalizeBoolean(rm.HasPhone)) equipment.push('📞');
     if (normalizeBoolean(rm.HasWhiteboard)) equipment.push('📝');
+    var facilityName = (rm.FacilityID && rm.FacilityID.Title) || '';
     html += '<tr><td style="position:sticky;left:0;background:var(--bg-card);z-index:1;font-weight:600">';
-    html += escHtml(rm.RoomName || rm.Title || 'Room') + ' <span style="font-weight:normal;color:var(--text-muted);font-size:10px">(' + (rm.Capacity || '?') + ' cap) ' + equipment.join('') + '</span></td>';
+    html += escHtml(rm.RoomName || rm.Title || 'Room') + ' <span style="font-weight:normal;color:var(--text-muted);font-size:10px">(' + (rm.Capacity || '?') + ' cap) ' + equipment.join('') + (facilityName ? '<br><span style="font-size:9px;color:var(--text-muted)">' + escHtml(facilityName) + '</span>' : '') + '</span></td>';
 
     slots.forEach(function(s){
       var slotStart = new Date(selectedDate); slotStart.setHours(s.h, s.m, 0, 0);
@@ -11348,7 +11359,7 @@ function handleClick(e){
   if (action === 'cal-prev') { calNavigate('prev'); return; }
   if (action === 'cal-next') { calNavigate('next'); return; }
   if (action === 'cal-today') { calToday(); return; }
-  if (action === 'cal-set-view') { var v = el.getAttribute('data-view'); ensureCalendarUi().view = v; if (v === 'week') { var n = new Date(); n.setHours(0,0,0,0); ensureCalendarUi().weekStart = new Date(n); ensureCalendarUi().weekStart.setDate(n.getDate() - n.getDay()); } if (v === 'rooms') { ensureConferenceRoomsLoaded().then(function(){ return ensureRoomReservationsLoaded(); }).then(function(){ renderCalendar(); }); return; } renderCalendar(); return; }
+  if (action === 'cal-set-view') { var v = el.getAttribute('data-view'); ensureCalendarUi().view = v; if (v === 'week') { var n = new Date(); n.setHours(0,0,0,0); ensureCalendarUi().weekStart = new Date(n); ensureCalendarUi().weekStart.setDate(n.getDate() - n.getDay()); } if (v === 'rooms') { Promise.all([ensureConferenceRoomsLoaded(), ensureRoomReservationsLoaded(), ensureFacilitiesLoaded()]).then(function(){ renderCalendar(); }); return; } renderCalendar(); return; }
   if (action === 'cal-entry-detail') { openCalEntryDetail(el.getAttribute('data-entry-id')); return; }
   if (action === 'cal-add-entry') { openAddTimeOffModal(); return; }
   if (action === 'cal-save-entry') { saveTimeOffEntry(); return; }
@@ -11358,7 +11369,7 @@ function handleClick(e){
   if (action === 'cal-bulk-import') { openBulkTimeOffImportModal(); return; }
   if (action === 'save-bulk-timeoff') { saveBulkTimeOff(); return; }
   /* Conference room scheduling actions */
-  if (action === 'room-apply-filters') { var dv = document.getElementById('roomViewDate'); var cf = document.getElementById('roomCapacityFilter'); var ef = document.getElementById('roomEquipFilter'); if (dv && dv.value) { APP.state.roomViewDate = new Date(dv.value + 'T00:00:00'); } APP.state.roomCapacityFilter = cf ? parseInt(cf.value) || 0 : 0; APP.state.roomEquipFilter = ef ? ef.value : ''; renderCalendar(); return; }
+  if (action === 'room-apply-filters') { var dv = document.getElementById('roomViewDate'); var cf = document.getElementById('roomCapacityFilter'); var ef = document.getElementById('roomEquipFilter'); var ff = document.getElementById('roomFacilityFilter'); if (dv && dv.value) { APP.state.roomViewDate = new Date(dv.value + 'T00:00:00'); } APP.state.roomCapacityFilter = cf ? parseInt(cf.value) || 0 : 0; APP.state.roomEquipFilter = ef ? ef.value : ''; APP.state.roomFacilityFilter = ff ? ff.value : ''; renderCalendar(); return; }
   if (action === 'room-book-new') { ensureConferenceRoomsLoaded().then(function(){ openBookRoomModal(); }); return; }
   if (action === 'room-book-slot') { ensureConferenceRoomsLoaded().then(function(){ openBookRoomModal({ roomId: el.getAttribute('data-room-id'), date: el.getAttribute('data-date'), hour: parseInt(el.getAttribute('data-hour')), min: parseInt(el.getAttribute('data-min')) }); }); return; }
   if (action === 'room-save-booking') { saveRoomBooking(); return; }
