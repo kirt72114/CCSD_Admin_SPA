@@ -233,6 +233,11 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .floorplan-main{flex:1;min-width:0}
 .floorplan-sidebar{width:240px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;max-height:70vh;overflow:hidden}
 .floorplan-sidebar .sb-head{padding:10px 12px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.floorplan-sidebar .sb-filters{padding:8px 10px 6px;border-bottom:1px solid var(--line);display:flex;gap:4px;flex-wrap:wrap}
+.floorplan-sidebar .sb-chip{padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;transition:.15s}
+.floorplan-sidebar .sb-chip:hover{background:rgba(101,213,255,.1);color:var(--text)}
+.floorplan-sidebar .sb-chip.active{background:var(--accent);color:#062033;border-color:var(--accent)}
+.floorplan-sidebar .sb-chip .ct{opacity:.7;margin-left:3px;font-weight:500}
 .floorplan-sidebar .sb-search{width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font-size:11px;margin-top:6px}
 .floorplan-sidebar .sb-list{flex:1;overflow-y:auto;padding:4px}
 .floorplan-sidebar .sb-item{padding:6px 10px;border-radius:8px;cursor:pointer;font-size:11px;transition:.15s background;display:flex;align-items:center;gap:8px;border:1px solid transparent}
@@ -4371,7 +4376,20 @@ function renderSeatMap(seats, room, facility){
   if (floorPlanUrl) {
     return renderFloorPlanView(allSeats, room, facility, floorPlanUrl);
   }
-  if (!allSeats.length) { return '<div class="empty">No seats mapped in this room.</div>'; }
+  if (!allSeats.length) {
+    var roomLabel = (room && (room.RoomNumber || room.Title)) || 'this room';
+    var msg = '<div class="empty" style="padding:32px;text-align:center">';
+    msg += '<div style="font-size:15px;font-weight:700;margin-bottom:6px">No seats in ' + escHtml(roomLabel) + ' yet</div>';
+    if (canSeeAdmin()) {
+      msg += '<div class="small-note" style="margin-bottom:12px">Set a floor plan image for this building first, then drop seats on the plan.</div>';
+      msg += '<button class="btn primary" data-action="enter-floorplan-url">Set Floor Plan URL</button> ';
+      msg += '<button class="btn subtle" data-action="bulk-seat-import">Bulk Import Seats</button>';
+    } else {
+      msg += '<div class="small-note">Ask a facility admin to set up the seat map for this room.</div>';
+    }
+    msg += '</div>';
+    return msg;
+  }
   var hasCoords = allSeats.some(function(s){ return s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== ''; });
   if (!hasCoords) {
     var html = '<div class="tile-grid">';
@@ -4458,15 +4476,32 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
   html += '</div>';
   html += '</div>';
   /* Seat sidebar */
+  var sbFilter = ui.sbFilter || 'all';
+  var counts = { all: seats.length, occupied: 0, available: 0, maintenance: 0, unplaced: 0 };
+  seats.forEach(function(s){
+    var isPlaced = s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== '';
+    var occ = s.CurrentPersonID && s.CurrentPersonID.Title;
+    if (!isPlaced) { counts.unplaced++; }
+    else if (occ) { counts.occupied++; }
+    else if (String(s.SeatStatus || '').toLowerCase() === 'maintenance') { counts.maintenance++; }
+    else { counts.available++; }
+  });
   html += '<div class="floorplan-sidebar">';
   html += '<div class="sb-head"><span>Seats (' + seats.length + ')</span><input class="sb-search" id="seatSidebarSearch" placeholder="Search seats..." /></div>';
+  html += '<div class="sb-filters">';
+  ['all','occupied','available','maintenance','unplaced'].forEach(function(k){
+    var labels = { all:'All', occupied:'Occupied', available:'Available', maintenance:'Maint', unplaced:'Unplaced' };
+    html += '<button class="sb-chip' + (sbFilter === k ? ' active' : '') + '" data-action="sb-set-filter" data-filter="' + k + '">' + labels[k] + '<span class="ct">' + counts[k] + '</span></button>';
+  });
+  html += '</div>';
   html += '<div class="sb-list" id="seatSidebarList">';
   placedSeats.concat(unplacedSeats).forEach(function(s){
     var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
     var isPlaced = s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== '';
-    var dotCls = !isPlaced ? 'unplaced' : (occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available'));
-    html += '<div class="sb-item" data-action="sidebar-seat-click" data-seat-id="' + escAttr(s.Id) + '" data-seat-x="' + escAttr(s.XCoord || '') + '" data-seat-y="' + escAttr(s.YCoord || '') + '">';
-    html += '<div class="sb-dot ' + dotCls + '"></div>';
+    var statusKey = !isPlaced ? 'unplaced' : (occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available'));
+    var hidden = (sbFilter !== 'all' && sbFilter !== statusKey) ? ' style="display:none"' : '';
+    html += '<div class="sb-item" data-seat-status="' + statusKey + '"' + hidden + ' data-action="sidebar-seat-click" data-seat-id="' + escAttr(s.Id) + '" data-seat-x="' + escAttr(s.XCoord || '') + '" data-seat-y="' + escAttr(s.YCoord || '') + '">';
+    html += '<div class="sb-dot ' + statusKey + '"></div>';
     html += '<div class="sb-info"><div class="sb-name">' + escHtml(s.SeatLabel || s.SeatID || s.Title || 'Seat') + '</div><div class="sb-sub">' + escHtml(occupant || (isPlaced ? 'Available' : 'Not placed')) + '</div></div>';
     if (canSeeAdmin() && isPicker) {
       html += '<div class="sb-actions"><button data-action="edit-seat-inline" data-seat-id="' + escAttr(s.Id) + '" title="Edit">&#9998;</button><button data-action="delete-seat" data-seat-id="' + escAttr(s.Id) + '" title="Delete">&#10005;</button></div>';
@@ -4850,7 +4885,13 @@ function buildSeatTooltipHtml(data, showActions){
   if (data.networks) { html += '<div class="st-nets">' + data.networks.split(' ').map(function(n){ return '<span class="badge info">' + escHtml(n) + '</span>'; }).join('') + '</div>'; }
   if (data.notes) { html += '<div class="st-row" style="margin-top:4px"><span class="mini muted">' + escHtml(data.notes) + '</span></div>'; }
   if (showActions && canSeeAdmin()) {
-    html += '<div class="st-actions"><button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button><button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button></div>';
+    html += '<div class="st-actions">';
+    if (data.occupant) {
+      html += '<button data-action="release-seat" data-seat-id="' + escAttr(data.seatId) + '" title="Clear the assigned person">Release</button>';
+    }
+    html += '<button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button>';
+    html += '<button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button>';
+    html += '</div>';
   }
   return html;
 }
@@ -4986,6 +5027,84 @@ function deleteSeat(seatId){
     },
     { danger: true });
 }
+function releaseSeat(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var prior = seat.CurrentPersonID && (seat.CurrentPersonID.Id || seat.CurrentPersonID);
+  if (!prior) { toast('Seat is already unoccupied.', 'warn'); return; }
+  var occupantName = seat.CurrentPersonID.Title || 'the person';
+  updateListItem(APP.lists.Seats, seatId, { CurrentPersonID: null, SeatStatus: 'Available' }, { entityType: 'Seat', before: seat, reason: 'Quick release from tooltip' }).then(function(){
+    hideSeatTooltip();
+    toastWithAction('Released ' + occupantName + '.', 'ok', 'Undo', function(){
+      updateListItem(APP.lists.Seats, seatId, { CurrentPersonID: prior, SeatStatus: 'Occupied' }, { entityType: 'Seat', reason: 'Undo release' }).then(function(){
+        toast('Assignment restored.', 'ok');
+        return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+      }).catch(function(){ toast('Undo failed.', 'danger'); });
+    }, 10000);
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Release failed.', 'danger'); });
+}
+function exportSeatsScopeCsv(){
+  var ui = ensureFacilityUi();
+  var seats = APP.state.data.seats || [];
+  var rooms = APP.state.data.rooms || [];
+  var facilities = APP.state.data.facilities || [];
+  var scope = seats;
+  var scopeLabel = 'all_seats';
+  if (ui.selectedRoomId) {
+    scope = seats.filter(function(s){ return s.RoomID && s.RoomID.Id === ui.selectedRoomId; });
+    var rm = null; rooms.some(function(r){ if (r.Id === ui.selectedRoomId) { rm = r; return true; } return false; });
+    scopeLabel = 'room_' + ((rm && (rm.RoomNumber || rm.Title)) || ui.selectedRoomId);
+  } else if (ui.selectedFacilityId) {
+    var roomIds = {};
+    rooms.forEach(function(r){ if (r.FacilityID && r.FacilityID.Id === ui.selectedFacilityId) { roomIds[r.Id] = true; } });
+    scope = seats.filter(function(s){ return s.RoomID && roomIds[s.RoomID.Id]; });
+    var fc = null; facilities.some(function(f){ if (f.Id === ui.selectedFacilityId) { fc = f; return true; } return false; });
+    scopeLabel = 'facility_' + ((fc && (fc.BuildingNumber || fc.Title)) || ui.selectedFacilityId);
+  }
+  if (!scope.length) { toast('No seats in the current view to export.', 'warn'); return; }
+  var headers = ['SeatLabel','Room','Occupant','Port','Phone','NIPR','SIPR','JWICS','VTC','Status','XCoord','YCoord','Notes'];
+  var roomsById = {};
+  rooms.forEach(function(r){ roomsById[r.Id] = r; });
+  var rows = scope.map(function(s){
+    var room = s.RoomID && roomsById[s.RoomID.Id];
+    return [
+      s.SeatLabel || s.SeatID || '',
+      room ? (room.RoomNumber || room.Title || '') : '',
+      s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '',
+      s.PortNumber || '',
+      s.PhoneNumber || '',
+      normalizeBoolean(s.HasNIPR) ? 'Yes' : 'No',
+      normalizeBoolean(s.HasSIPR) ? 'Yes' : 'No',
+      normalizeBoolean(s.HasJWICS) ? 'Yes' : 'No',
+      normalizeBoolean(s.VTCEnabled) ? 'Yes' : 'No',
+      s.SeatStatus || (s.CurrentPersonID && s.CurrentPersonID.Title ? 'Occupied' : 'Available'),
+      s.XCoord != null ? s.XCoord : '',
+      s.YCoord != null ? s.YCoord : '',
+      s.Notes || ''
+    ];
+  });
+  var csv = headers.join(',') + '\n' + rows.map(function(r){
+    return r.map(function(cell){
+      var v = String(cell == null ? '' : cell);
+      if (/[",\n]/.test(v)) { v = '"' + v.replace(/"/g, '""') + '"'; }
+      return v;
+    }).join(',');
+  }).join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'seats_' + scopeLabel.replace(/[^a-z0-9_-]/gi, '_') + '_' + (new Date()).toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  toast('Exported ' + scope.length + ' seat(s).', 'ok');
+}
 function saveSeatPosition(seatId, x, y, marker, origX, origY){
   updateListItem(APP.lists.Seats, seatId, { XCoord: String(x), YCoord: String(y) }, { entityType: 'Seat', reason: 'Drag reposition' }).then(function(){
     toast('Seat repositioned to (' + x + ', ' + y + ').', 'ok');
@@ -5032,14 +5151,28 @@ function placeExistingSeat(seatId, x, y){
   }).catch(function(){ toast('Placement failed.', 'danger'); });
 }
 function filterSeatSidebar(query){
+  var ui = ensureFacilityUi();
   var list = document.getElementById('seatSidebarList');
   if (!list) { return; }
   var items = list.querySelectorAll('.sb-item');
   var q = (query || '').toLowerCase();
+  var filter = ui.sbFilter || 'all';
   for (var i = 0; i < items.length; i++) {
+    var statusOk = (filter === 'all') || items[i].getAttribute('data-seat-status') === filter;
     var text = items[i].textContent.toLowerCase();
-    items[i].style.display = text.indexOf(q) !== -1 ? '' : 'none';
+    var textOk = !q || text.indexOf(q) !== -1;
+    items[i].style.display = (statusOk && textOk) ? '' : 'none';
   }
+}
+function setSidebarFilter(filter){
+  var ui = ensureFacilityUi();
+  ui.sbFilter = filter;
+  var chips = document.querySelectorAll('.sb-chip');
+  for (var i = 0; i < chips.length; i++) {
+    chips[i].classList.toggle('active', chips[i].getAttribute('data-filter') === filter);
+  }
+  var searchEl = document.getElementById('seatSidebarSearch');
+  filterSeatSidebar(searchEl ? searchEl.value : '');
 }
 function getNextSeatLabel(){
   var seats = APP.state.data.seats || [];
@@ -5251,7 +5384,8 @@ function renderFacilities(){
     html += metricCard('SCIF Spaces', scifRooms, 'Rooms flagged as SCIF', Math.min(100, scifRooms * 15));
     html += '</div>';
     html += '<div class="org-branch-shell" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="facility-capacity-report">Capacity</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-seat-import">Bulk Seats</button>' : '') + '<button class="btn subtle" data-action="export-facilities">Export CSV</button></div></div><div class="card-body">';
+    var exportLabel = ui.selectedRoomId ? 'Export Room Seats' : (ui.selectedFacilityId ? 'Export Building Seats' : 'Export All Seats');
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="facility-capacity-report">Capacity</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-seat-import">Bulk Seats</button>' : '') + '<button class="btn subtle" data-action="export-seats-scope">' + exportLabel + '</button></div></div><div class="card-body">';
     facilities.forEach(function(f){
       var fRooms = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; });
       var roomIds = {};
@@ -5259,7 +5393,9 @@ function renderFacilities(){
       var fSeats = seats.filter(function(s){ return s.RoomID && roomIds[s.RoomID.Id]; });
       var fOccupied = fSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
       var networks = (normalizeBoolean(f.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(f.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(f.HasJWICS) ? 'JWICS' : '');
-      var search = [f.Title, f.BuildingNumber, f.Base, f.Address, networks].join(' ').toLowerCase();
+      var roomSummary = fRooms.map(function(r){ return (r.RoomNumber || r.Title || ''); }).join(' ');
+      var seatSummary = fSeats.map(function(s){ return (s.SeatLabel || '') + ' ' + (s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : ''); }).join(' ');
+      var search = [f.Title, f.BuildingNumber, f.Base, f.Address, networks, roomSummary, seatSummary].join(' ').toLowerCase();
       var isSelected = ui.selectedFacilityId === f.Id;
       html += '<div class="org-card' + (isSelected ? ' selected' : '') + '" data-search-card="' + escAttr(search) + '" style="margin-bottom:10px">';
       html += '<div class="org-card-top"><div><div class="org-card-title">' + escHtml(f.BuildingNumber || f.Title || f.FacilityID || 'Facility') + '</div><div class="org-card-sub">' + escHtml(f.Base || '') + (f.Address ? ' • ' + escHtml(f.Address) : '') + '</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">' + (networks.trim() ? networks.trim().split(' ').map(function(n){ return statusBadge(n); }).join('') : statusBadge('No Networks')) + '</div></div>';
@@ -8093,6 +8229,9 @@ function handleClick(e){
   if (action === 'select-room') { ensureFacilityUi(); APP.state.facilityUi.selectedRoomId = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = Number(el.getAttribute('data-facility')); renderFacilities(); return; }
   if (action === 'confirm-dialog-ok') { var cb = APP.modalState && APP.modalState._pendingConfirm; closeModal(); if (typeof cb === 'function') { cb(); } return; }
   if (action === 'cancel-place-existing') { ensureFacilityUi(); APP.state.facilityUi.pendingPlaceSeatId = null; renderFacilities(); return; }
+  if (action === 'sb-set-filter') { setSidebarFilter(el.getAttribute('data-filter') || 'all'); return; }
+  if (action === 'release-seat') { releaseSeat(el.getAttribute('data-seat-id')); return; }
+  if (action === 'export-seats-scope') { exportSeatsScopeCsv(); return; }
   if (action === 'enter-seat-picker') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
   if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; APP.state.facilityUi.pendingPlaceSeatId = null; renderFacilities(); return; }
   if (action === 'save-picker-seat') { savePickerSeat(); return; }
