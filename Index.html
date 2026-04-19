@@ -283,6 +283,7 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .picker-crosshair .seat-marker.draggable{cursor:grab;pointer-events:auto!important}
 .picker-crosshair .seat-marker.dragging-seat{cursor:grabbing;z-index:25;opacity:.7}
 @media (pointer:coarse){.seat-marker{width:32px;height:32px}.seat-marker-label{top:-22px;font-size:11px}.floorplan-controls button{width:44px;height:44px;font-size:20px}.floorplan-sidebar .sb-item{padding:10px 12px;font-size:13px}.floorplan-sidebar .sb-actions{opacity:1}.floorplan-sidebar .sb-actions button{width:32px;height:32px;font-size:14px}}
+@media print{body.printing-floorplan *:not(.print-floorplan-scope):not(.print-floorplan-scope *){visibility:hidden!important}body.printing-floorplan .print-floorplan-scope{visibility:visible!important;position:absolute!important;inset:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:12px!important;background:#fff!important;color:#000!important}body.printing-floorplan .floorplan-controls,body.printing-floorplan .floorplan-crosshair-h,body.printing-floorplan .floorplan-crosshair-v,body.printing-floorplan .floorplan-coords,body.printing-floorplan .picker-toolbar,body.printing-floorplan .picker-hint,body.printing-floorplan .floorplan-sidebar{display:none!important}body.printing-floorplan .floorplan-container{max-height:none!important;min-height:0!important;border:1px solid #888!important;background:#fff!important;overflow:visible!important}body.printing-floorplan .seat-marker{border-color:#333!important;color:#fff!important}body.printing-floorplan .seat-marker-label{color:#000!important;text-shadow:none!important}}
 
 /* ─── Seat Tooltip ─── */
 .seat-tooltip{position:fixed;z-index:100;background:linear-gradient(180deg,#0d1a31,#081120);border:1px solid rgba(101,213,255,.25);border-radius:14px;padding:12px 14px;box-shadow:0 16px 40px rgba(0,0,0,.5);pointer-events:none;min-width:220px;max-width:320px;font-size:12px}
@@ -4435,8 +4436,11 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
     } else {
       html += '<button class="btn primary" data-action="enter-seat-picker">Edit Seat Map</button>';
       html += '<button class="btn subtle" data-action="enter-floorplan-url">Set Floor Plan URL</button>';
+      html += '<button class="btn subtle" data-action="print-floorplan" title="Print the current seat map">Print</button>';
     }
     html += '</div>';
+  } else {
+    html += '<div class="picker-toolbar"><button class="btn subtle" data-action="print-floorplan" title="Print the current seat map">Print</button></div>';
     if (isPicker) {
       if (ui.pendingPlaceSeatId) {
         var pendingSeat = null;
@@ -4448,21 +4452,24 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
       }
     }
   }
-  html += '<div class="floorplan-wrapper">';
+  html += '<div class="floorplan-wrapper print-floorplan-scope">';
   html += '<div class="floorplan-main">';
   html += '<div id="' + containerId + '" class="floorplan-container' + (isPicker ? ' picker-crosshair' : '') + '" data-image-url="' + escAttr(imageUrl) + '" data-facility-id="' + escAttr(facility ? facility.Id : '') + '" data-room-id="' + escAttr(room ? room.Id : '') + '">';
   html += '<div id="floorplanInner" class="floorplan-inner">';
   html += '<img id="floorplanImg" src="' + escAttr(imageUrl) + '" alt="Floor plan" onload="onFloorPlanLoad()" onerror="onFloorPlanError()" />';
+  var mapFilter = ui.sbFilter || 'all';
   placedSeats.forEach(function(s){
     var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
-    var cls = occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available');
+    var statusKey = occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available');
+    var cls = statusKey;
     if (isPicker) { cls += ' draggable'; }
     var justPlaced = ui._justPlacedId && String(ui._justPlacedId) === String(s.Id);
     if (justPlaced) { cls += ' just-placed'; }
+    var hidden = (mapFilter !== 'all' && mapFilter !== statusKey) ? 'display:none;' : '';
     var statusText = s.SeatStatus || (occupant ? 'Occupied' : 'Available');
     var seatLabel = s.SeatLabel || s.SeatID || 'Seat';
     var ariaLabel = 'Seat ' + seatLabel + ': ' + (occupant || 'unoccupied') + ', ' + statusText;
-    html += '<div class="seat-marker ' + cls + '" style="left:' + s.XCoord + 'px;top:' + s.YCoord + 'px" data-seat-id="' + escAttr(s.Id) + '" role="button" tabindex="0" aria-label="' + escAttr(ariaLabel) + '"><span class="seat-marker-label">' + escHtml(seatLabel) + '</span></div>';
+    html += '<div class="seat-marker ' + cls + '" style="' + hidden + 'left:' + s.XCoord + 'px;top:' + s.YCoord + 'px" data-seat-id="' + escAttr(s.Id) + '" data-seat-status="' + statusKey + '" role="button" tabindex="0" aria-label="' + escAttr(ariaLabel) + '"><span class="seat-marker-label">' + escHtml(seatLabel) + '</span></div>';
   });
   if (isPicker && ui.pickerPending) {
     html += '<div class="picker-pending" style="left:' + ui.pickerPending.x + 'px;top:' + ui.pickerPending.y + 'px"></div>';
@@ -4846,8 +4853,21 @@ function getSeatTooltipData(seatId){
     if (String(seats[i].Id) === String(seatId)) {
       var s = seats[i];
       var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
+      var occupantId = s.CurrentPersonID && (s.CurrentPersonID.Id || s.CurrentPersonID) || null;
+      var occupantEmail = '', occupantPhone = '', occupantOrg = '';
+      if (occupantId) {
+        var people = APP.state.data.people || [];
+        for (var j = 0; j < people.length; j++) {
+          if (people[j].Id === occupantId) {
+            occupantEmail = people[j].Email || '';
+            occupantPhone = people[j].Phone || people[j].WorkPhone || '';
+            occupantOrg = people[j].OrgID ? (people[j].OrgID.Title || '') : '';
+            break;
+          }
+        }
+      }
       var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
-      return { label: s.SeatLabel || s.SeatID || 'Seat', occupant: occupant, port: s.PortNumber || '', phone: s.PhoneNumber || '', networks: networks.trim(), vtc: normalizeBoolean(s.VTCEnabled), status: s.SeatStatus || (occupant ? 'Occupied' : 'Available'), notes: s.Notes || '', seatId: s.Id };
+      return { label: s.SeatLabel || s.SeatID || 'Seat', occupant: occupant, occupantId: occupantId, occupantEmail: occupantEmail, occupantPhone: occupantPhone, occupantOrg: occupantOrg, port: s.PortNumber || '', phone: s.PhoneNumber || '', networks: networks.trim(), vtc: normalizeBoolean(s.VTCEnabled), status: s.SeatStatus || (occupant ? 'Occupied' : 'Available'), notes: s.Notes || '', seatId: s.Id };
     }
   }
   return null;
@@ -4878,19 +4898,29 @@ function showSeatTooltipPinned(marker){
 function buildSeatTooltipHtml(data, showActions){
   var html = '<div class="st-name">' + escHtml(data.label) + '</div>';
   html += '<div class="st-row"><span class="st-label">Occupant</span><span>' + escHtml(data.occupant || 'Available') + '</span></div>';
+  if (data.occupantId) {
+    if (data.occupantOrg) { html += '<div class="st-row"><span class="st-label">Org</span><span>' + escHtml(data.occupantOrg) + '</span></div>'; }
+    if (data.occupantEmail) { html += '<div class="st-row"><span class="st-label">Email</span><span><a href="mailto:' + escAttr(data.occupantEmail) + '" style="color:var(--accent)">' + escHtml(data.occupantEmail) + '</a></span></div>'; }
+    if (data.occupantPhone) { html += '<div class="st-row"><span class="st-label">Personal Phone</span><span>' + escHtml(data.occupantPhone) + '</span></div>'; }
+  }
   html += '<div class="st-row"><span class="st-label">Status</span><span>' + statusBadge(data.status) + '</span></div>';
   if (data.port) { html += '<div class="st-row"><span class="st-label">Port</span><span>' + escHtml(data.port) + '</span></div>'; }
-  if (data.phone) { html += '<div class="st-row"><span class="st-label">Phone</span><span>' + escHtml(data.phone) + '</span></div>'; }
+  if (data.phone) { html += '<div class="st-row"><span class="st-label">Seat Phone</span><span>' + escHtml(data.phone) + '</span></div>'; }
   if (data.vtc) { html += '<div class="st-row"><span class="st-label">VTC</span><span class="badge ok">Yes</span></div>'; }
   if (data.networks) { html += '<div class="st-nets">' + data.networks.split(' ').map(function(n){ return '<span class="badge info">' + escHtml(n) + '</span>'; }).join('') + '</div>'; }
   if (data.notes) { html += '<div class="st-row" style="margin-top:4px"><span class="mini muted">' + escHtml(data.notes) + '</span></div>'; }
-  if (showActions && canSeeAdmin()) {
+  if (showActions && (data.occupantId || canSeeAdmin())) {
     html += '<div class="st-actions">';
-    if (data.occupant) {
-      html += '<button data-action="release-seat" data-seat-id="' + escAttr(data.seatId) + '" title="Clear the assigned person">Release</button>';
+    if (data.occupantId) {
+      html += '<button data-action="view-person" data-id="' + escAttr(data.occupantId) + '">View Profile</button>';
     }
-    html += '<button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button>';
-    html += '<button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button>';
+    if (canSeeAdmin()) {
+      if (data.occupant) {
+        html += '<button data-action="release-seat" data-seat-id="' + escAttr(data.seatId) + '" title="Clear the assigned person">Release</button>';
+      }
+      html += '<button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button>';
+      html += '<button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button>';
+    }
     html += '</div>';
   }
   return html;
@@ -5026,6 +5056,33 @@ function deleteSeat(seatId){
       }).catch(function(){ toast('Delete failed.', 'danger'); });
     },
     { danger: true });
+}
+function printFloorPlan(){
+  var scope = document.querySelector('.print-floorplan-scope');
+  if (!scope) { toast('Nothing to print — open a seat map first.', 'warn'); return; }
+  var img = document.getElementById('floorplanImg');
+  var container = document.getElementById('floorplanContainer');
+  var ui = ensureFacilityUi();
+  var saved = { zoom: ui.zoom, panX: ui.panX, panY: ui.panY };
+  if (img && container && img.naturalWidth) {
+    var pad = 16;
+    var targetW = Math.max(320, container.clientWidth - pad);
+    var targetH = Math.max(240, container.clientHeight - pad);
+    var fit = Math.min(targetW / img.naturalWidth, targetH / img.naturalHeight, 1);
+    ui.zoom = fit;
+    ui.panX = Math.max(0, (container.clientWidth - img.naturalWidth * fit) / 2);
+    ui.panY = Math.max(0, (container.clientHeight - img.naturalHeight * fit) / 2);
+    applyFloorPlanTransform();
+  }
+  document.body.classList.add('printing-floorplan');
+  var cleanup = function(){
+    document.body.classList.remove('printing-floorplan');
+    ui.zoom = saved.zoom; ui.panX = saved.panX; ui.panY = saved.panY;
+    applyFloorPlanTransform();
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(function(){ try { window.print(); } catch (e) { cleanup(); toast('Print failed.', 'danger'); } }, 100);
 }
 function releaseSeat(seatId){
   if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
@@ -5173,6 +5230,11 @@ function setSidebarFilter(filter){
   }
   var searchEl = document.getElementById('seatSidebarSearch');
   filterSeatSidebar(searchEl ? searchEl.value : '');
+  var markers = document.querySelectorAll('.floorplan-inner .seat-marker');
+  for (var j = 0; j < markers.length; j++) {
+    var st = markers[j].getAttribute('data-seat-status');
+    markers[j].style.display = (filter === 'all' || filter === st) ? '' : 'none';
+  }
 }
 function getNextSeatLabel(){
   var seats = APP.state.data.seats || [];
@@ -8232,6 +8294,7 @@ function handleClick(e){
   if (action === 'sb-set-filter') { setSidebarFilter(el.getAttribute('data-filter') || 'all'); return; }
   if (action === 'release-seat') { releaseSeat(el.getAttribute('data-seat-id')); return; }
   if (action === 'export-seats-scope') { exportSeatsScopeCsv(); return; }
+  if (action === 'print-floorplan') { printFloorPlan(); return; }
   if (action === 'enter-seat-picker') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
   if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; APP.state.facilityUi.pendingPlaceSeatId = null; renderFacilities(); return; }
   if (action === 'save-picker-seat') { savePickerSeat(); return; }
