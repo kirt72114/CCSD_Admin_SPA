@@ -3487,7 +3487,7 @@ function renderPeople(){
   return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensurePositionsLoaded()]).then(function(){
     var rows = APP.state.data.people || [];
     var canEdit = canEditPeople();
-    var html = '<div class="card"><div class="card-head"><div><div class="card-title">People</div><div class="card-sub">Fast search, details, and role-gated editing for CCSD personnel.</div></div><div class="filter-row"><input id="peopleSearchInput" class="input" style="width:260px" placeholder="Search name, email, org, status" /><button class="btn subtle" data-action="export-people-csv" style="padding:6px 10px;font-size:11px">Export CSV</button></div></div><div class="card-body">';
+    var html = '<div class="card"><div class="card-head"><div><div class="card-title">People</div><div class="card-sub">Fast search, details, and role-gated editing for CCSD personnel.</div></div><div class="filter-row"><input id="peopleSearchInput" class="input" style="width:260px" placeholder="Search name, email, org, status" />' + (canEdit ? '<button class="btn primary" data-action="open-onboarding-wizard" style="padding:6px 10px;font-size:11px">+ Onboard New Member</button> ' : '') + '<button class="btn subtle" data-action="export-people-csv" style="padding:6px 10px;font-size:11px">Export CSV</button></div></div><div class="card-body">';
     html += '<div class="tile-grid" id="peopleGrid">';
     rows.forEach(function(p){
       var search = [formatPerson(p), p.Email, p.Status, p.OrgID && p.OrgID.Title, p.PositionID && p.PositionID.Title, p.PersonID].join(' ').toLowerCase();
@@ -3594,6 +3594,180 @@ function savePersonEdit(){
     closeModal();
     return ensurePeopleLoaded(true).then(function(){ renderPeople(); });
   }).catch(function(){ toast('Person update failed.', 'danger'); });
+}
+
+/* ─── Personnel Onboarding Wizard ─── */
+function openOnboardingWizard(){
+  APP.modalState.onboarding = { step: 1, personId: null, personName: '' };
+  renderOnboardingStep();
+}
+function renderOnboardingStep(){
+  var st = APP.modalState.onboarding;
+  if (!st) return;
+  var step = st.step;
+  var totalSteps = 4;
+  var progressHtml = '<div style="display:flex;gap:4px;margin-bottom:14px">';
+  for (var i = 1; i <= totalSteps; i++) {
+    var bg = i < step ? '#2e7d32' : i === step ? 'var(--primary)' : 'var(--border)';
+    var col = i <= step ? '#fff' : 'var(--text-muted)';
+    progressHtml += '<div style="flex:1;text-align:center;padding:4px;background:' + bg + ';color:' + col + ';border-radius:4px;font-size:12px;font-weight:600">' + i + '. ' + ['Person','Seat','Assets','In-Processing'][i-1] + '</div>';
+  }
+  progressHtml += '</div>';
+  var body = progressHtml;
+  var footer = '<div></div><div>';
+
+  if (step === 1) {
+    var orgOptions = (APP.state.data.organizations || []).map(function(o){ return '<option value="' + escAttr(o.Id) + '">' + escHtml(o.OrgName || o.Title || '') + '</option>'; }).join('');
+    var posOptions = (APP.state.data.positions || []).map(function(o){ return '<option value="' + escAttr(o.Id) + '">' + escHtml(o.PositionTitle || o.Title || '') + '</option>'; }).join('');
+    var supOptions = (APP.state.data.people || []).filter(function(p){ return (p.Status || '').toLowerCase() !== 'departed'; }).map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
+    body += '<div class="form-grid">'
+      + formField('First Name *', '<input id="ob-first" class="input" placeholder="First name">')
+      + formField('Last Name *', '<input id="ob-last" class="input" placeholder="Last name">')
+      + formField('Email *', '<input id="ob-email" class="input" type="email" placeholder="Email">')
+      + formField('Grade', '<input id="ob-grade" class="input" placeholder="e.g. GS-12, E-5">')
+      + formField('Organization', '<select id="ob-org" class="select"><option value="">-- Select --</option>' + orgOptions + '</select>')
+      + formField('Position', '<select id="ob-pos" class="select"><option value="">-- Select --</option>' + posOptions + '</select>')
+      + formField('Supervisor', '<select id="ob-sup" class="select"><option value="">-- Select --</option>' + supOptions + '</select>')
+      + formField('Office Phone', '<input id="ob-phone" class="input" placeholder="Office phone">')
+      + formField('AFSC/MOS', '<input id="ob-afsc" class="input" placeholder="Career field code">')
+      + formField('Arrival Date', '<input id="ob-arrival" class="input" type="date" value="' + new Date().toISOString().split('T')[0] + '">')
+      + '</div>';
+    footer += '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="onboarding-next">Create Person &amp; Continue</button>';
+  } else if (step === 2) {
+    body += '<div style="margin-bottom:8px">Assign <strong>' + escHtml(st.personName) + '</strong> to a seat (optional).</div>';
+    var seats = APP.state.data.seats || [];
+    var availSeats = seats.filter(function(s){ return !s.CurrentPersonID || !s.CurrentPersonID.Id; });
+    if (!availSeats.length) {
+      body += '<div class="empty">No available seats found.</div>';
+    } else {
+      body += '<select id="ob-seat" class="select" style="width:100%;margin-top:6px"><option value="">-- Skip (no seat) --</option>';
+      availSeats.forEach(function(s){
+        var label = (s.SeatLabel || s.Title || 'Seat ' + s.Id) + (s.RoomID && s.RoomID.Title ? ' in ' + s.RoomID.Title : '');
+        body += '<option value="' + escAttr(s.Id) + '">' + escHtml(label) + '</option>';
+      });
+      body += '</select>';
+    }
+    footer += '<button class="btn" data-action="onboarding-skip">Skip</button> <button class="btn primary" data-action="onboarding-next">Assign &amp; Continue</button>';
+  } else if (step === 3) {
+    body += '<div style="margin-bottom:8px">Assign hardware to <strong>' + escHtml(st.personName) + '</strong> (optional). Select items to assign.</div>';
+    var assets = APP.state.data.assets || [];
+    var unassigned = assets.filter(function(a){ return (!a.AssignedTo || !a.AssignedTo.Id) && (a.Status || '').toLowerCase() !== 'disposed'; });
+    if (!unassigned.length) {
+      body += '<div class="empty">No unassigned assets available.</div>';
+    } else {
+      body += '<div style="max-height:250px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:4px">';
+      unassigned.slice(0, 50).forEach(function(a){
+        body += '<label style="display:flex;gap:6px;padding:4px;cursor:pointer"><input type="checkbox" class="ob-asset-cb" value="' + a.Id + '"><span style="font-size:13px">' + escHtml(a.AssetTag || '') + ' — ' + escHtml(a.Title || a.Model || '') + ' (' + escHtml(a.AssetType || '') + ')</span></label>';
+      });
+      body += '</div>';
+    }
+    footer += '<button class="btn" data-action="onboarding-skip">Skip</button> <button class="btn primary" data-action="onboarding-next">Assign &amp; Continue</button>';
+  } else if (step === 4) {
+    body += '<div style="margin-bottom:10px">Create an in-processing case for <strong>' + escHtml(st.personName) + '</strong>?</div>';
+    body += '<label style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="ob-create-inproc" checked><span>Create In-Processing Case</span></label>';
+    body += '<div class="form-grid">'
+      + formField('Sponsor (optional)', '<select id="ob-sponsor" class="select"><option value="">-- None --</option>' + (APP.state.data.people || []).filter(function(p){ return (p.Status || '').toLowerCase() !== 'departed'; }).map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('') + '</select>')
+      + formField('Notes', '<input id="ob-inproc-notes" class="input" placeholder="Optional notes">')
+      + '</div>';
+    footer += '<button class="btn" data-action="onboarding-skip">Skip &amp; Finish</button> <button class="btn primary" data-action="onboarding-finish">Create &amp; Finish</button>';
+  }
+  footer += '</div>';
+  openModal('Onboarding Wizard — Step ' + step + ' of ' + totalSteps, body, footer);
+}
+
+function onboardingNext(){
+  var st = APP.modalState.onboarding;
+  if (!st) return;
+  if (st.step === 1) {
+    var first = (document.getElementById('ob-first').value || '').trim();
+    var last = (document.getElementById('ob-last').value || '').trim();
+    var email = (document.getElementById('ob-email').value || '').trim();
+    if (!first || !last) { toast('First and last name are required.', 'danger'); return; }
+    if (email && !email.match(/@/)) { toast('Invalid email.', 'danger'); return; }
+    var values = {
+      Title: last + ', ' + first,
+      FirstName: first, LastName: last, Email: email,
+      Grade: (document.getElementById('ob-grade').value || '').trim(),
+      Status: 'Active',
+      OfficePhone: (document.getElementById('ob-phone').value || '').trim(),
+      AFSC: (document.getElementById('ob-afsc').value || '').trim()
+    };
+    var orgVal = document.getElementById('ob-org').value;
+    if (orgVal) values.OrgID = Number(orgVal);
+    var posVal = document.getElementById('ob-pos').value;
+    if (posVal) values.PositionID = Number(posVal);
+    var supVal = document.getElementById('ob-sup').value;
+    if (supVal) values.SupervisorID = Number(supVal);
+    st.arrivalDate = document.getElementById('ob-arrival').value || '';
+    toast('Creating person...', 'ok');
+    createListItem(APP.lists.Personnel, values, { entityType: 'Personnel', reason: 'Onboarding wizard' }).then(function(result){
+      var newId = result && result.d ? result.d.Id : (result && result.Id);
+      st.personId = newId;
+      st.personName = first + ' ' + last;
+      return ensurePeopleLoaded(true);
+    }).then(function(){
+      st.step = 2;
+      return Promise.all([ensureFacilitiesLoaded(), ensureAssetsLoaded()]);
+    }).then(function(){
+      renderOnboardingStep();
+    }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to create person.', 'danger'); });
+  } else if (st.step === 2) {
+    var seatVal = document.getElementById('ob-seat') ? document.getElementById('ob-seat').value : '';
+    if (seatVal) {
+      updateListItem(APP.lists.Seats, Number(seatVal), { CurrentPersonID: st.personId }, { entityType: 'Seat', reason: 'Onboarding wizard seat assignment' }).then(function(){
+        updateListItem(APP.lists.Personnel, st.personId, { SeatID: Number(seatVal) }, { entityType: 'Personnel', reason: 'Onboarding wizard seat link' }).catch(function(){});
+        st.step = 3;
+        renderOnboardingStep();
+      }).catch(function(){ toast('Failed to assign seat.', 'danger'); });
+    } else {
+      st.step = 3;
+      renderOnboardingStep();
+    }
+  } else if (st.step === 3) {
+    var checkboxes = document.querySelectorAll('.ob-asset-cb:checked');
+    if (checkboxes.length > 0) {
+      var promises = [];
+      checkboxes.forEach(function(cb){
+        promises.push(updateListItem(APP.lists.Assets, Number(cb.value), { AssignedTo: st.personId, Status: 'Assigned' }, { entityType: 'Asset', reason: 'Onboarding wizard asset assignment' }));
+      });
+      Promise.all(promises).then(function(){
+        st.step = 4;
+        renderOnboardingStep();
+      }).catch(function(){ toast('Some assets failed to assign.', 'danger'); st.step = 4; renderOnboardingStep(); });
+    } else {
+      st.step = 4;
+      renderOnboardingStep();
+    }
+  }
+}
+
+function onboardingFinish(){
+  var st = APP.modalState.onboarding;
+  if (!st) return;
+  var createInProc = document.getElementById('ob-create-inproc') ? document.getElementById('ob-create-inproc').checked : false;
+  if (!createInProc) { onboardingComplete(); return; }
+  var sponsorVal = document.getElementById('ob-sponsor') ? document.getElementById('ob-sponsor').value : '';
+  var notes = document.getElementById('ob-inproc-notes') ? document.getElementById('ob-inproc-notes').value.trim() : '';
+  var inprocValues = {
+    Title: 'In-Processing: ' + st.personName,
+    PersonID: st.personId,
+    ProcessType: 'In-Processing',
+    Status: 'Open',
+    StartDate: st.arrivalDate || new Date().toISOString().split('T')[0],
+    Notes: notes
+  };
+  if (sponsorVal) { inprocValues.SponsorID = Number(sponsorVal); }
+  createListItem(APP.lists.InOut, inprocValues, { entityType: 'InOutProcessing', reason: 'Onboarding wizard' }).then(function(){
+    onboardingComplete();
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'In-processing case creation failed.', 'danger'); onboardingComplete(); });
+}
+
+function onboardingComplete(){
+  var st = APP.modalState.onboarding;
+  toast('Onboarding complete for ' + (st ? st.personName : 'new member') + '.', 'ok');
+  closeModal();
+  APP.modalState.onboarding = null;
+  ensurePeopleLoaded(true).then(function(){ renderPeople(); }).catch(function(){});
 }
 
 /* ─── Person Detail Page (unified) ─── */
@@ -11980,6 +12154,14 @@ function handleClick(e){
   if (action === 'focus-seat-assets') { routeTo('facilities'); toast('Seat-focused map support will plug into Facilities next.', 'ok'); return; }
   if (action === 'edit-person') { openPersonModal(el.getAttribute('data-id'), true); return; }
   if (action === 'save-person') { savePersonEdit(); return; }
+  if (action === 'open-onboarding-wizard') { openOnboardingWizard(); return; }
+  if (action === 'onboarding-next') { onboardingNext(); return; }
+  if (action === 'onboarding-skip') {
+    var obSt = APP.modalState.onboarding;
+    if (obSt) { if (obSt.step < 4) { obSt.step++; renderOnboardingStep(); } else { onboardingComplete(); } }
+    return;
+  }
+  if (action === 'onboarding-finish') { onboardingFinish(); return; }
   if (action === 'depart-person') { openDepartureModal(el.getAttribute('data-id')); return; }
   if (action === 'confirm-departure') { confirmDeparture(); return; }
   if (action === 'transfer-person') { openTransferPersonModal(el.getAttribute('data-id')); return; }
