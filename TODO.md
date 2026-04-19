@@ -132,7 +132,7 @@ false positives on the script side, not problems in SharePoint:
 > **No prerequisites from you. These are all code-only changes.**
 
 - [ ] Drag-to-create time-off entries (click + drag across days)
-- [ ] Multi-day entry visual spanning (bar across days instead of per-day pills)
+- [x] Multi-day entry visual spanning ✅ Done 2026-04-18. Multi-day entries now show ◄ / ► continuation arrows and connected border-radius (rounded ends, square middle) to give a visual span effect. Tooltip shows full date range.
 
 ---
 

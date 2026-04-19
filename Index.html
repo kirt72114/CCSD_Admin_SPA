@@ -7414,7 +7414,20 @@ function renderCalendarMonth(ui){
       var name = e.PersonID && e.PersonID.Title ? e.PersonID.Title.split(',')[0] : 'Unknown';
       var entryStatus = String(e.Status || '').toLowerCase();
       var entryStyle = entryStatus === 'pending' ? 'opacity:.5;border:1px dashed rgba(255,255,255,.3)' : entryStatus === 'denied' ? 'opacity:.35;text-decoration:line-through' : '';
-      html += '<div class="cal-entry ' + t.key + '" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '" title="' + escAttr(name + ' – ' + (e.TimeOffType || 'Time Off') + (entryStatus !== 'approved' ? ' (' + entryStatus + ')' : '')) + '" style="' + entryStyle + '">' + escHtml(name) + '</div>';
+      /* Multi-day visual indicators */
+      var sStr = (e.StartDate || '').slice(0,10);
+      var eStr = (e.EndDate || e.StartDate || '').slice(0,10);
+      var isStart = ds === sStr;
+      var isEnd = ds === eStr;
+      var isMultiDay = sStr !== eStr;
+      var prefix = isMultiDay && !isStart ? '◄ ' : '';
+      var suffix = isMultiDay && !isEnd ? ' ►' : '';
+      var displayName = prefix + escHtml(name) + suffix;
+      var multiCls = isMultiDay ? ' multi-day' : '';
+      if (isMultiDay && !isStart && !isEnd) { entryStyle += ';border-radius:0'; }
+      else if (isMultiDay && isStart && !isEnd) { entryStyle += ';border-radius:4px 0 0 4px'; }
+      else if (isMultiDay && !isStart && isEnd) { entryStyle += ';border-radius:0 4px 4px 0'; }
+      html += '<div class="cal-entry ' + t.key + multiCls + '" data-action="cal-entry-detail" data-entry-id="' + escAttr(e.Id) + '" title="' + escAttr(name + ' – ' + (e.TimeOffType || 'Time Off') + (isMultiDay ? ' (' + sStr + ' to ' + eStr + ')' : '') + (entryStatus !== 'approved' ? ' (' + entryStatus + ')' : '')) + '" style="' + entryStyle + '">' + displayName + '</div>';
     });
     if (dayEntries.length > 4) {
       html += '<div class="cal-entry other" style="text-align:center;font-size:8px">+' + (dayEntries.length - 4) + ' more</div>';
