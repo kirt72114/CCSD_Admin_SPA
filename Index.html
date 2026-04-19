@@ -4703,6 +4703,21 @@ function reviewSubmission(id, approve){
     }
     return null;
   }).then(function(){
+    var personId = row.PersonID && row.PersonID.Id ? row.PersonID.Id : null;
+    var trainingName = row.TrainingID && row.TrainingID.Title ? row.TrainingID.Title : 'training submission';
+    if (personId) {
+      sendNotification({
+        title: 'Training Submission ' + status,
+        body: 'Your submission for "' + trainingName + '" has been ' + status.toLowerCase() + '.',
+        audienceType: 'Individual',
+        recipientPersonId: personId,
+        notificationType: 'Training',
+        sourceModule: 'Training',
+        isSystemGenerated: true,
+        relatedEntityType: 'TrainingSubmission',
+        relatedEntityID: row.Id
+      }).catch(function(){});
+    }
     toast('Submission ' + status.toLowerCase() + '.', approve ? 'ok' : 'warn');
     return Promise.all([ensureTrainingSubmissionsLoaded(true), ensureTrainingRecordsLoaded(true)]).then(function(){ renderTraining(); });
   }).catch(function(){ toast('Review action failed.', 'danger'); });
@@ -9949,23 +9964,52 @@ function renderSupervisorHubContent(){
     teamMembers: teamMembers
   });
 
-  /* Team roster */
-  html += '<div class="card" style="margin-top:16px"><div class="card-header">Team Roster</div>';
+  /* Team roster — SH-08 enhanced with search, filter pills, quick-action menus */
+  var statusCounts = {};
+  teamMembers.forEach(function(p){
+    var s = p.Status || 'Active';
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+  var statusList = Object.keys(statusCounts).sort();
+
+  html += '<div class="card" style="margin-top:16px"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between">';
+  html += '<span>Team Roster (' + teamMembers.length + ')</span>';
+  html += '<input type="text" id="sup-roster-search" placeholder="Search by name, grade, position..." style="width:220px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px">';
+  html += '</div>';
   html += '<div class="card-body">';
+
+  /* Status filter pills */
+  html += '<div id="sup-roster-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
+  html += '<button class="btn btn-sm btn-primary sup-roster-pill" data-filter="all">All (' + teamMembers.length + ')</button>';
+  statusList.forEach(function(s){
+    html += '<button class="btn btn-sm sup-roster-pill" data-filter="' + escHtml(s) + '">' + escHtml(s) + ' (' + statusCounts[s] + ')</button>';
+  });
+  html += '</div>';
+
   if (teamMembers.length === 0) {
     html += '<p style="color:var(--text-muted)">No team members found for the selected scope.</p>';
   } else {
-    html += '<table class="data-table"><thead><tr>';
-    html += '<th>Name</th><th>Grade</th><th>Position</th><th>Org</th><th>Status</th>';
+    html += '<table class="data-table" id="sup-roster-table"><thead><tr>';
+    html += '<th>Name</th><th>Grade</th><th>Position</th><th>Org</th><th>Status</th><th style="width:40px"></th>';
     html += '</tr></thead><tbody>';
     teamMembers.sort(function(a,b){ return (a.LastName || '').localeCompare(b.LastName || ''); });
     teamMembers.forEach(function(p){
-      html += '<tr data-action="view-person" data-id="' + p.Id + '" style="cursor:pointer">';
-      html += '<td>' + escHtml(formatPerson(p)) + '</td>';
+      var pStatus = escHtml(p.Status || 'Active');
+      html += '<tr data-person-status="' + pStatus + '" style="cursor:pointer">';
+      html += '<td data-action="view-person" data-id="' + p.Id + '">' + escHtml(formatPerson(p)) + '</td>';
       html += '<td>' + escHtml(p.Rank || p.Grade || '') + '</td>';
       html += '<td>' + escHtml(p.PositionTitle || (p.PositionID && p.PositionID.Title ? p.PositionID.Title : '')) + '</td>';
       html += '<td>' + escHtml(p.OrgID && p.OrgID.Title ? p.OrgID.Title : '') + '</td>';
-      html += '<td>' + escHtml(p.Status || 'Active') + '</td>';
+      html += '<td>' + pStatus + '</td>';
+      html += '<td style="position:relative">';
+      html += '<button class="btn btn-sm sup-roster-actions-btn" data-action="toggle-roster-menu" data-id="' + p.Id + '" title="Actions" style="padding:2px 6px">&#8942;</button>';
+      html += '<div class="sup-roster-menu" id="roster-menu-' + p.Id + '" style="display:none;position:absolute;right:0;top:24px;z-index:100;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);min-width:160px">';
+      html += '<div data-action="view-person" data-id="' + p.Id + '" style="padding:6px 12px;cursor:pointer;font-size:13px" class="hover-highlight">View Profile</div>';
+      html += '<div data-action="nav" data-route="calendar" style="padding:6px 12px;cursor:pointer;font-size:13px" class="hover-highlight">View Calendar</div>';
+      html += '<div data-action="sup-send-notification" data-person-id="' + p.Id + '" style="padding:6px 12px;cursor:pointer;font-size:13px" class="hover-highlight">Send Notification</div>';
+      html += '<div data-action="sup-report-team-summary" style="padding:6px 12px;cursor:pointer;font-size:13px" class="hover-highlight">Team Summary</div>';
+      html += '</div>';
+      html += '</td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
@@ -10019,6 +10063,48 @@ function renderSupervisorHubContent(){
   html += '</div></div></div>';
 
   setView(html);
+
+  /* SH-08: Roster search + filter pill wiring */
+  (function(){
+    var searchEl = document.getElementById('sup-roster-search');
+    var table = document.getElementById('sup-roster-table');
+    var pills = document.querySelectorAll('.sup-roster-pill');
+    var activeFilter = 'all';
+
+    function applyRosterFilters(){
+      if (!table) return;
+      var query = (searchEl ? searchEl.value : '').toLowerCase();
+      var rows = table.querySelectorAll('tbody tr');
+      rows.forEach(function(row){
+        var text = row.textContent.toLowerCase();
+        var status = row.getAttribute('data-person-status') || '';
+        var matchSearch = !query || text.indexOf(query) !== -1;
+        var matchFilter = activeFilter === 'all' || status === activeFilter;
+        row.style.display = (matchSearch && matchFilter) ? '' : 'none';
+      });
+    }
+
+    if (searchEl) {
+      searchEl.addEventListener('input', debounce(applyRosterFilters, 200));
+    }
+    pills.forEach(function(pill){
+      pill.addEventListener('click', function(){
+        activeFilter = pill.getAttribute('data-filter') || 'all';
+        pills.forEach(function(p){ p.classList.remove('btn-primary'); });
+        pill.classList.add('btn-primary');
+        applyRosterFilters();
+      });
+    });
+
+    document.addEventListener('click', function(e){
+      var menus = document.querySelectorAll('.sup-roster-menu');
+      menus.forEach(function(m){
+        if (!m.contains(e.target) && !(e.target.getAttribute('data-action') === 'toggle-roster-menu')) {
+          m.style.display = 'none';
+        }
+      });
+    });
+  })();
 }
 
 /* SH-09: Team calendar / availability grid — week view with color-coded cells */
@@ -11705,6 +11791,12 @@ function handleClick(e){
   if (action === 'keyboard-shortcuts') { openModal('Keyboard Shortcuts', '<div class="kv"><div class="k">Alt + H</div><div class="v">Go to Home</div><div class="k">Alt + P</div><div class="v">Go to People</div><div class="k">Alt + O</div><div class="v">Go to Organizations</div><div class="k">Alt + T</div><div class="v">Go to Training</div><div class="k">Alt + R</div><div class="v">Go to Requests</div><div class="k">Alt + F</div><div class="v">Go to Facilities</div><div class="k">Alt + C</div><div class="v">Go to Calendar</div><div class="k">Alt + A</div><div class="v">Go to Assets</div><div class="k">Alt + S</div><div class="v">Go to Security</div><div class="k">Alt + V</div><div class="v">Go to Supervisor Hub</div><div class="k">Alt + D</div><div class="v">Go to Diagnostics</div><div class="k">Alt + N</div><div class="v">New Request</div><div class="k">Escape</div><div class="v">Close Modal</div></div>', '<div></div><button class="btn" data-action="close-modal">Close</button>', 'Keyboard navigation shortcuts'); return; }
   /* Supervisor Hub actions */
   if (action === 'acknowledge-privacy-banner') { APP.state.supervisorPrivacyAcknowledged = true; logAudit('PrivacyBannerAcknowledged', 'SupervisorHub', null, null, {}); renderSupervisorHub(); return; }
+  if (action === 'toggle-roster-menu') {
+    var menuId = 'roster-menu-' + el.getAttribute('data-id');
+    var menu = document.getElementById(menuId);
+    if (menu) { menu.style.display = menu.style.display === 'none' ? 'block' : 'none'; }
+    return;
+  }
   if (action === 'set-supervisor-scope') { APP.state.supervisorScope = el.getAttribute('data-scope') || 'direct'; renderSupervisorHubContent(); return; }
   if (action === 'approve-leave') { approveLeaveRequest(el.getAttribute('data-id')); return; }
   if (action === 'deny-leave') { denyLeaveRequest(el.getAttribute('data-id')); return; }
