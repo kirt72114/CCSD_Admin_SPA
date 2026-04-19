@@ -250,7 +250,7 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .floorplan-sidebar .sb-actions button{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .floorplan-sidebar .sb-actions button:hover{background:rgba(101,213,255,.2)}
 .floorplan-sidebar .sb-count{padding:6px 12px;border-top:1px solid var(--line);font-size:10px;color:var(--muted);text-align:center}
-.floorplan-container{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#0a1628;cursor:grab;user-select:none;min-height:400px;max-height:70vh}
+.floorplan-container{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#0a1628;cursor:grab;user-select:none;min-height:400px;max-height:70vh;touch-action:none;-webkit-user-select:none}
 .floorplan-container.dragging{cursor:grabbing}
 .floorplan-inner{position:relative;transform-origin:0 0;will-change:transform}
 .floorplan-inner img{display:block;max-width:none;pointer-events:none}
@@ -277,6 +277,7 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .seat-marker-label{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none}
 .picker-crosshair .seat-marker.draggable{cursor:grab;pointer-events:auto!important}
 .picker-crosshair .seat-marker.dragging-seat{cursor:grabbing;z-index:25;opacity:.7}
+@media (pointer:coarse){.seat-marker{width:32px;height:32px}.seat-marker-label{top:-22px;font-size:11px}.floorplan-controls button{width:44px;height:44px;font-size:20px}.floorplan-sidebar .sb-item{padding:10px 12px;font-size:13px}.floorplan-sidebar .sb-actions{opacity:1}.floorplan-sidebar .sb-actions button{width:32px;height:32px;font-size:14px}}
 
 /* ─── Seat Tooltip ─── */
 .seat-tooltip{position:fixed;z-index:100;background:linear-gradient(180deg,#0d1a31,#081120);border:1px solid rgba(101,213,255,.25);border-radius:14px;padding:12px 14px;box-shadow:0 16px 40px rgba(0,0,0,.5);pointer-events:none;min-width:220px;max-width:320px;font-size:12px}
@@ -1176,6 +1177,35 @@ function toast(message, kind){
   div.innerHTML = escHtml(message || 'Done');
   host.appendChild(div);
   setTimeout(function(){ if (div && div.parentNode) { div.parentNode.removeChild(div); } }, 4200);
+}
+function toastWithAction(message, kind, actionLabel, onAction, durationMs){
+  var host = document.getElementById('toastHost');
+  var div = document.createElement('div');
+  div.className = 'toast ' + (kind || '');
+  var span = document.createElement('span');
+  span.textContent = message;
+  div.appendChild(span);
+  var btn = document.createElement('button');
+  btn.className = 'undo-btn';
+  btn.type = 'button';
+  btn.textContent = actionLabel || 'Undo';
+  btn.addEventListener('click', function(){
+    try { onAction && onAction(); } finally { if (div.parentNode){ div.parentNode.removeChild(div); } }
+  });
+  div.appendChild(btn);
+  host.appendChild(div);
+  setTimeout(function(){ if (div && div.parentNode) { div.parentNode.removeChild(div); } }, durationMs || 8000);
+  return div;
+}
+function confirmDialog(title, message, confirmLabel, onConfirm, opts){
+  opts = opts || {};
+  APP.modalState = APP.modalState || {};
+  APP.modalState._pendingConfirm = onConfirm;
+  var btnCls = opts.danger ? 'btn danger' : 'btn primary';
+  var body = '<div style="padding:4px 0;line-height:1.55;font-size:13px">' + escHtml(message || '') + '</div>';
+  openModal(title || 'Confirm',
+    body,
+    '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="' + btnCls + '" data-action="confirm-dialog-ok">' + escHtml(confirmLabel || 'Confirm') + '</button></div>');
 }
 function setUserPill(){
   var user = APP.state.currentUser;
@@ -4390,7 +4420,14 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
     }
     html += '</div>';
     if (isPicker) {
-      html += '<div class="picker-hint"><strong>Click</strong> empty space to place a new seat. <strong>Click</strong> an existing seat to edit or delete it. <strong>Drag</strong> an existing seat to reposition it. Scroll to zoom.</div>';
+      if (ui.pendingPlaceSeatId) {
+        var pendingSeat = null;
+        seats.some(function(s){ if (String(s.Id) === String(ui.pendingPlaceSeatId)) { pendingSeat = s; return true; } return false; });
+        var pendingLabel = pendingSeat ? (pendingSeat.SeatLabel || pendingSeat.SeatID || 'Seat') : 'seat';
+        html += '<div class="picker-hint" style="background:rgba(255,199,105,.12);border-color:rgba(255,199,105,.35)"><strong>Placing:</strong> click anywhere on the floor plan to place seat &quot;' + escHtml(pendingLabel) + '&quot;. <button class="btn subtle" data-action="cancel-place-existing" style="margin-left:12px;padding:4px 10px">Cancel placement</button></div>';
+      } else {
+        html += '<div class="picker-hint"><strong>Click</strong> empty space to create a new seat. <strong>Click</strong> an existing seat to edit or delete it. <strong>Drag</strong> a seat to reposition it. <strong>Click</strong> an unplaced seat in the sidebar to drop it on the map. Scroll/pinch to zoom.</div>';
+      }
     }
   }
   html += '<div class="floorplan-wrapper">';
@@ -4472,8 +4509,15 @@ function applyFloorPlanTransform(){
 }
 /* Module-level drag state — shared between container and document listeners */
 var _fpDrag = { dragging: false, moved: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0, seatDragging: null, seatMoved: false, seatDragStartX: 0, seatDragStartY: 0, seatOrigX: 0, seatOrigY: 0 };
+var _fpPinch = { active: false, startDist: 0, startZoom: 1 };
+var _fpTouchEndAt = 0;
 var _fpDocListenersAttached = false;
 var MOVE_THRESHOLD = 3;
+function _fpTouchDist(touches){
+  var dx = touches[0].clientX - touches[1].clientX;
+  var dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
 function ensureFloorPlanDocListeners(){
   if (_fpDocListenersAttached) { return; }
   _fpDocListenersAttached = true;
@@ -4589,8 +4633,17 @@ function initFloorPlanInteraction(){
     applyFloorPlanTransform();
   }, { passive: false });
   container.addEventListener('click', function(e){
+    /* Suppress synthesized click that follows a touch tap (~300ms) */
+    if (_fpTouchEndAt && (Date.now() - _fpTouchEndAt) < 500) { return; }
     if (_fpDrag.moved || _fpDrag.seatMoved) { return; }
     if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      if (ui.pendingPlaceSeatId) {
+        var onMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
+        if (onMarker) { return; }
+        var coords = floorPlanClientToImage(e.clientX, e.clientY);
+        if (coords) { placeExistingSeat(ui.pendingPlaceSeatId, coords.x, coords.y); }
+        return;
+      }
       var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
       if (marker) { openSeatEditModal(marker.getAttribute('data-seat-id')); return; }
       handlePickerClick(e);
@@ -4621,6 +4674,126 @@ function initFloorPlanInteraction(){
     } else if (e.key === 'Escape') {
       hideSeatTooltip();
     }
+  });
+  /* ── Touch support: pan, pinch-zoom, tap, and seat-drag in picker mode ── */
+  container.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2) {
+      _fpPinch.active = true;
+      _fpPinch.startDist = _fpTouchDist(e.touches);
+      _fpPinch.startZoom = ui.zoom;
+      _fpDrag.dragging = false;
+      if (_fpDrag.seatDragging) { _fpDrag.seatDragging.classList.remove('dragging-seat'); _fpDrag.seatDragging = null; }
+      e.preventDefault();
+      return;
+    }
+    if (e.touches.length !== 1) { return; }
+    var t = e.touches[0];
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      var marker = t.target && t.target.closest ? t.target.closest('.seat-marker.draggable') : null;
+      if (marker) {
+        _fpDrag.seatDragging = marker; _fpDrag.seatMoved = false;
+        _fpDrag.seatDragStartX = t.clientX; _fpDrag.seatDragStartY = t.clientY;
+        _fpDrag.seatOrigX = parseInt(marker.style.left, 10) || 0;
+        _fpDrag.seatOrigY = parseInt(marker.style.top, 10) || 0;
+        marker.classList.add('dragging-seat');
+        e.preventDefault();
+        return;
+      }
+    }
+    _fpDrag.dragging = true; _fpDrag.moved = false;
+    _fpDrag.startX = t.clientX; _fpDrag.startY = t.clientY;
+    _fpDrag.startPanX = ui.panX; _fpDrag.startPanY = ui.panY;
+    container.classList.add('dragging');
+    e.preventDefault();
+  }, { passive: false });
+  container.addEventListener('touchmove', function(e){
+    if (_fpPinch.active && e.touches.length === 2) {
+      var dist = _fpTouchDist(e.touches);
+      if (!dist || !_fpPinch.startDist) { e.preventDefault(); return; }
+      var oldZoom = ui.zoom;
+      var newZoom = Math.max(0.15, Math.min(5, _fpPinch.startZoom * (dist / _fpPinch.startDist)));
+      if (newZoom !== oldZoom) {
+        var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        var cr = container.getBoundingClientRect();
+        var mx = cx - cr.left, my = cy - cr.top;
+        ui.panX = mx - ((mx - ui.panX) * (newZoom / oldZoom));
+        ui.panY = my - ((my - ui.panY) * (newZoom / oldZoom));
+        ui.zoom = newZoom;
+        clampFloorPlanPan();
+        applyFloorPlanTransform();
+      }
+      e.preventDefault();
+      return;
+    }
+    if (e.touches.length !== 1) { return; }
+    var t = e.touches[0];
+    if (_fpDrag.seatDragging) {
+      var sdx = (t.clientX - _fpDrag.seatDragStartX) / ui.zoom;
+      var sdy = (t.clientY - _fpDrag.seatDragStartY) / ui.zoom;
+      if (Math.abs(sdx) > MOVE_THRESHOLD || Math.abs(sdy) > MOVE_THRESHOLD) { _fpDrag.seatMoved = true; }
+      _fpDrag.seatDragging.style.left = Math.round(_fpDrag.seatOrigX + sdx) + 'px';
+      _fpDrag.seatDragging.style.top = Math.round(_fpDrag.seatOrigY + sdy) + 'px';
+      e.preventDefault();
+      return;
+    }
+    if (_fpDrag.dragging) {
+      var ddx = t.clientX - _fpDrag.startX, ddy = t.clientY - _fpDrag.startY;
+      if (Math.abs(ddx) > MOVE_THRESHOLD || Math.abs(ddy) > MOVE_THRESHOLD) { _fpDrag.moved = true; }
+      ui.panX = _fpDrag.startPanX + ddx; ui.panY = _fpDrag.startPanY + ddy;
+      clampFloorPlanPan();
+      applyFloorPlanTransform();
+      e.preventDefault();
+    }
+  }, { passive: false });
+  container.addEventListener('touchend', function(e){
+    _fpTouchEndAt = Date.now();
+    if (_fpPinch.active) {
+      if (e.touches.length < 2) { _fpPinch.active = false; }
+      return;
+    }
+    var changed = e.changedTouches && e.changedTouches[0];
+    if (_fpDrag.seatDragging) {
+      var marker = _fpDrag.seatDragging;
+      marker.classList.remove('dragging-seat');
+      if (_fpDrag.seatMoved) {
+        var newX = parseInt(marker.style.left, 10);
+        var newY = parseInt(marker.style.top, 10);
+        saveSeatPosition(marker.getAttribute('data-seat-id'), newX, newY, marker, _fpDrag.seatOrigX, _fpDrag.seatOrigY);
+      } else if (changed) {
+        if (ui.floorPlanMode === 'picker' && canSeeAdmin()) { openSeatEditModal(marker.getAttribute('data-seat-id')); }
+        else { showSeatTooltipPinned(marker, e); }
+      }
+      _fpDrag.seatDragging = null; _fpDrag.seatMoved = false;
+      return;
+    }
+    if (_fpDrag.dragging) {
+      var wasMoved = _fpDrag.moved;
+      _fpDrag.dragging = false;
+      container.classList.remove('dragging');
+      if (!wasMoved && changed) {
+        if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+          if (ui.pendingPlaceSeatId) {
+            var coords = floorPlanClientToImage(changed.clientX, changed.clientY);
+            if (coords) { placeExistingSeat(ui.pendingPlaceSeatId, coords.x, coords.y); }
+            return;
+          }
+          var tapped = document.elementFromPoint(changed.clientX, changed.clientY);
+          var tapMarker = tapped && tapped.closest ? tapped.closest('.seat-marker') : null;
+          if (tapMarker) { openSeatEditModal(tapMarker.getAttribute('data-seat-id')); return; }
+          handlePickerClick({ clientX: changed.clientX, clientY: changed.clientY });
+          return;
+        }
+        var tapped2 = document.elementFromPoint(changed.clientX, changed.clientY);
+        var viewMarker = tapped2 && tapped2.closest ? tapped2.closest('.seat-marker') : null;
+        if (viewMarker) { showSeatTooltipPinned(viewMarker, e); }
+      }
+    }
+  }, { passive: false });
+  container.addEventListener('touchcancel', function(){
+    if (_fpDrag.seatDragging) { _fpDrag.seatDragging.classList.remove('dragging-seat'); _fpDrag.seatDragging = null; }
+    _fpDrag.dragging = false; _fpPinch.active = false;
+    container.classList.remove('dragging');
   });
 }
 function floorPlanZoom(direction){
@@ -4764,15 +4937,54 @@ function saveSeatEdit(){
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
   }).catch(function(){ toast('Seat update failed.', 'danger'); });
 }
+function snapshotSeatForUndo(seat){
+  var lookup = function(v){ return v && (v.Id || v.Id === 0) ? (v.Id || v) : v; };
+  var snap = {
+    Title: seat.Title || seat.SeatLabel,
+    SeatLabel: seat.SeatLabel,
+    SeatID: seat.SeatID,
+    RoomID: lookup(seat.RoomID),
+    XCoord: seat.XCoord,
+    YCoord: seat.YCoord,
+    PortNumber: seat.PortNumber,
+    PhoneNumber: seat.PhoneNumber,
+    HasNIPR: seat.HasNIPR,
+    HasSIPR: seat.HasSIPR,
+    HasJWICS: seat.HasJWICS,
+    VTCEnabled: seat.VTCEnabled,
+    CurrentPersonID: lookup(seat.CurrentPersonID),
+    SeatStatus: seat.SeatStatus,
+    Notes: seat.Notes
+  };
+  var values = {};
+  Object.keys(snap).forEach(function(k){ if (snap[k] !== undefined && snap[k] !== null) { values[k] = snap[k]; } });
+  return values;
+}
+function undoDeleteSeat(values){
+  createListItem(APP.lists.Seats, values, { entityType: 'Seat', reason: 'Undo delete' }).then(function(){
+    toast('Seat restored.', 'ok');
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Restore failed.', 'danger'); });
+}
 function deleteSeat(seatId){
   if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
-  if (!confirm('Delete this seat permanently? This cannot be undone.')) { return; }
-  deleteListItem(APP.lists.Seats, seatId, { entityType: 'Seat', reason: 'Seat deletion' }).then(function(){
-    toast('Seat deleted.', 'ok');
-    hideSeatTooltip();
-    closeModal();
-    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
-  }).catch(function(){ toast('Delete failed.', 'danger'); });
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var label = seat.SeatLabel || seat.SeatID || 'this seat';
+  confirmDialog('Delete seat "' + label + '"?',
+    'This permanently removes the seat record. You\u2019ll have about 10 seconds to undo from the toast.',
+    'Delete',
+    function(){
+      var snapshot = snapshotSeatForUndo(seat);
+      deleteListItem(APP.lists.Seats, seatId, { entityType: 'Seat', reason: 'Seat deletion' }).then(function(){
+        hideSeatTooltip();
+        toastWithAction('Seat "' + label + '" deleted.', 'warn', 'Undo', function(){ undoDeleteSeat(snapshot); }, 10000);
+        return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+      }).catch(function(){ toast('Delete failed.', 'danger'); });
+    },
+    { danger: true });
 }
 function saveSeatPosition(seatId, x, y, marker, origX, origY){
   updateListItem(APP.lists.Seats, seatId, { XCoord: String(x), YCoord: String(y) }, { entityType: 'Seat', reason: 'Drag reposition' }).then(function(){
@@ -4785,20 +4997,39 @@ function saveSeatPosition(seatId, x, y, marker, origX, origY){
   });
 }
 function highlightSeatOnMap(seatId, x, y){
-  if (x === '' || x == null) { toast('This seat is not placed on the map yet.', 'warn'); return; }
+  var ui = ensureFacilityUi();
+  if (x === '' || x == null) {
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      ui.pendingPlaceSeatId = seatId;
+      renderFacilities();
+      return;
+    }
+    toast('Seat not placed — enter "Edit Seat Map" mode to drop it on the plan.', 'warn');
+    return;
+  }
   var marker = document.querySelector('.seat-marker[data-seat-id="' + seatId + '"]');
   if (!marker) { return; }
-  var ui = ensureFacilityUi();
   var container = document.getElementById('floorplanContainer');
   if (!container) { return; }
   var cw = container.clientWidth; var ch = container.clientHeight;
   ui.panX = (cw / 2) - (Number(x) * ui.zoom);
   ui.panY = (ch / 2) - (Number(y) * ui.zoom);
+  clampFloorPlanPan();
   applyFloorPlanTransform();
   var prev = document.querySelector('.seat-marker.selected');
   if (prev) { prev.classList.remove('selected'); }
   marker.classList.add('selected');
   setTimeout(function(){ marker.classList.remove('selected'); }, 2000);
+}
+function placeExistingSeat(seatId, x, y){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  updateListItem(APP.lists.Seats, seatId, { XCoord: String(x), YCoord: String(y) }, { entityType: 'Seat', reason: 'Place unplaced seat' }).then(function(){
+    var ui = ensureFacilityUi();
+    ui.pendingPlaceSeatId = null;
+    ui._justPlacedId = seatId;
+    toast('Seat placed at (' + x + ', ' + y + ').', 'ok');
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Placement failed.', 'danger'); });
 }
 function filterSeatSidebar(query){
   var list = document.getElementById('seatSidebarList');
@@ -4834,16 +5065,19 @@ function getNextSeatLabel(){
 }
 
 /* ─── Coordinate Picker Tool ─── */
-function handlePickerClick(e){
-  var container = document.getElementById('floorplanContainer');
+function floorPlanClientToImage(clientX, clientY){
   var inner = document.getElementById('floorplanInner');
-  if (!container || !inner) { return; }
+  if (!inner) { return null; }
   var ui = ensureFacilityUi();
   var rect = inner.getBoundingClientRect();
-  var x = Math.round((e.clientX - rect.left) / ui.zoom);
-  var y = Math.round((e.clientY - rect.top) / ui.zoom);
-  ui.pickerPending = { x: x, y: y };
-  openSeatPlacementModal(x, y);
+  return { x: Math.round((clientX - rect.left) / ui.zoom), y: Math.round((clientY - rect.top) / ui.zoom) };
+}
+function handlePickerClick(e){
+  var coords = floorPlanClientToImage(e.clientX, e.clientY);
+  if (!coords) { return; }
+  var ui = ensureFacilityUi();
+  ui.pickerPending = coords;
+  openSeatPlacementModal(coords.x, coords.y);
 }
 function openSeatPlacementModal(x, y){
   var ui = ensureFacilityUi();
@@ -7857,8 +8091,10 @@ function handleClick(e){
   if (action === 'refresh-all') { refreshAll(); return; }
   if (action === 'select-facility') { ensureFacilityUi(); var fid = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = APP.state.facilityUi.selectedFacilityId === fid ? null : fid; APP.state.facilityUi.selectedRoomId = null; renderFacilities(); return; }
   if (action === 'select-room') { ensureFacilityUi(); APP.state.facilityUi.selectedRoomId = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = Number(el.getAttribute('data-facility')); renderFacilities(); return; }
+  if (action === 'confirm-dialog-ok') { var cb = APP.modalState && APP.modalState._pendingConfirm; closeModal(); if (typeof cb === 'function') { cb(); } return; }
+  if (action === 'cancel-place-existing') { ensureFacilityUi(); APP.state.facilityUi.pendingPlaceSeatId = null; renderFacilities(); return; }
   if (action === 'enter-seat-picker') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
-  if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; renderFacilities(); return; }
+  if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; APP.state.facilityUi.pendingPlaceSeatId = null; renderFacilities(); return; }
   if (action === 'save-picker-seat') { savePickerSeat(); return; }
   if (action === 'edit-seat-inline') { openSeatEditModal(el.getAttribute('data-seat-id')); return; }
   if (action === 'save-seat-edit') { saveSeatEdit(); return; }
