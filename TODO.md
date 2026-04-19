@@ -218,7 +218,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you. Uses existing `CCSD_Organizations` list.**
 
-- [ ] Org merge / restructure tool
+- [x] Org merge / restructure tool ✅ Done 2026-04-18. `openOrgMergeModal()` shows source org with active personnel count, target dropdown, reason field. `confirmOrgMerge()` updates OrgID for all source personnel via `updateListItem` (audited). "Merge/Restructure" button on org detail panel for App Admin.
 - [x] Org contact card (expanded info) ✅ Done 2026-04-18. `openOrgContactCard()` shows org details (email, phone, DSN, fax, address, mission), KPIs (personnel/positions counts), and leadership table with email mailto link.
 
 ---

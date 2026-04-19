@@ -4295,7 +4295,7 @@ function renderOrganizationsView(){
     crumbs.forEach(function(org){ detailHtml += '<button class="org-crumb" data-action="org-select" data-id="' + escAttr(org.Id) + '">' + escHtml(getOrgDisplayName(org)) + '</button>'; });
     detailHtml += '</div>';
     detailHtml += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roll.directPeople)) + '</div><div class="t">Direct Personnel</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.totalPeople)) + '</div><div class="t">Branch Personnel</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.childCount)) + '</div><div class="t">Immediate Child Units</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roll.totalPositions)) + '</div><div class="t">Positions in Branch</div></div></div>';
-    detailHtml += '<div class="org-root-actions"><button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(selected.Id) + '">View Leadership</button><button class="btn subtle" data-action="org-contact-card" data-id="' + escAttr(selected.Id) + '">Contact Card</button><button class="btn subtle" data-action="org-dashboard" data-id="' + escAttr(selected.Id) + '">Dashboard</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="edit-org" data-id="' + escAttr(selected.Id) + '">Edit Org</button>' : '') + '<button class="btn subtle" data-action="org-focus" data-id="' + escAttr(selected.Id) + '">' + (ui.focusOrgId === selected.Id ? 'Focused Branch' : 'Focus This Branch') + '</button>';
+    detailHtml += '<div class="org-root-actions"><button class="btn subtle" data-action="org-view-leadership" data-id="' + escAttr(selected.Id) + '">View Leadership</button><button class="btn subtle" data-action="org-contact-card" data-id="' + escAttr(selected.Id) + '">Contact Card</button><button class="btn subtle" data-action="org-dashboard" data-id="' + escAttr(selected.Id) + '">Dashboard</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="edit-org" data-id="' + escAttr(selected.Id) + '">Edit Org</button> <button class="btn subtle" data-action="org-merge" data-id="' + escAttr(selected.Id) + '">Merge/Restructure</button>' : '') + '<button class="btn subtle" data-action="org-focus" data-id="' + escAttr(selected.Id) + '">' + (ui.focusOrgId === selected.Id ? 'Focused Branch' : 'Focus This Branch') + '</button>';
     if (ui.focusOrgId) { detailHtml += '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>'; }
     if (selected.SharePointURL) { detailHtml += '<a class="btn subtle" href="' + escAttr(selected.SharePointURL) + '" target="_blank" rel="noopener">Open SharePoint Site</a>'; }
     detailHtml += '</div>';
@@ -4354,6 +4354,50 @@ function openCreateOrgModal(){
   APP.modalState.editOrgId = null;
   openModal('Create Organization', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-org">Create</button></div>');
 }
+/* Org merge/restructure: move all personnel from source org to target org */
+function openOrgMergeModal(sourceOrgId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin.', 'danger'); return; }
+  var orgs = APP.state.data.organizations || [];
+  var people = APP.state.data.people || [];
+  var source = orgs.filter(function(o){ return String(o.Id) === String(sourceOrgId); })[0];
+  if (!source) { toast('Source org not found.', 'danger'); return; }
+  var sourcePeople = people.filter(function(p){ return p.OrgID && String(p.OrgID.Id) === String(sourceOrgId) && String(p.Status || '').toLowerCase() !== 'departed'; });
+  var targetOpts = orgs.filter(function(o){ return String(o.Id) !== String(sourceOrgId); }).sort(function(a,b){ return (a.OrgName || a.Title || '').localeCompare(b.OrgName || b.Title || ''); }).map(function(o){
+    return '<option value="' + escAttr(o.Id) + '">' + escHtml((o.OrgCode ? '[' + o.OrgCode + '] ' : '') + (o.OrgName || o.Title || '')) + '</option>';
+  }).join('');
+  var body = '<div class="warning-box" style="background:var(--warning-bg,#f39c1222);padding:8px;border-radius:4px;margin-bottom:10px;font-size:11px"><strong>⚠ This action will move ALL active personnel from <em>' + escHtml(source.OrgName || source.Title || '') + '</em> to the selected target org.</strong> Org records remain intact. Audited.</div>';
+  body += '<div class="form-grid">'
+    + '<label>Source (' + sourcePeople.length + ' active personnel)</label><div><strong>' + escHtml(source.OrgName || source.Title || '') + '</strong></div>'
+    + '<label>Move To Target Org</label><select id="mergeTargetOrg"><option value="">— Select target —</option>' + targetOpts + '</select>'
+    + '<label>Reason (audit log)</label><input id="mergeReason" placeholder="Reorg, dissolution, etc.">'
+    + '</div>';
+  if (!sourcePeople.length) { body += '<div class="empty">No active personnel to move.</div>'; }
+  var footer = '<button class="btn" data-action="close-modal">Cancel</button>';
+  if (sourcePeople.length) { footer += ' <button class="btn primary" data-action="confirm-org-merge" data-source="' + escAttr(sourceOrgId) + '">Move ' + sourcePeople.length + ' Personnel</button>'; }
+  openModal('Org Merge / Restructure', body, footer);
+}
+
+function confirmOrgMerge(sourceOrgId){
+  var targetId = Number(document.getElementById('mergeTargetOrg').value);
+  var reason = (document.getElementById('mergeReason').value || '').trim();
+  if (!targetId) { toast('Select a target org.', 'warn'); return; }
+  if (!reason) { toast('Reason is required for audit.', 'warn'); return; }
+  var people = APP.state.data.people || [];
+  var sourcePeople = people.filter(function(p){ return p.OrgID && String(p.OrgID.Id) === String(sourceOrgId) && String(p.Status || '').toLowerCase() !== 'departed'; });
+  if (!sourcePeople.length) { toast('No personnel to move.', 'warn'); return; }
+  if (!confirm('Move ' + sourcePeople.length + ' personnel from source org to target? Continue?')) { return; }
+  toast('Moving ' + sourcePeople.length + ' personnel...', 'ok');
+  var promises = sourcePeople.map(function(p){
+    return updateListItem(APP.lists.Personnel, p.Id, { OrgID: targetId }, { entityType: 'Personnel', before: { OrgID: p.OrgID }, reason: 'Org merge: ' + reason });
+  });
+  Promise.all(promises).then(function(){
+    closeModal();
+    toast('Moved ' + sourcePeople.length + ' personnel.', 'ok');
+    APP.state.data.people = null;
+    if (APP.state.route === 'organizations') { renderOrganizations(); }
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Merge failed.', 'danger'); });
+}
+
 function openEditOrgModal(orgId){
   var orgs = APP.state.data.organizations || [];
   var org = null;
@@ -11500,6 +11544,8 @@ function handleClick(e){
   if (action === 'org-toggle-above-root') { ensureOrgChartUi(); APP.state.orgUi.showAboveRoot = !APP.state.orgUi.showAboveRoot; renderOrganizationsView(); return; }
   if (action === 'org-view-leadership') { openOrgLeadershipModal(el.getAttribute('data-id')); return; }
   if (action === 'org-contact-card') { openOrgContactCard(el.getAttribute('data-id')); return; }
+  if (action === 'org-merge') { openOrgMergeModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-org-merge') { confirmOrgMerge(el.getAttribute('data-source')); return; }
   if (action === 'create-org') { openCreateOrgModal(); return; }
   if (action === 'edit-org') { openEditOrgModal(el.getAttribute('data-id')); return; }
   if (action === 'save-org') { saveOrg(); return; }
