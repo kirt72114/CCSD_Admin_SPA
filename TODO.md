@@ -228,7 +228,7 @@ false positives on the script side, not problems in SharePoint:
 > **No prerequisites from you. Uses existing `CCSD_Training` and `CCSD_TrainingRecords` lists.**
 
 - [x] Training calendar integration (show on Calendar module) ✅ Done 2026-04-18. Toggle button "📋 Training" in calendar header. When enabled, training expirations from CCSD_TrainingRecords appear as red entries on the calendar. New "Training Expiration" CAL_TYPE.
-- [ ] Training request workflow (person requests → supervisor approves → SF182 auto-created)
+- [x] Training request workflow (person requests → supervisor approves → SF182 auto-created) ✅ Done. `createSF182FromTrainingId()` creates SF-182 request from training catalog. SH-13 supervisor approval workflow handles approve/return/reject with notifications.
 
 ---
 
@@ -279,7 +279,7 @@ false positives on the script side, not problems in SharePoint:
 
 > **No prerequisites from you.**
 
-- [ ] Undo toast actions
+- [x] Undo toast actions ✅ Done 2026-04-18. `toast()` now accepts a third `undoFn` argument that adds an "Undo" button to the toast (8 second timeout). Wired up to `deleteTimeOffEntry` to restore deleted entries.
 - [ ] Keyboard navigation (arrow keys in calendar, tab through tables)
 
 ### Security (P1) — 💻

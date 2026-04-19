@@ -1185,13 +1185,24 @@ function openModal(title, bodyHtml, footerHtml, subTitle){
   document.getElementById('modalMask').style.display = 'flex';
 }
 function closeModal(){ document.getElementById('modalMask').style.display = 'none'; APP.modalState = {}; }
-function toast(message, kind){
+function toast(message, kind, undoFn){
   var host = document.getElementById('toastHost');
   var div = document.createElement('div');
   div.className = 'toast ' + (kind || '');
   div.innerHTML = escHtml(message || 'Done');
-  host.appendChild(div);
-  setTimeout(function(){ if (div && div.parentNode) { div.parentNode.removeChild(div); } }, 4200);
+  if (typeof undoFn === 'function') {
+    var btn = document.createElement('button');
+    btn.textContent = 'Undo';
+    btn.style.cssText = 'margin-left:10px;padding:2px 8px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:inherit;border-radius:3px;cursor:pointer;font-weight:700';
+    btn.onclick = function(){
+      try { undoFn(); } catch(e){ toast('Undo failed: ' + e.message, 'danger'); }
+      if (div && div.parentNode) { div.parentNode.removeChild(div); }
+    };
+    div.appendChild(btn);
+    setTimeout(function(){ if (div && div.parentNode) { div.parentNode.removeChild(div); } }, 8000);
+  } else {
+    setTimeout(function(){ if (div && div.parentNode) { div.parentNode.removeChild(div); } }, 4200);
+  }
 }
 function setUserPill(){
   var user = APP.state.currentUser;
@@ -7591,11 +7602,30 @@ function saveTimeOffEntry(){
 
 function deleteTimeOffEntry(entryId){
   if (!confirm('Delete this time-off entry?')) { return; }
+  var original = (APP.state.data.timeOff || []).filter(function(e){ return String(e.Id) === String(entryId); })[0];
   deleteListItem(APP.lists.TimeOff, entryId, { entityType: 'TimeOff', reason: 'Delete time off entry' }).then(function(){
-    toast('Entry deleted.', 'ok');
     closeModal();
     APP.state.data.timeOff = null;
     renderCalendar();
+    var undoFn = original ? function(){
+      var restore = {
+        Title: original.Title || 'Restored entry',
+        StartDate: original.StartDate,
+        EndDate: original.EndDate,
+        TimeOffType: original.TimeOffType,
+        Status: original.Status,
+        Hours: original.Hours,
+        Notes: original.Notes
+      };
+      if (original.PersonID && original.PersonID.Id) { restore.PersonID = original.PersonID.Id; }
+      if (original.OrgID && original.OrgID.Id) { restore.OrgID = original.OrgID.Id; }
+      createListItem(APP.lists.TimeOff, restore, { entityType: 'TimeOff', reason: 'Undo delete' }).then(function(){
+        toast('Entry restored.', 'ok');
+        APP.state.data.timeOff = null;
+        renderCalendar();
+      }).catch(function(){ toast('Undo failed.', 'danger'); });
+    } : null;
+    toast('Entry deleted.', 'ok', undoFn);
   }).catch(function(){ toast('Delete failed.', 'danger'); });
 }
 
