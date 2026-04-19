@@ -5494,13 +5494,23 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
       html += '<span class="badge warn">SEAT PLACEMENT MODE</span> ';
       html += '<button class="btn subtle" data-action="exit-seat-picker">Done Editing</button>';
       html += '<div class="picker-stats"><span>Placed: <span class="stat-val">' + placedSeats.length + '</span></span><span>Unplaced: <span class="stat-val">' + unplacedSeats.length + '</span></span><span>Total: <span class="stat-val">' + seats.length + '</span></span></div>';
+    } else if (ui.floorPlanMode === 'drawRoom') {
+      html += '<span class="badge info">ROOM BOUNDARY MODE</span> ';
+      html += '<span style="font-size:12px;color:var(--text-muted)">Click corners to draw outline. </span>';
+      html += '<button class="btn primary" data-action="save-room-boundary">Save Boundary</button> ';
+      html += '<button class="btn subtle" data-action="undo-room-point">Undo Point</button> ';
+      html += '<button class="btn subtle" data-action="exit-room-draw">Cancel</button>';
     } else {
       html += '<button class="btn primary" data-action="enter-seat-picker">Edit Seat Map</button>';
+      html += '<button class="btn" data-action="enter-room-draw">Draw Room Boundary</button>';
       html += '<button class="btn subtle" data-action="enter-floorplan-url">Set Floor Plan URL</button>';
     }
     html += '</div>';
     if (isPicker) {
       html += '<div class="picker-hint"><strong>Click</strong> empty space to place a new seat. <strong>Click</strong> an existing seat to edit or delete it. <strong>Drag</strong> an existing seat to reposition it. Scroll to zoom.</div>';
+    }
+    if (ui.floorPlanMode === 'drawRoom') {
+      html += '<div class="picker-hint"><strong>Click</strong> on the floor plan to add boundary corners. At least 3 points required. Click <strong>Save Boundary</strong> when done. <strong>Undo Point</strong> to remove the last point.</div>';
     }
   }
   html += '<div class="floorplan-wrapper">';
@@ -5521,6 +5531,35 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
   if (isPicker && ui.pickerPending) {
     html += '<div class="picker-pending" style="left:' + ui.pickerPending.x + 'px;top:' + ui.pickerPending.y + 'px"></div>';
   }
+  /* Room boundary overlays */
+  var boundaries = APP.state.data.roomBoundaries || {};
+  var rooms = APP.state.data.rooms || [];
+  var isDrawing = ui.floorPlanMode === 'drawRoom';
+  html += '<svg id="fpRoomOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:' + (isDrawing ? 'auto' : 'none') + ';z-index:5">';
+  rooms.forEach(function(rm){
+    var fid = facility ? String(facility.Id) : '';
+    var rmFid = rm.FacilityID && rm.FacilityID.Id ? String(rm.FacilityID.Id) : '';
+    if (fid && rmFid !== fid) return;
+    if (room && String(rm.Id) !== String(room.Id)) return;
+    var key = 'room-' + rm.Id;
+    var pts = boundaries[key];
+    if (!pts || !pts.length) return;
+    var points = pts.map(function(p){ return p.x + ',' + p.y; }).join(' ');
+    var rmColor = rm.RoomType === 'SCIF' ? 'rgba(198,40,40,.25)' : rm.IsSCIF ? 'rgba(198,40,40,.25)' : 'rgba(101,213,255,.15)';
+    var strokeColor = rm.RoomType === 'SCIF' || rm.IsSCIF ? 'rgba(198,40,40,.6)' : 'rgba(101,213,255,.4)';
+    html += '<polygon points="' + points + '" fill="' + rmColor + '" stroke="' + strokeColor + '" stroke-width="2" data-room-id="' + rm.Id + '"/>';
+    var cx = pts.reduce(function(s,p){ return s + p.x; }, 0) / pts.length;
+    var cy = pts.reduce(function(s,p){ return s + p.y; }, 0) / pts.length;
+    html += '<text x="' + cx + '" y="' + cy + '" text-anchor="middle" fill="rgba(255,255,255,.7)" font-size="11" font-weight="600" style="pointer-events:none">' + escHtml(rm.RoomNumber || rm.Title || '') + '</text>';
+  });
+  if (isDrawing && ui.drawingPoints && ui.drawingPoints.length > 0) {
+    var drawPts = ui.drawingPoints.map(function(p){ return p.x + ',' + p.y; }).join(' ');
+    html += '<polygon points="' + drawPts + '" fill="rgba(46,125,50,.2)" stroke="rgba(46,125,50,.8)" stroke-width="2" stroke-dasharray="6,3"/>';
+    ui.drawingPoints.forEach(function(p){
+      html += '<circle cx="' + p.x + '" cy="' + p.y + '" r="4" fill="#2e7d32" stroke="#fff" stroke-width="1"/>';
+    });
+  }
+  html += '</svg>';
   html += '</div>';
   html += '<div class="floorplan-controls"><button data-action="floorplan-zoom-in" title="Zoom in">+</button><button data-action="floorplan-zoom-out" title="Zoom out">−</button><button data-action="floorplan-zoom-reset" title="Fit to view">⊡</button></div>';
   html += '<div class="floorplan-legend"><span class="badge ok">Occupied</span><span class="badge info">Available</span><span class="badge warn">Maintenance</span></div>';
@@ -5565,6 +5604,7 @@ function onFloorPlanLoad(){
   ui.panX = 0; ui.panY = 0;
   applyFloorPlanTransform();
   initFloorPlanInteraction();
+  initRoomDrawClickHandler();
 }
 function onFloorPlanError(){
   var container = document.getElementById('floorplanContainer');
@@ -5981,6 +6021,108 @@ function saveFloorPlanUrl(){
   }).catch(function(){ toast('Failed to save floor plan URL.', 'danger'); });
 }
 
+/* Room boundary drawing and storage */
+function loadRoomBoundaries(){
+  if (APP.state.data.roomBoundaries) return Promise.resolve(APP.state.data.roomBoundaries);
+  return queryList(APP.lists.Config, ['Title','Value'], { filter: "startswith(Title,'RoomBoundary-')", top: 500 }, 'loadRoomBoundaries').then(function(rows){
+    var map = {};
+    (rows || []).forEach(function(r){
+      try { map[r.Title.replace('RoomBoundary-', 'room-')] = JSON.parse(r.Value); } catch(e){}
+    });
+    APP.state.data.roomBoundaries = map;
+    return map;
+  }).catch(function(){
+    APP.state.data.roomBoundaries = {};
+    return {};
+  });
+}
+
+function enterRoomDrawMode(){
+  var ui = ensureFacilityUi();
+  var rooms = APP.state.data.rooms || [];
+  var facility = (APP.state.data.facilities || []).filter(function(f){ return String(f.Id) === String(ui.selectedFacilityId); })[0];
+  var facilityRooms = rooms.filter(function(r){
+    var fid = r.FacilityID && r.FacilityID.Id ? String(r.FacilityID.Id) : '';
+    return !facility || fid === String(facility.Id);
+  });
+  if (!facilityRooms.length) { toast('No rooms found for this facility.', 'danger'); return; }
+  var opts = facilityRooms.map(function(r){
+    return '<option value="' + r.Id + '">' + escHtml(r.RoomNumber || r.Title || 'Room ' + r.Id) + '</option>';
+  }).join('');
+  var body = '<div class="form-grid">' + formField('Select Room', '<select id="draw-room-select" class="select">' + opts + '</select>') + '</div>';
+  openModal('Draw Room Boundary', body, '<div></div><button class="btn primary" data-action="confirm-room-draw">Start Drawing</button> <button class="btn" data-action="close-modal">Cancel</button>');
+}
+
+function confirmRoomDraw(){
+  var roomId = document.getElementById('draw-room-select').value;
+  if (!roomId) { toast('Select a room.', 'danger'); return; }
+  var ui = ensureFacilityUi();
+  ui.floorPlanMode = 'drawRoom';
+  ui.drawingRoomId = roomId;
+  ui.drawingPoints = [];
+  closeModal();
+  loadRoomBoundaries().then(function(){ renderFacilities(); });
+}
+
+function initRoomDrawClickHandler(){
+  var svg = document.getElementById('fpRoomOverlay');
+  if (!svg) return;
+  var ui = ensureFacilityUi();
+  if (ui.floorPlanMode !== 'drawRoom') return;
+  svg.addEventListener('click', function(e){
+    var inner = document.getElementById('floorplanInner');
+    if (!inner) return;
+    var rect = inner.getBoundingClientRect();
+    var x = Math.round((e.clientX - rect.left) / ui.zoom);
+    var y = Math.round((e.clientY - rect.top) / ui.zoom);
+    if (!ui.drawingPoints) ui.drawingPoints = [];
+    ui.drawingPoints.push({ x: x, y: y });
+    renderFacilities();
+  });
+}
+
+function undoRoomPoint(){
+  var ui = ensureFacilityUi();
+  if (ui.drawingPoints && ui.drawingPoints.length > 0) {
+    ui.drawingPoints.pop();
+    renderFacilities();
+  }
+}
+
+function saveRoomBoundary(){
+  var ui = ensureFacilityUi();
+  if (!ui.drawingPoints || ui.drawingPoints.length < 3) { toast('At least 3 points required.', 'danger'); return; }
+  var roomId = ui.drawingRoomId;
+  var key = 'RoomBoundary-' + roomId;
+  var points = ui.drawingPoints.slice();
+  var value = JSON.stringify(points);
+  var existing = null;
+  queryList(APP.lists.Config, ['Id','Title','Value'], { filter: "Title eq '" + escOData(key) + "'", top: 1 }, 'saveRoomBoundary.check').then(function(rows){
+    if (rows && rows.length) {
+      existing = rows[0];
+      return updateListItem(APP.lists.Config, existing.Id, { Value: value }, { entityType: 'Config', reason: 'Update room boundary' });
+    } else {
+      return createListItem(APP.lists.Config, { Title: key, Value: value }, { entityType: 'Config', reason: 'Create room boundary' });
+    }
+  }).then(function(){
+    if (!APP.state.data.roomBoundaries) APP.state.data.roomBoundaries = {};
+    APP.state.data.roomBoundaries['room-' + roomId] = points;
+    ui.floorPlanMode = 'view';
+    ui.drawingPoints = null;
+    ui.drawingRoomId = null;
+    toast('Room boundary saved.', 'ok');
+    renderFacilities();
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to save boundary.', 'danger'); });
+}
+
+function exitRoomDraw(){
+  var ui = ensureFacilityUi();
+  ui.floorPlanMode = 'view';
+  ui.drawingPoints = null;
+  ui.drawingRoomId = null;
+  renderFacilities();
+}
+
 /* ─── Expose global callbacks for image load/error ─── */
 window.onFloorPlanLoad = onFloorPlanLoad;
 window.onFloorPlanError = onFloorPlanError;
@@ -6007,7 +6149,7 @@ function renderRoomDetail(facilityId, roomId){
 }
 function renderFacilities(){
   renderLoading('Loading facilities...');
-  return Promise.all([ensureFacilitiesLoaded(), ensurePeopleLoaded()]).then(function(){
+  return Promise.all([ensureFacilitiesLoaded(), ensurePeopleLoaded(), loadRoomBoundaries()]).then(function(){
     var facilities = APP.state.data.facilities || [];
     var rooms = APP.state.data.rooms || [];
     var seats = APP.state.data.seats || [];
@@ -12395,6 +12537,11 @@ function handleClick(e){
   if (action === 'sidebar-seat-click') { highlightSeatOnMap(el.getAttribute('data-seat-id'), el.getAttribute('data-seat-x'), el.getAttribute('data-seat-y')); return; }
   if (action === 'enter-floorplan-url') { setFloorPlanUrl(); return; }
   if (action === 'save-floorplan-url') { saveFloorPlanUrl(); return; }
+  if (action === 'enter-room-draw') { enterRoomDrawMode(); return; }
+  if (action === 'confirm-room-draw') { confirmRoomDraw(); return; }
+  if (action === 'save-room-boundary') { saveRoomBoundary(); return; }
+  if (action === 'undo-room-point') { undoRoomPoint(); return; }
+  if (action === 'exit-room-draw') { exitRoomDraw(); return; }
   if (action === 'bulk-seat-import') { openBulkSeatImportModal(); return; }
   if (action === 'save-bulk-seats') { saveBulkSeats(); return; }
   if (action === 'facility-capacity-report') { openFacilityCapacityReport(); return; }
