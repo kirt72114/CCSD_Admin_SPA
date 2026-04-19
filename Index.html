@@ -231,7 +231,17 @@ tr:hover td{background:rgba(255,255,255,.06)}
 /* ─── Floor Plan Viewer ─── */
 .floorplan-wrapper{display:flex;gap:12px;align-items:stretch}
 .floorplan-main{flex:1;min-width:0}
-.floorplan-sidebar{width:240px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;max-height:70vh;overflow:hidden}
+.floorplan-sidebar{width:240px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;max-height:70vh;overflow:hidden;transition:width .2s}
+.floorplan-sidebar.collapsed{width:44px;min-width:44px}
+.floorplan-sidebar.collapsed .sb-head > *:not(.sb-toggle),
+.floorplan-sidebar.collapsed .sb-filters,
+.floorplan-sidebar.collapsed .sb-list,
+.floorplan-sidebar.collapsed .sb-count{display:none}
+.floorplan-sidebar.collapsed .sb-head{justify-content:center;padding:8px}
+.floorplan-sidebar .sb-toggle{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;font-size:12px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;transition:.15s}
+.floorplan-sidebar .sb-toggle:hover{background:rgba(101,213,255,.15);color:var(--text)}
+.floorplan-sidebar.collapsed .sb-toggle{transform:rotate(180deg)}
+@media (max-width:720px){.floorplan-sidebar{width:44px;min-width:44px}.floorplan-sidebar .sb-head > *:not(.sb-toggle),.floorplan-sidebar .sb-filters,.floorplan-sidebar .sb-list,.floorplan-sidebar .sb-count{display:none}.floorplan-sidebar .sb-head{justify-content:center;padding:8px}}
 .floorplan-sidebar .sb-head{padding:10px 12px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:6px}
 .person-picker{position:relative}
 .person-picker .input{padding-right:28px}
@@ -4625,8 +4635,9 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
     else if (String(s.SeatStatus || '').toLowerCase() === 'maintenance') { counts.maintenance++; }
     else { counts.available++; }
   });
-  html += '<div class="floorplan-sidebar">';
-  html += '<div class="sb-head"><span>Seats (' + seats.length + ')</span><input class="sb-search" id="seatSidebarSearch" placeholder="Search seats..." /></div>';
+  var sbCollapsed = ui.sidebarCollapsed ? ' collapsed' : '';
+  html += '<div class="floorplan-sidebar' + sbCollapsed + '">';
+  html += '<div class="sb-head"><button class="sb-toggle" data-action="toggle-sidebar" title="' + (ui.sidebarCollapsed ? 'Expand seat list' : 'Collapse seat list') + '">\u2039</button><span>Seats (' + seats.length + ')</span><input class="sb-search" id="seatSidebarSearch" placeholder="Search seats..." /></div>';
   html += '<div class="sb-filters">';
   ['all','occupied','available','maintenance','unplaced'].forEach(function(k){
     var labels = { all:'All', occupied:'Occupied', available:'Available', maintenance:'Maint', unplaced:'Unplaced' };
@@ -5225,7 +5236,7 @@ function openSeatMapHelpModal(){
     + '<div class="kv" style="grid-template-columns:140px 1fr;gap:6px 14px">'
     + '<div class="k">Mouse</div><div class="v">Click a seat to see its details. Drag the plan to pan. Scroll to zoom.</div>'
     + '<div class="k">Touch</div><div class="v">One finger to pan. Two fingers to pinch-zoom. Tap a seat for details.</div>'
-    + '<div class="k">Keyboard</div><div class="v">Tab to a seat, then <kbd>Enter</kbd> or <kbd>Space</kbd> to open it. <kbd>Esc</kbd> closes the tooltip. <kbd>?</kbd> shows this help.</div>'
+    + '<div class="k">Keyboard</div><div class="v">Tab to a seat, then <kbd>Enter</kbd> or <kbd>Space</kbd> to open it. <kbd>/</kbd> focuses the sidebar search. <kbd>Esc</kbd> cancels the current mode (tooltip, swap, placement, selection, picker) or closes an open modal. <kbd>?</kbd> shows this help.</div>'
     + '<div class="k">Chips</div><div class="v">The sidebar chips (Occupied / Available / Maint / Unplaced) filter both the list <em>and</em> the map at once.</div>'
     + '<div class="k">Floors</div><div class="v">Multi-floor buildings show a Floor chip row. Pick one to narrow the map to that floor\'s seats.</div>'
     + '<div class="k">Search</div><div class="v">Type a name or seat label in the sidebar search — it filters live.</div>'
@@ -5864,7 +5875,11 @@ function renderFacilities(){
         fRooms.forEach(function(r){
           var rSeats = seats.filter(function(s){ return s.RoomID && s.RoomID.Id === r.Id; });
           var rOccupied = rSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
-          html += '<button class="btn' + (ui.selectedRoomId === r.Id ? ' primary' : ' subtle') + '" data-action="select-room" data-id="' + escAttr(r.Id) + '" data-facility="' + escAttr(f.Id) + '">' + escHtml(r.RoomNumber || r.Title || 'Room') + ' (' + rOccupied + '/' + rSeats.length + ')' + (normalizeBoolean(r.IsSCIF) ? ' [SCIF]' : '') + '</button>';
+          var maxSeats = Number(r.MaxSeats) || 0;
+          var overCap = maxSeats > 0 && rSeats.length > maxSeats;
+          var warnSuffix = overCap ? ' \u26A0' : '';
+          var warnTitle = overCap ? 'Room has ' + rSeats.length + ' seats but capacity is ' + maxSeats + '.' : '';
+          html += '<button class="btn' + (ui.selectedRoomId === r.Id ? ' primary' : ' subtle') + (overCap ? ' warn' : '') + '" data-action="select-room" data-id="' + escAttr(r.Id) + '" data-facility="' + escAttr(f.Id) + '"' + (warnTitle ? ' title="' + escAttr(warnTitle) + '"' : '') + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + ' (' + rOccupied + '/' + rSeats.length + (maxSeats ? ' of ' + maxSeats : '') + ')' + (normalizeBoolean(r.IsSCIF) ? ' [SCIF]' : '') + warnSuffix + '</button>';
         });
         html += '</div>';
       }
@@ -8732,6 +8747,7 @@ function handleClick(e){
   if (action === 'batch-in-service') { batchInService(); return; }
   if (action === 'batch-delete') { batchDelete(); return; }
   if (action === 'set-floor-filter') { ensureFacilityUi(); var f = el.getAttribute('data-floor') || ''; APP.state.facilityUi.selectedFloor = f || null; renderFacilities(); return; }
+  if (action === 'toggle-sidebar') { ensureFacilityUi(); APP.state.facilityUi.sidebarCollapsed = !APP.state.facilityUi.sidebarCollapsed; renderFacilities(); return; }
   if (action === 'show-seat-map-help') { openSeatMapHelpModal(); return; }
   if (action === 'release-seat') { releaseSeat(el.getAttribute('data-seat-id')); return; }
   if (action === 'export-seats-scope') { exportSeatsScopeCsv(); return; }
@@ -8881,12 +8897,31 @@ function bootstrap(){
   document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
   initSortableHeaders();
   document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape') { closeModal(); return; }
-    if (e.key === '?' && APP.state.route === 'facilities') {
-      var tag = (e.target && e.target.tagName || '').toLowerCase();
-      if (tag !== 'input' && tag !== 'textarea' && !(e.target && e.target.isContentEditable)) {
-        e.preventDefault(); openSeatMapHelpModal(); return;
+    var tag = (e.target && e.target.tagName || '').toLowerCase();
+    var inField = tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable);
+    if (e.key === 'Escape') {
+      var modalOpen = document.getElementById('modalMask') && document.getElementById('modalMask').style.display === 'flex';
+      if (modalOpen) { closeModal(); return; }
+      if (APP.state.route === 'facilities') {
+        var ui = APP.state.facilityUi;
+        if (ui) {
+          var tip = document.getElementById('seatTooltip');
+          if (tip && tip.style.display === 'block') { hideSeatTooltip(); return; }
+          if (ui.pendingSwapSeatId) { cancelSeatSwap(); return; }
+          if (ui.pendingPlaceSeatId) { ui.pendingPlaceSeatId = null; renderFacilities(); return; }
+          if (ui.selectedSeatIds && Object.keys(ui.selectedSeatIds).length) { clearSeatSelection(); return; }
+          if (ui.floorPlanMode === 'picker') { ui.floorPlanMode = 'view'; ui.pickerPending = null; renderFacilities(); return; }
+        }
       }
+      closeModal();
+      return;
+    }
+    if (e.key === '?' && APP.state.route === 'facilities' && !inField) {
+      e.preventDefault(); openSeatMapHelpModal(); return;
+    }
+    if (e.key === '/' && APP.state.route === 'facilities' && !inField) {
+      var search = document.getElementById('seatSidebarSearch') || document.getElementById('facilitiesSearchInput');
+      if (search) { e.preventDefault(); search.focus(); search.select && search.select(); return; }
     }
     if (!e.altKey) { return; }
     var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', c: 'calendar', a: 'assets', s: 'security' };
