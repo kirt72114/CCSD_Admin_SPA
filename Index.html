@@ -9128,6 +9128,30 @@ function ensureSecurityIncidentsLoaded(force){
   });
 }
 
+function ensureSecurityRecordsLoaded(force){
+  if (APP.state.data.securityRecords && !force) { return Promise.resolve(APP.state.data.securityRecords); }
+  var wanted = [
+    'Title','PersonID/Id','PersonID/Title',
+    'ClearanceLevel','ClearanceStatus','InvestigationType',
+    'InvestigationCloseDate','PRDueDate','ContinuousEvaluation',
+    'SCIAccess','SAPAccess','BriefedDate','DebriefedDate',
+    'Eligibility','GrantedDate','ExpirationDate','Notes'
+  ];
+  var opts = { top: 5000 };
+  var personnel = APP.state.currentPersonnel;
+  if (!canManageSecurity() && personnel && personnel.Id) {
+    opts.filter = 'PersonIDId eq ' + personnel.Id;
+  }
+  return queryList(APP.lists.SecurityRecords, wanted, opts, 'ensureSecurityRecordsLoaded').then(function(rows){
+    APP.state.data.securityRecords = rows || [];
+    return rows || [];
+  }).catch(function(err){
+    addDiagnostic('warn', 'ensureSecurityRecordsLoaded', 'Failed to load security records', { detail: err && err.text ? err.text : err });
+    APP.state.data.securityRecords = [];
+    return [];
+  });
+}
+
 /* IM-19: Query-level security enforcement. Returns OData filter string
  * appropriate for the current user's role.
  *  - App Admin: no filter (sees all)
@@ -9271,7 +9295,12 @@ function renderSecurity(){
   var hasOwnRecord = canViewOwnSecurity();
   renderLoading('Loading security view...');
   var loaders = [ensureCurrentPersonnelLoaded(), ensureRolesLoaded(), ensurePeopleLoaded().catch(function(){ return []; }), ensureOrganizationsLoaded().catch(function(){ return []; })];
-  if (isSecurityRole || hasOwnRecord) { loaders.push(ensureSecurityIncidentsLoaded().catch(function(){ return []; })); }
+  if (isSecurityRole || hasOwnRecord) {
+    loaders.push(ensureSecurityIncidentsLoaded().catch(function(){ return []; }));
+    loaders.push(ensureSecurityRecordsLoaded().catch(function(){ return []; }));
+    loaders.push(ensureTrainingRecordsLoaded().catch(function(){ return []; }));
+    loaders.push(ensureTrainingCatalogLoaded().catch(function(){ return []; }));
+  }
   Promise.all(loaders).then(function(){
     if (isSecurityRole) { return renderSecurityAdmin(); }
     if (hasOwnRecord) { return renderSecurityMember(); }
@@ -10111,17 +10140,110 @@ function openIncidentPrintView(){
 function renderSecurityMember(){
   var html = '';
   var personnel = APP.state.currentPersonnel;
-  var rows = (APP.state.data.securityIncidents || []).filter(function(r){
-    return r.PersonID && personnel && r.PersonID.Id === personnel.Id;
-  }).map(redactIncidentForMember);
+  var personId = personnel ? personnel.Id : null;
+
+  /* Find own security record */
+  var secRec = null;
+  (APP.state.data.securityRecords || []).some(function(r){
+    if (r.PersonID && String(r.PersonID.Id) === String(personId)) { secRec = r; return true; }
+    return false;
+  });
 
   html += '<div class="section-header"><h2>My Security</h2></div>';
-  html += '<div class="card"><div class="card-header">My Cases</div><div class="card-body">';
-  if (!rows.length) {
+
+  /* Personal security status card */
+  html += '<div class="card"><div class="card-header">Security Status</div><div class="card-body">';
+  if (!secRec) {
+    html += '<div class="empty">No security record found for your account. Contact the security office if this is unexpected.</div>';
+  } else {
+    var clrLevel = secRec.ClearanceLevel || 'None';
+    var clrStatus = secRec.ClearanceStatus || 'Unknown';
+    var clrColor = clrStatus === 'Active' ? '#2e7d32' : clrStatus === 'Interim' ? '#f57c00' : clrStatus === 'Expired' || clrStatus === 'Suspended' || clrStatus === 'Revoked' ? '#c62828' : 'var(--text-muted)';
+
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px">';
+    html += '<div style="text-align:center;border:1px solid var(--border);border-radius:6px;padding:12px">';
+    html += '<div style="font-size:22px;font-weight:700;color:' + clrColor + '">' + escHtml(clrLevel) + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted)">Clearance Level</div></div>';
+
+    html += '<div style="text-align:center;border:1px solid var(--border);border-radius:6px;padding:12px">';
+    html += '<div style="font-size:22px;font-weight:700;color:' + clrColor + '">' + escHtml(clrStatus) + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted)">Eligibility Status</div></div>';
+
+    html += '<div style="text-align:center;border:1px solid var(--border);border-radius:6px;padding:12px">';
+    html += '<div style="font-size:22px;font-weight:700">' + escHtml(secRec.InvestigationType || '—') + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted)">Investigation Type</div></div>';
+
+    html += '<div style="text-align:center;border:1px solid var(--border);border-radius:6px;padding:12px">';
+    var prDue = secRec.PRDueDate ? formatDate(secRec.PRDueDate) : '—';
+    var prDays = secRec.PRDueDate ? Math.ceil((new Date(secRec.PRDueDate) - new Date()) / 86400000) : null;
+    var prColor = prDays !== null && prDays <= 0 ? '#c62828' : prDays !== null && prDays <= 90 ? '#f57c00' : '#2e7d32';
+    html += '<div style="font-size:22px;font-weight:700;color:' + (prDays !== null ? prColor : 'var(--text-muted)') + '">' + escHtml(prDue) + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-muted)">PR Due Date' + (prDays !== null ? ' (' + prDays + ' days)' : '') + '</div></div>';
+    html += '</div>';
+
+    /* Detail fields with click-to-reveal */
+    html += '<div class="kv" id="sec-member-details">';
+    var secFields = [
+      { label: 'Investigation Close Date', val: formatDate(secRec.InvestigationCloseDate) },
+      { label: 'SCI Access', val: secRec.SCIAccess || 'None' },
+      { label: 'SAP Access', val: secRec.SAPAccess || 'None' },
+      { label: 'Briefed Date', val: formatDate(secRec.BriefedDate) },
+      { label: 'Continuous Evaluation', val: normalizeBoolean(secRec.ContinuousEvaluation) ? 'Enrolled' : 'Not Enrolled' },
+      { label: 'Granted Date', val: formatDate(secRec.GrantedDate) },
+      { label: 'Expiration Date', val: formatDate(secRec.ExpirationDate) }
+    ];
+    secFields.forEach(function(f){
+      html += '<div class="k">' + escHtml(f.label) + '</div>';
+      html += '<div class="v"><span class="sec-masked" data-revealed="false" style="cursor:pointer;user-select:none" onclick="this.textContent=this.getAttribute(\'data-val\');this.style.color=\'inherit\';this.style.cursor=\'default\'" data-val="' + escAttr(f.val || '—') + '" style="color:var(--text-muted);letter-spacing:2px">●●●●●●</span></div>';
+    });
+    html += '</div>';
+  }
+  html += '</div></div>';
+
+  /* Security training compliance */
+  var secTrainings = [
+    'Annual Security Awareness', 'Insider Threat Awareness',
+    'Controlled Unclassified Information (CUI)', 'Derivative Classification',
+    'Cyber Awareness Challenge', 'OPSEC Awareness'
+  ];
+  var trainingRecords = APP.state.data.trainingRecords || [];
+  var catalog = APP.state.data.trainingCatalog || [];
+
+  html += '<div class="card" style="margin-top:16px"><div class="card-header">Security Training Compliance</div><div class="card-body">';
+  html += '<div class="table-wrap"><table><thead><tr><th>Training</th><th>Status</th><th>Completed</th><th>Due</th></tr></thead><tbody>';
+  var secTrainComplete = 0;
+  secTrainings.forEach(function(tName){
+    var catEntry = catalog.filter(function(c){ return (c.TrainingName || c.Title || '').toLowerCase().indexOf(tName.toLowerCase().split(' ')[0]) >= 0; })[0];
+    var rec = null;
+    if (catEntry) {
+      trainingRecords.some(function(r){
+        if (r.PersonID && String(r.PersonID.Id) === String(personId) && r.TrainingID && String(r.TrainingID.Id) === String(catEntry.Id) && (r.Status || '').toLowerCase() === 'current') { rec = r; return true; }
+        return false;
+      });
+    }
+    var status = rec ? 'Current' : 'Due';
+    var badgeColor = rec ? '#2e7d32' : '#c62828';
+    if (rec) secTrainComplete++;
+    var compDate = rec && rec.CompletionDate ? formatDate(rec.CompletionDate) : '—';
+    var dueDate = catEntry && catEntry.RecurrenceMonths && rec && rec.CompletionDate ? formatDate(new Date(new Date(rec.CompletionDate).getTime() + (catEntry.RecurrenceMonths || 12) * 30 * 86400000)) : '—';
+    html += '<tr><td>' + escHtml(tName) + '</td><td><span style="color:' + badgeColor + ';font-weight:600">' + status + '</span></td><td>' + escHtml(compDate) + '</td><td>' + escHtml(dueDate) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  var secTrainPct = Math.round((secTrainComplete / secTrainings.length) * 100);
+  html += '<div style="margin-top:8px;display:flex;align-items:center;gap:8px"><div style="flex:1;background:var(--border);border-radius:4px;height:8px"><div style="background:' + (secTrainPct >= 100 ? '#2e7d32' : secTrainPct >= 50 ? '#f57c00' : '#c62828') + ';width:' + secTrainPct + '%;height:100%;border-radius:4px"></div></div><span style="font-size:12px;font-weight:600">' + secTrainPct + '% Complete</span></div>';
+  html += '</div></div>';
+
+  /* Own incidents (redacted) */
+  var incidents = (APP.state.data.securityIncidents || []).filter(function(r){
+    return r.PersonID && String(r.PersonID.Id) === String(personId);
+  }).map(redactIncidentForMember);
+
+  html += '<div class="card" style="margin-top:16px"><div class="card-header">My Cases</div><div class="card-body">';
+  if (!incidents.length) {
     html += '<div class="empty">You have no security cases on file.</div>';
   } else {
     html += '<div class="table-wrap"><table><thead><tr><th>Case #</th><th>Status</th><th>Reported</th><th>Resolved</th></tr></thead><tbody>';
-    rows.forEach(function(r){
+    incidents.forEach(function(r){
       html += '<tr><td><strong>' + escHtml(r.CaseNumber || ('#' + r.Id)) + '</strong></td>'
         + '<td>' + statusBadge(r.Status || 'Open') + '</td>'
         + '<td>' + escHtml(formatDate(r.ReportedDate)) + '</td>'
@@ -10132,6 +10254,7 @@ function renderSecurityMember(){
   }
   html += '</div></div>';
 
+  logAudit('View', 'SecuritySelfService', null, {}, { listTitle: APP.lists.SecurityRecords });
   setView(html);
 }
 
