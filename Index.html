@@ -293,6 +293,12 @@ kbd{display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(255,2
 .seat-marker-label{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none}
 .picker-crosshair .seat-marker.draggable{cursor:grab;pointer-events:auto!important}
 .picker-crosshair .seat-marker.dragging-seat{cursor:grabbing;z-index:25;opacity:.7}
+.seat-marker.multi-selected{box-shadow:0 0 0 3px rgba(255,199,105,.9),0 0 12px rgba(255,199,105,.5);z-index:17;border-color:#ffd773!important}
+.floorplan-sidebar .sb-item.multi-selected{background:rgba(255,199,105,.12);border-color:rgba(255,199,105,.35)}
+.floorplan-sidebar .sb-item.multi-selected .sb-dot{outline:2px solid #ffd773;outline-offset:1px}
+.batch-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;margin-bottom:8px;background:linear-gradient(90deg,rgba(255,199,105,.15),rgba(255,199,105,.08));border:1px solid rgba(255,199,105,.4);border-radius:12px;font-size:12px}
+.batch-toolbar .bt-count{font-weight:700;color:#ffd773;margin-right:6px;padding:2px 10px;background:rgba(255,199,105,.2);border-radius:999px}
+.batch-toolbar .bt-sep{color:var(--muted);opacity:.5}
 @media (pointer:coarse){.seat-marker{width:32px;height:32px}.seat-marker-label{top:-22px;font-size:11px}.floorplan-controls button{width:44px;height:44px;font-size:20px}.floorplan-sidebar .sb-item{padding:10px 12px;font-size:13px}.floorplan-sidebar .sb-actions{opacity:1}.floorplan-sidebar .sb-actions button{width:32px;height:32px;font-size:14px}}
 @media print{body.printing-floorplan *:not(.print-floorplan-scope):not(.print-floorplan-scope *){visibility:hidden!important}body.printing-floorplan .print-floorplan-scope{visibility:visible!important;position:absolute!important;inset:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:12px!important;background:#fff!important;color:#000!important}body.printing-floorplan .floorplan-controls,body.printing-floorplan .floorplan-crosshair-h,body.printing-floorplan .floorplan-crosshair-v,body.printing-floorplan .floorplan-coords,body.printing-floorplan .picker-toolbar,body.printing-floorplan .picker-hint,body.printing-floorplan .floorplan-sidebar{display:none!important}body.printing-floorplan .floorplan-container{max-height:none!important;min-height:0!important;border:1px solid #888!important;background:#fff!important;overflow:visible!important}body.printing-floorplan .seat-marker{border-color:#333!important;color:#fff!important}body.printing-floorplan .seat-marker-label{color:#000!important;text-shadow:none!important}}
 
@@ -4439,8 +4445,30 @@ function personPickerSelect(baseId, personId, personName){
 function personPickerClear(baseId){ personPickerSelect(baseId, '', ''); var s = document.getElementById(baseId + 'Search'); if (s) { s.focus(); } }
 function getPersonPickerValue(baseId){ var el = document.getElementById(baseId); return el ? (el.value || '') : ''; }
 function ensureFacilityUi(){
-  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null, floorPlanMode: 'view', pickerPending: null, zoom: 1, panX: 0, panY: 0 }; }
+  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null, floorPlanMode: 'view', pickerPending: null, zoom: 1, panX: 0, panY: 0, selectedSeatIds: {} }; }
+  if (!APP.state.facilityUi.selectedSeatIds) { APP.state.facilityUi.selectedSeatIds = {}; }
   return APP.state.facilityUi;
+}
+function toggleSeatSelection(seatId, force){
+  var ui = ensureFacilityUi();
+  var key = String(seatId);
+  var shouldSelect = typeof force === 'boolean' ? force : !ui.selectedSeatIds[key];
+  if (shouldSelect) { ui.selectedSeatIds[key] = true; } else { delete ui.selectedSeatIds[key]; }
+  renderFacilities();
+}
+function clearSeatSelection(){
+  var ui = ensureFacilityUi();
+  ui.selectedSeatIds = {};
+  renderFacilities();
+}
+function getSelectedSeats(){
+  var ui = ensureFacilityUi();
+  var ids = Object.keys(ui.selectedSeatIds || {});
+  if (!ids.length) { return []; }
+  var seats = APP.state.data.seats || [];
+  var byId = {};
+  seats.forEach(function(s){ byId[String(s.Id)] = s; });
+  return ids.map(function(id){ return byId[id]; }).filter(function(s){ return s; });
 }
 function getFloorPlanUrl(facility, room){
   if (room && room.FloorPlanUrl) { return room.FloorPlanUrl; }
@@ -4537,12 +4565,30 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
     var swapOcc = (swapSeat && swapSeat.CurrentPersonID && swapSeat.CurrentPersonID.Title) || '(empty)';
     html += '<div class="picker-hint" style="background:rgba(101,213,255,.12);border-color:rgba(101,213,255,.35)"><strong>Swap:</strong> click another seat to trade occupants with ' + escHtml(swapLabel) + ' (' + escHtml(swapOcc) + '). <button class="btn subtle" data-action="swap-seat-cancel" style="margin-left:12px;padding:4px 10px">Cancel swap</button></div>';
   }
+  var selectedIds = ui.selectedSeatIds || {};
+  var selectedCount = Object.keys(selectedIds).length;
+  if (selectedCount && canSeeAdmin()) {
+    html += '<div class="batch-toolbar">';
+    html += '<span class="bt-count">' + selectedCount + ' selected</span>';
+    html += '<button class="btn subtle" data-action="batch-assign">Assign\u2026</button>';
+    html += '<button class="btn subtle" data-action="batch-release">Release</button>';
+    html += '<span class="bt-sep">|</span>';
+    html += '<button class="btn subtle" data-action="batch-maintenance">Maintenance</button>';
+    html += '<button class="btn subtle" data-action="batch-in-service">In Service</button>';
+    html += '<span class="bt-sep">|</span>';
+    html += '<button class="btn subtle danger" data-action="batch-delete">Delete</button>';
+    html += '<span class="bt-sep">|</span>';
+    html += '<button class="btn subtle" data-action="batch-clear">Clear</button>';
+    html += '<span class="small-note" style="margin-left:auto">Ctrl/Shift+click markers to add · or use <em>Select</em> on any seat</span>';
+    html += '</div>';
+  }
   html += '<div class="floorplan-wrapper print-floorplan-scope">';
   html += '<div class="floorplan-main">';
   html += '<div id="' + containerId + '" class="floorplan-container' + (isPicker ? ' picker-crosshair' : '') + '" data-image-url="' + escAttr(imageUrl) + '" data-facility-id="' + escAttr(facility ? facility.Id : '') + '" data-room-id="' + escAttr(room ? room.Id : '') + '">';
   html += '<div id="floorplanInner" class="floorplan-inner">';
   html += '<img id="floorplanImg" src="' + escAttr(imageUrl) + '" alt="Floor plan" onload="onFloorPlanLoad()" onerror="onFloorPlanError()" />';
   var mapFilter = ui.sbFilter || 'all';
+  var selMap = ui.selectedSeatIds || {};
   placedSeats.forEach(function(s){
     var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
     var statusKey = occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available');
@@ -4550,6 +4596,7 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
     if (isPicker) { cls += ' draggable'; }
     var justPlaced = ui._justPlacedId && String(ui._justPlacedId) === String(s.Id);
     if (justPlaced) { cls += ' just-placed'; }
+    if (selMap[String(s.Id)]) { cls += ' multi-selected'; }
     var hidden = (mapFilter !== 'all' && mapFilter !== statusKey) ? 'display:none;' : '';
     var statusText = s.SeatStatus || (occupant ? 'Occupied' : 'Available');
     var seatLabel = s.SeatLabel || s.SeatID || 'Seat';
@@ -4592,7 +4639,8 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
     var isPlaced = s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== '';
     var statusKey = !isPlaced ? 'unplaced' : (occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available'));
     var hidden = (sbFilter !== 'all' && sbFilter !== statusKey) ? ' style="display:none"' : '';
-    html += '<div class="sb-item" data-seat-status="' + statusKey + '"' + hidden + ' data-action="sidebar-seat-click" data-seat-id="' + escAttr(s.Id) + '" data-seat-x="' + escAttr(s.XCoord || '') + '" data-seat-y="' + escAttr(s.YCoord || '') + '">';
+    var selCls = selMap[String(s.Id)] ? ' multi-selected' : '';
+    html += '<div class="sb-item' + selCls + '" data-seat-status="' + statusKey + '"' + hidden + ' data-action="sidebar-seat-click" data-seat-id="' + escAttr(s.Id) + '" data-seat-x="' + escAttr(s.XCoord || '') + '" data-seat-y="' + escAttr(s.YCoord || '') + '">';
     html += '<div class="sb-dot ' + statusKey + '"></div>';
     html += '<div class="sb-info"><div class="sb-name">' + escHtml(s.SeatLabel || s.SeatID || s.Title || 'Seat') + '</div><div class="sb-sub">' + escHtml(occupant || (isPlaced ? 'Available' : 'Not placed')) + '</div></div>';
     if (canSeeAdmin() && isPicker) {
@@ -4763,6 +4811,11 @@ function initFloorPlanInteraction(){
     /* Suppress synthesized click that follows a touch tap (~300ms) */
     if (_fpTouchEndAt && (Date.now() - _fpTouchEndAt) < 500) { return; }
     if (_fpDrag.moved || _fpDrag.seatMoved) { return; }
+    /* Ctrl/Cmd/Shift-click on a marker toggles selection instead of editing */
+    if ((e.ctrlKey || e.metaKey || e.shiftKey) && canSeeAdmin()) {
+      var selMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
+      if (selMarker) { e.preventDefault(); toggleSeatSelection(selMarker.getAttribute('data-seat-id')); return; }
+    }
     if (ui.pendingSwapSeatId && canSeeAdmin()) {
       var swapMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
       if (swapMarker) { performSeatSwap(ui.pendingSwapSeatId, swapMarker.getAttribute('data-seat-id')); return; }
@@ -5013,6 +5066,9 @@ function buildSeatTooltipHtml(data, showActions){
       }
       var isMaint = String(data.status || '').toLowerCase() === 'maintenance';
       html += '<button data-action="toggle-maintenance" data-seat-id="' + escAttr(data.seatId) + '" title="' + (isMaint ? 'Return this seat to service' : 'Flag this seat for maintenance') + '">' + (isMaint ? 'In Service' : 'Maintenance') + '</button>';
+      var ui = ensureFacilityUi();
+      var isSel = ui.selectedSeatIds && ui.selectedSeatIds[String(data.seatId)];
+      html += '<button data-action="toggle-seat-select" data-seat-id="' + escAttr(data.seatId) + '" title="' + (isSel ? 'Remove from batch selection' : 'Add to batch selection') + '">' + (isSel ? 'Deselect' : 'Select') + '</button>';
       html += '<button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button>';
       html += '<button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button>';
     }
@@ -5171,10 +5227,12 @@ function openSeatMapHelpModal(){
     + '<div class="k">Touch</div><div class="v">One finger to pan. Two fingers to pinch-zoom. Tap a seat for details.</div>'
     + '<div class="k">Keyboard</div><div class="v">Tab to a seat, then <kbd>Enter</kbd> or <kbd>Space</kbd> to open it. <kbd>Esc</kbd> closes the tooltip. <kbd>?</kbd> shows this help.</div>'
     + '<div class="k">Chips</div><div class="v">The sidebar chips (Occupied / Available / Maint / Unplaced) filter both the list <em>and</em> the map at once.</div>'
+    + '<div class="k">Floors</div><div class="v">Multi-floor buildings show a Floor chip row. Pick one to narrow the map to that floor\'s seats.</div>'
     + '<div class="k">Search</div><div class="v">Type a name or seat label in the sidebar search — it filters live.</div>'
     + (canSeeAdmin() ? '<div class="k">Admin: edit</div><div class="v">"Edit Seat Map" puts the plan in placement mode. Click empty space to create, drag a seat to move, click a seat to edit or delete.</div>' : '')
     + (canSeeAdmin() ? '<div class="k">Admin: swap</div><div class="v">From any seat tooltip, use <strong>Swap…</strong>, then click another seat to trade occupants.</div>' : '')
     + (canSeeAdmin() ? '<div class="k">Admin: assign</div><div class="v">Empty seats show <strong>Assign…</strong>. The picker searches by name, email, or organization.</div>' : '')
+    + (canSeeAdmin() ? '<div class="k">Admin: batch</div><div class="v"><kbd>Ctrl</kbd>- or <kbd>Shift</kbd>-click markers (or use <strong>Select</strong> on a tooltip) to pick multiple seats. A batch toolbar lets you assign, release, toggle maintenance, or delete them all at once.</div>' : '')
     + '<div class="k">Print</div><div class="v">The <strong>Print</strong> button prints just the floor plan (no sidebar/toolbar) for briefings.</div>'
     + '<div class="k">Export</div><div class="v">The top-right "Export…" button saves the current room or building seats as CSV.</div>'
     + '</div></div>';
@@ -5237,6 +5295,96 @@ function saveQuickAssign(){
     closeModal();
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
   }).catch(function(){ toast('Assignment failed.', 'danger'); });
+}
+function batchApplyToSelected(label, reason, buildValues, onDone){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var selected = getSelectedSeats();
+  if (!selected.length) { toast('No seats selected.', 'warn'); return; }
+  toast(label + ' ' + selected.length + ' seat' + (selected.length === 1 ? '' : 's') + '\u2026', 'ok');
+  var jobs = selected.map(function(seat){
+    var values = buildValues(seat);
+    if (!values) { return Promise.resolve({ ok: true, skipped: true }); }
+    return updateListItem(APP.lists.Seats, seat.Id, values, { entityType: 'Seat', before: seat, reason: reason })
+      .then(function(){ return { ok: true }; }, function(err){ return { ok: false, err: err }; });
+  });
+  Promise.all(jobs).then(function(results){
+    var ok = 0, failed = 0;
+    results.forEach(function(r){ if (r.ok) { ok++; } else { failed++; } });
+    if (failed) { toast(ok + ' updated, ' + failed + ' failed.', 'warn'); }
+    else { toast(ok + ' seat' + (ok === 1 ? '' : 's') + ' updated.', 'ok'); }
+    if (typeof onDone === 'function') { onDone(); }
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  });
+}
+function batchAssignOpen(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var selected = getSelectedSeats();
+  if (!selected.length) { toast('No seats selected.', 'warn'); return; }
+  APP.modalState.batchAssignMode = true;
+  var body = '<div class="form-grid">'
+    + formField('Apply to', '<input class="input" value="' + selected.length + ' selected seat(s)" disabled />')
+    + formField('Assign Person', renderPersonPicker('batchAssignPerson', '', 'Search by name, email, or org...', true))
+    + '</div>'
+    + '<div class="small-note" style="margin-top:10px">Every selected seat will be assigned to the chosen person (or released if left blank). Other seat settings are untouched.</div>';
+  openModal('Batch Assign: ' + selected.length + ' seat(s)', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="batch-assign-save">Apply</button></div>');
+}
+function batchAssignSave(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var personId = getPersonPickerValue('batchAssignPerson');
+  closeModal();
+  batchApplyToSelected(
+    personId ? 'Assigning' : 'Releasing',
+    personId ? 'Batch assign' : 'Batch release',
+    function(){ return personId ? { CurrentPersonID: parseInt(personId, 10), SeatStatus: 'Occupied' } : { CurrentPersonID: null, SeatStatus: 'Available' }; }
+  );
+}
+function batchRelease(){
+  batchApplyToSelected('Releasing', 'Batch release', function(){ return { CurrentPersonID: null, SeatStatus: 'Available' }; });
+}
+function batchMaintenance(){
+  batchApplyToSelected('Flagging maintenance on', 'Batch maintenance', function(){ return { SeatStatus: 'Maintenance' }; });
+}
+function batchInService(){
+  batchApplyToSelected('Returning to service', 'Batch in service', function(seat){
+    var hasOcc = seat.CurrentPersonID && seat.CurrentPersonID.Title;
+    return { SeatStatus: hasOcc ? 'Occupied' : 'Available' };
+  });
+}
+function batchDelete(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var selected = getSelectedSeats();
+  if (!selected.length) { toast('No seats selected.', 'warn'); return; }
+  var snapshots = selected.map(snapshotSeatForUndo);
+  confirmDialog('Delete ' + selected.length + ' seat(s)?',
+    'This permanently removes ' + selected.length + ' seat record(s). Undo is available briefly via the toast.',
+    'Delete All',
+    function(){
+      var jobs = selected.map(function(seat){
+        return deleteListItem(APP.lists.Seats, seat.Id, { entityType: 'Seat', reason: 'Batch delete' })
+          .then(function(){ return { ok: true }; }, function(err){ return { ok: false, err: err }; });
+      });
+      Promise.all(jobs).then(function(results){
+        var ok = 0, failed = 0;
+        results.forEach(function(r){ if (r.ok) { ok++; } else { failed++; } });
+        clearSeatSelection();
+        if (failed) { toast(ok + ' deleted, ' + failed + ' failed.', 'warn'); }
+        else {
+          toastWithAction(ok + ' seat(s) deleted.', 'warn', 'Undo All', function(){
+            var restores = snapshots.map(function(v){
+              return createListItem(APP.lists.Seats, v, { entityType: 'Seat', reason: 'Undo batch delete' })
+                .then(function(){ return { ok: true }; }, function(){ return { ok: false }; });
+            });
+            Promise.all(restores).then(function(rs){
+              var rok = rs.filter(function(r){ return r.ok; }).length;
+              toast(rok + ' restored, ' + (rs.length - rok) + ' failed.', rok === rs.length ? 'ok' : 'warn');
+              return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+            });
+          }, 12000);
+        }
+        return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+      });
+    },
+    { danger: true });
 }
 function startSeatSwap(seatId){
   if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
@@ -5658,14 +5806,22 @@ function renderRoomDetail(facilityId, roomId){
   if (!room) { return '<div class="empty">Select a room to view seat details.</div>'; }
   var roomSeats = seats.filter(function(s){ return s.RoomID && s.RoomID.Id === room.Id; });
   var occupied = roomSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
-  var html = '<div class="org-detail-hero" style="margin-bottom:16px">';
+  var facility = null;
+  (APP.state.data.facilities || []).some(function(f){ if (String(f.Id) === String(facilityId)) { facility = f; return true; } return false; });
+  var crumbBuilding = (facility && (facility.BuildingNumber || facility.Title)) || 'Building';
+  var crumbFloor = room.Floor ? ('Floor ' + room.Floor) : null;
+  var crumbRoom = 'Room ' + (room.RoomNumber || room.Title || room.RoomID || '');
+  var html = '<div class="small-note" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">'
+    + '<a href="javascript:void(0)" data-action="select-facility" data-id="' + escAttr(facilityId) + '" style="color:var(--accent);text-decoration:none">' + escHtml(crumbBuilding) + '</a>'
+    + (crumbFloor ? '<span style="opacity:.5">\u203A</span><span>' + escHtml(crumbFloor) + '</span>' : '')
+    + '<span style="opacity:.5">\u203A</span><strong>' + escHtml(crumbRoom) + '</strong>'
+    + '</div>';
+  html += '<div class="org-detail-hero" style="margin-bottom:16px">';
   html += '<div class="org-detail-title">Room ' + escHtml(room.RoomNumber || room.Title || room.RoomID || '') + '</div>';
   html += '<div class="org-detail-sub">' + escHtml(room.RoomType || 'Room') + (room.Floor ? ' • Floor ' + escHtml(room.Floor) : '') + (normalizeBoolean(room.IsSCIF) ? ' • SCIF' : '') + '</div>';
   html += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length)) + '</div><div class="t">Total Seats</div></div><div class="org-kpi"><div class="n">' + escHtml(String(occupied)) + '</div><div class="t">Occupied</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length - occupied)) + '</div><div class="t">Available</div></div><div class="org-kpi"><div class="n">' + escHtml(String(room.MaxSeats || roomSeats.length)) + '</div><div class="t">Max Capacity</div></div></div>';
   html += '</div>';
   html += '<div class="section-head"><div class="section-title">Seat Map</div></div>';
-  var facility = null;
-  (APP.state.data.facilities || []).some(function(f){ if (String(f.Id) === String(facilityId)) { facility = f; return true; } return false; });
   html += renderSeatMap(roomSeats, room, facility);
   return html;
 }
@@ -5724,11 +5880,25 @@ function renderFacilities(){
       facilities.some(function(f){ if (f.Id === ui.selectedFacilityId) { selFacility = f; return true; } return false; });
       var fpUrl = selFacility ? getFloorPlanUrl(selFacility, null) : '';
       if (fpUrl) {
-        var allFacSeats = seats.filter(function(s){
-          if (!s.RoomID) { return false; }
-          return rooms.some(function(r){ return r.Id === s.RoomID.Id && r.FacilityID && r.FacilityID.Id === ui.selectedFacilityId; });
-        });
-        html += '<div class="org-detail-hero" style="margin-bottom:16px"><div class="org-detail-title">' + escHtml((selFacility.BuildingNumber || selFacility.Title || 'Building') + ' — Full Floor Plan') + '</div><div class="org-detail-sub">All seats across all rooms shown on the building floor plan. Select a room above to filter.</div></div>';
+        var facRoomsById = {};
+        rooms.forEach(function(r){ if (r.FacilityID && r.FacilityID.Id === ui.selectedFacilityId) { facRoomsById[r.Id] = r; } });
+        var allFacSeats = seats.filter(function(s){ return s.RoomID && facRoomsById[s.RoomID.Id]; });
+        var floorNums = getFloorNumbers(ui.selectedFacilityId);
+        if (ui.selectedFloor) {
+          allFacSeats = allFacSeats.filter(function(s){
+            var r = s.RoomID && facRoomsById[s.RoomID.Id];
+            return r && String(r.Floor) === String(ui.selectedFloor);
+          });
+        }
+        html += '<div class="org-detail-hero" style="margin-bottom:16px"><div class="org-detail-title">' + escHtml((selFacility.BuildingNumber || selFacility.Title || 'Building') + ' \u2014 Full Floor Plan') + (ui.selectedFloor ? ' <span style="font-size:12px;color:var(--muted);font-weight:500">(Floor ' + escHtml(ui.selectedFloor) + ')</span>' : '') + '</div><div class="org-detail-sub">All seats across all rooms shown on the building floor plan. Select a room above to filter.</div></div>';
+        if (floorNums.length > 1) {
+          html += '<div class="sb-filters" style="padding:0 0 10px 0;border:none">';
+          html += '<button class="sb-chip' + (!ui.selectedFloor ? ' active' : '') + '" data-action="set-floor-filter" data-floor="">All Floors</button>';
+          floorNums.forEach(function(f){
+            html += '<button class="sb-chip' + (String(ui.selectedFloor) === String(f) ? ' active' : '') + '" data-action="set-floor-filter" data-floor="' + escAttr(f) + '">Floor ' + escHtml(f) + '</button>';
+          });
+          html += '</div>';
+        }
         html += renderFloorPlanView(allFacSeats, null, selFacility, fpUrl);
       } else {
         html += '<div class="empty">Select a room from the facility panel to view its seat map.' + (canSeeAdmin() ? ' Or <button class="btn subtle" data-action="enter-floorplan-url" style="display:inline">set a floor plan image URL</button> for this building.' : '') + '</div>';
@@ -8553,6 +8723,15 @@ function handleClick(e){
   if (action === 'quick-assign-save') { saveQuickAssign(); return; }
   if (action === 'swap-seat-start') { startSeatSwap(el.getAttribute('data-seat-id')); return; }
   if (action === 'swap-seat-cancel') { cancelSeatSwap(); return; }
+  if (action === 'toggle-seat-select') { toggleSeatSelection(el.getAttribute('data-seat-id')); return; }
+  if (action === 'batch-clear') { clearSeatSelection(); return; }
+  if (action === 'batch-assign') { batchAssignOpen(); return; }
+  if (action === 'batch-assign-save') { batchAssignSave(); return; }
+  if (action === 'batch-release') { batchRelease(); return; }
+  if (action === 'batch-maintenance') { batchMaintenance(); return; }
+  if (action === 'batch-in-service') { batchInService(); return; }
+  if (action === 'batch-delete') { batchDelete(); return; }
+  if (action === 'set-floor-filter') { ensureFacilityUi(); var f = el.getAttribute('data-floor') || ''; APP.state.facilityUi.selectedFloor = f || null; renderFacilities(); return; }
   if (action === 'show-seat-map-help') { openSeatMapHelpModal(); return; }
   if (action === 'release-seat') { releaseSeat(el.getAttribute('data-seat-id')); return; }
   if (action === 'export-seats-scope') { exportSeatsScopeCsv(); return; }
