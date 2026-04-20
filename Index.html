@@ -231,8 +231,34 @@ tr:hover td{background:rgba(255,255,255,.06)}
 /* ─── Floor Plan Viewer ─── */
 .floorplan-wrapper{display:flex;gap:12px;align-items:stretch}
 .floorplan-main{flex:1;min-width:0}
-.floorplan-sidebar{width:240px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;max-height:70vh;overflow:hidden}
+.floorplan-sidebar{width:240px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;max-height:70vh;overflow:hidden;transition:width .2s}
+.floorplan-sidebar.collapsed{width:44px;min-width:44px}
+.floorplan-sidebar.collapsed .sb-head > *:not(.sb-toggle),
+.floorplan-sidebar.collapsed .sb-filters,
+.floorplan-sidebar.collapsed .sb-list,
+.floorplan-sidebar.collapsed .sb-count{display:none}
+.floorplan-sidebar.collapsed .sb-head{justify-content:center;padding:8px}
+.floorplan-sidebar .sb-toggle{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;font-size:12px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;transition:.15s}
+.floorplan-sidebar .sb-toggle:hover{background:rgba(101,213,255,.15);color:var(--text)}
+.floorplan-sidebar.collapsed .sb-toggle{transform:rotate(180deg)}
+@media (max-width:720px){.floorplan-sidebar{width:44px;min-width:44px}.floorplan-sidebar .sb-head > *:not(.sb-toggle),.floorplan-sidebar .sb-filters,.floorplan-sidebar .sb-list,.floorplan-sidebar .sb-count{display:none}.floorplan-sidebar .sb-head{justify-content:center;padding:8px}}
 .floorplan-sidebar .sb-head{padding:10px 12px 8px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.person-picker{position:relative}
+.person-picker .input{padding-right:28px}
+.person-picker-menu{position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:var(--panel-2);border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;z-index:40;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.person-picker-item{padding:7px 10px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+.person-picker-item:last-child{border-bottom:none}
+.person-picker-item:hover,.person-picker-item.hl{background:rgba(101,213,255,.12)}
+.person-picker-item .pp-sub{color:var(--muted);font-size:10px;margin-top:1px}
+.person-picker-empty{padding:10px 12px;color:var(--muted);font-size:11px;text-align:center;font-style:italic}
+.person-picker-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.person-picker-clear:hover{background:rgba(255,255,255,.2);color:var(--text)}
+kbd{display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);font-family:inherit;font-size:11px;font-weight:600;color:var(--text)}
+.floorplan-sidebar .sb-filters{padding:8px 10px 6px;border-bottom:1px solid var(--line);display:flex;gap:4px;flex-wrap:wrap}
+.floorplan-sidebar .sb-chip{padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;transition:.15s}
+.floorplan-sidebar .sb-chip:hover{background:rgba(101,213,255,.1);color:var(--text)}
+.floorplan-sidebar .sb-chip.active{background:var(--accent);color:#062033;border-color:var(--accent)}
+.floorplan-sidebar .sb-chip .ct{opacity:.7;margin-left:3px;font-weight:500}
 .floorplan-sidebar .sb-search{width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font-size:11px;margin-top:6px}
 .floorplan-sidebar .sb-list{flex:1;overflow-y:auto;padding:4px}
 .floorplan-sidebar .sb-item{padding:6px 10px;border-radius:8px;cursor:pointer;font-size:11px;transition:.15s background;display:flex;align-items:center;gap:8px;border:1px solid transparent}
@@ -250,7 +276,7 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .floorplan-sidebar .sb-actions button{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .floorplan-sidebar .sb-actions button:hover{background:rgba(101,213,255,.2)}
 .floorplan-sidebar .sb-count{padding:6px 12px;border-top:1px solid var(--line);font-size:10px;color:var(--muted);text-align:center}
-.floorplan-container{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#0a1628;cursor:grab;user-select:none;min-height:400px;max-height:70vh}
+.floorplan-container{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#0a1628;cursor:grab;user-select:none;min-height:400px;max-height:70vh;touch-action:none;-webkit-user-select:none}
 .floorplan-container.dragging{cursor:grabbing}
 .floorplan-inner{position:relative;transform-origin:0 0;will-change:transform}
 .floorplan-inner img{display:block;max-width:none;pointer-events:none}
@@ -277,6 +303,14 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .seat-marker-label{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:none}
 .picker-crosshair .seat-marker.draggable{cursor:grab;pointer-events:auto!important}
 .picker-crosshair .seat-marker.dragging-seat{cursor:grabbing;z-index:25;opacity:.7}
+.seat-marker.multi-selected{box-shadow:0 0 0 3px rgba(255,199,105,.9),0 0 12px rgba(255,199,105,.5);z-index:17;border-color:#ffd773!important}
+.floorplan-sidebar .sb-item.multi-selected{background:rgba(255,199,105,.12);border-color:rgba(255,199,105,.35)}
+.floorplan-sidebar .sb-item.multi-selected .sb-dot{outline:2px solid #ffd773;outline-offset:1px}
+.batch-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;margin-bottom:8px;background:linear-gradient(90deg,rgba(255,199,105,.15),rgba(255,199,105,.08));border:1px solid rgba(255,199,105,.4);border-radius:12px;font-size:12px}
+.batch-toolbar .bt-count{font-weight:700;color:#ffd773;margin-right:6px;padding:2px 10px;background:rgba(255,199,105,.2);border-radius:999px}
+.batch-toolbar .bt-sep{color:var(--muted);opacity:.5}
+@media (pointer:coarse){.seat-marker{width:32px;height:32px}.seat-marker-label{top:-22px;font-size:11px}.floorplan-controls button{width:44px;height:44px;font-size:20px}.floorplan-sidebar .sb-item{padding:10px 12px;font-size:13px}.floorplan-sidebar .sb-actions{opacity:1}.floorplan-sidebar .sb-actions button{width:32px;height:32px;font-size:14px}}
+@media print{body.printing-floorplan *:not(.print-floorplan-scope):not(.print-floorplan-scope *){visibility:hidden!important}body.printing-floorplan .print-floorplan-scope{visibility:visible!important;position:absolute!important;inset:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:12px!important;background:#fff!important;color:#000!important}body.printing-floorplan .floorplan-controls,body.printing-floorplan .floorplan-crosshair-h,body.printing-floorplan .floorplan-crosshair-v,body.printing-floorplan .floorplan-coords,body.printing-floorplan .picker-toolbar,body.printing-floorplan .picker-hint,body.printing-floorplan .floorplan-sidebar{display:none!important}body.printing-floorplan .floorplan-container{max-height:none!important;min-height:0!important;border:1px solid #888!important;background:#fff!important;overflow:visible!important}body.printing-floorplan .seat-marker{border-color:#333!important;color:#fff!important}body.printing-floorplan .seat-marker-label{color:#000!important;text-shadow:none!important}}
 
 /* ─── Seat Tooltip ─── */
 .seat-tooltip{position:fixed;z-index:100;background:linear-gradient(180deg,#0d1a31,#081120);border:1px solid rgba(101,213,255,.25);border-radius:14px;padding:12px 14px;box-shadow:0 16px 40px rgba(0,0,0,.5);pointer-events:none;min-width:220px;max-width:320px;font-size:12px}
@@ -1176,6 +1210,35 @@ function toast(message, kind){
   div.innerHTML = escHtml(message || 'Done');
   host.appendChild(div);
   setTimeout(function(){ if (div && div.parentNode) { div.parentNode.removeChild(div); } }, 4200);
+}
+function toastWithAction(message, kind, actionLabel, onAction, durationMs){
+  var host = document.getElementById('toastHost');
+  var div = document.createElement('div');
+  div.className = 'toast ' + (kind || '');
+  var span = document.createElement('span');
+  span.textContent = message;
+  div.appendChild(span);
+  var btn = document.createElement('button');
+  btn.className = 'undo-btn';
+  btn.type = 'button';
+  btn.textContent = actionLabel || 'Undo';
+  btn.addEventListener('click', function(){
+    try { onAction && onAction(); } finally { if (div.parentNode){ div.parentNode.removeChild(div); } }
+  });
+  div.appendChild(btn);
+  host.appendChild(div);
+  setTimeout(function(){ if (div && div.parentNode) { div.parentNode.removeChild(div); } }, durationMs || 8000);
+  return div;
+}
+function confirmDialog(title, message, confirmLabel, onConfirm, opts){
+  opts = opts || {};
+  APP.modalState = APP.modalState || {};
+  APP.modalState._pendingConfirm = onConfirm;
+  var btnCls = opts.danger ? 'btn danger' : 'btn primary';
+  var body = '<div style="padding:4px 0;line-height:1.55;font-size:13px">' + escHtml(message || '') + '</div>';
+  openModal(title || 'Confirm',
+    body,
+    '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="' + btnCls + '" data-action="confirm-dialog-ok">' + escHtml(confirmLabel || 'Confirm') + '</button></div>');
 }
 function setUserPill(){
   var user = APP.state.currentUser;
@@ -4325,9 +4388,97 @@ function saveInOut(){
     return ensureInOutLoaded(true).then(function(){ renderInOut(); });
   }).catch(function(){ toast('In/Out creation failed.', 'danger'); });
 }
+/* ─── Searchable Person Picker ─── */
+function renderPersonPicker(baseId, selectedPersonId, placeholder, allowNone){
+  var people = APP.state.data.people || [];
+  var selected = null;
+  if (selectedPersonId != null && selectedPersonId !== '') {
+    for (var i = 0; i < people.length; i++) {
+      if (String(people[i].Id) === String(selectedPersonId)) { selected = people[i]; break; }
+    }
+  }
+  var initialText = selected ? formatPerson(selected) : '';
+  var hiddenValue = selected ? selected.Id : '';
+  return '<div class="person-picker" data-picker-base="' + escAttr(baseId) + '"' + (allowNone === false ? '' : ' data-allow-none="1"') + '>'
+    + '<input type="text" class="input person-picker-search" id="' + escAttr(baseId) + 'Search" placeholder="' + escAttr(placeholder || 'Search person by name...') + '" value="' + escAttr(initialText) + '" autocomplete="off" />'
+    + '<input type="hidden" id="' + escAttr(baseId) + '" value="' + escAttr(hiddenValue) + '" />'
+    + '<button type="button" class="person-picker-clear" data-action="person-picker-clear" data-picker-base="' + escAttr(baseId) + '" title="Clear" style="' + (selected ? '' : 'display:none') + '">&times;</button>'
+    + '<div class="person-picker-menu" id="' + escAttr(baseId) + 'Menu" style="display:none"></div>'
+    + '</div>';
+}
+function personPickerMatches(query){
+  var people = APP.state.data.people || [];
+  var q = (query || '').trim().toLowerCase();
+  if (!q) { return people.slice(0, 25); }
+  var matches = [];
+  for (var i = 0; i < people.length && matches.length < 25; i++) {
+    var p = people[i];
+    var hay = ((p.Title || '') + ' ' + (p.FullName || '') + ' ' + (p.Email || '') + ' ' + (p.OrgID ? (p.OrgID.Title || '') : '')).toLowerCase();
+    if (hay.indexOf(q) !== -1) { matches.push(p); }
+  }
+  return matches;
+}
+function personPickerRenderMenu(baseId, query){
+  var menu = document.getElementById(baseId + 'Menu');
+  if (!menu) { return; }
+  var picker = menu.parentNode;
+  var allowNone = picker && picker.getAttribute('data-allow-none') === '1';
+  var matches = personPickerMatches(query);
+  var html = '';
+  if (allowNone) {
+    html += '<div class="person-picker-item" data-action="person-picker-select" data-picker-base="' + escAttr(baseId) + '" data-person-id="" data-person-name=""><em style="color:var(--muted)">— None (Available) —</em></div>';
+  }
+  if (!matches.length) {
+    html += '<div class="person-picker-empty">No people match "' + escHtml(query || '') + '"</div>';
+  } else {
+    matches.forEach(function(p){
+      var sub = (p.OrgID && p.OrgID.Title ? p.OrgID.Title : '') + (p.PositionID && p.PositionID.Title ? ' · ' + p.PositionID.Title : '');
+      html += '<div class="person-picker-item" data-action="person-picker-select" data-picker-base="' + escAttr(baseId) + '" data-person-id="' + escAttr(p.Id) + '" data-person-name="' + escAttr(formatPerson(p)) + '">'
+        + '<div>' + escHtml(formatPerson(p)) + '</div>'
+        + (sub ? '<div class="pp-sub">' + escHtml(sub) + '</div>' : '')
+        + '</div>';
+    });
+  }
+  menu.innerHTML = html;
+  menu.style.display = 'block';
+}
+function personPickerSelect(baseId, personId, personName){
+  var hidden = document.getElementById(baseId);
+  var search = document.getElementById(baseId + 'Search');
+  var menu = document.getElementById(baseId + 'Menu');
+  var clearBtn = document.querySelector('.person-picker-clear[data-picker-base="' + baseId + '"]');
+  if (hidden) { hidden.value = personId || ''; }
+  if (search) { search.value = personName || ''; }
+  if (menu) { menu.style.display = 'none'; }
+  if (clearBtn) { clearBtn.style.display = personId ? '' : 'none'; }
+}
+function personPickerClear(baseId){ personPickerSelect(baseId, '', ''); var s = document.getElementById(baseId + 'Search'); if (s) { s.focus(); } }
+function getPersonPickerValue(baseId){ var el = document.getElementById(baseId); return el ? (el.value || '') : ''; }
 function ensureFacilityUi(){
-  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null, floorPlanMode: 'view', pickerPending: null, zoom: 1, panX: 0, panY: 0 }; }
+  if (!APP.state.facilityUi) { APP.state.facilityUi = { selectedFacilityId: null, selectedRoomId: null, floorPlanMode: 'view', pickerPending: null, zoom: 1, panX: 0, panY: 0, selectedSeatIds: {} }; }
+  if (!APP.state.facilityUi.selectedSeatIds) { APP.state.facilityUi.selectedSeatIds = {}; }
   return APP.state.facilityUi;
+}
+function toggleSeatSelection(seatId, force){
+  var ui = ensureFacilityUi();
+  var key = String(seatId);
+  var shouldSelect = typeof force === 'boolean' ? force : !ui.selectedSeatIds[key];
+  if (shouldSelect) { ui.selectedSeatIds[key] = true; } else { delete ui.selectedSeatIds[key]; }
+  renderFacilities();
+}
+function clearSeatSelection(){
+  var ui = ensureFacilityUi();
+  ui.selectedSeatIds = {};
+  renderFacilities();
+}
+function getSelectedSeats(){
+  var ui = ensureFacilityUi();
+  var ids = Object.keys(ui.selectedSeatIds || {});
+  if (!ids.length) { return []; }
+  var seats = APP.state.data.seats || [];
+  var byId = {};
+  seats.forEach(function(s){ byId[String(s.Id)] = s; });
+  return ids.map(function(id){ return byId[id]; }).filter(function(s){ return s; });
 }
 function getFloorPlanUrl(facility, room){
   if (room && room.FloorPlanUrl) { return room.FloorPlanUrl; }
@@ -4341,7 +4492,20 @@ function renderSeatMap(seats, room, facility){
   if (floorPlanUrl) {
     return renderFloorPlanView(allSeats, room, facility, floorPlanUrl);
   }
-  if (!allSeats.length) { return '<div class="empty">No seats mapped in this room.</div>'; }
+  if (!allSeats.length) {
+    var roomLabel = (room && (room.RoomNumber || room.Title)) || 'this room';
+    var msg = '<div class="empty" style="padding:32px;text-align:center">';
+    msg += '<div style="font-size:15px;font-weight:700;margin-bottom:6px">No seats in ' + escHtml(roomLabel) + ' yet</div>';
+    if (canSeeAdmin()) {
+      msg += '<div class="small-note" style="margin-bottom:12px">Set a floor plan image for this building first, then drop seats on the plan.</div>';
+      msg += '<button class="btn primary" data-action="enter-floorplan-url">Set Floor Plan URL</button> ';
+      msg += '<button class="btn subtle" data-action="bulk-seat-import">Bulk Import Seats</button>';
+    } else {
+      msg += '<div class="small-note">Ask a facility admin to set up the seat map for this room.</div>';
+    }
+    msg += '</div>';
+    return msg;
+  }
   var hasCoords = allSeats.some(function(s){ return s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== ''; });
   if (!hasCoords) {
     var html = '<div class="tile-grid">';
@@ -4387,26 +4551,67 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
     } else {
       html += '<button class="btn primary" data-action="enter-seat-picker">Edit Seat Map</button>';
       html += '<button class="btn subtle" data-action="enter-floorplan-url">Set Floor Plan URL</button>';
+      html += '<button class="btn subtle" data-action="print-floorplan" title="Print the current seat map">Print</button>';
+      html += '<button class="btn subtle" data-action="show-seat-map-help" title="Keyboard shortcuts and tips">?</button>';
     }
     html += '</div>';
     if (isPicker) {
-      html += '<div class="picker-hint"><strong>Click</strong> empty space to place a new seat. <strong>Click</strong> an existing seat to edit or delete it. <strong>Drag</strong> an existing seat to reposition it. Scroll to zoom.</div>';
+      if (ui.pendingPlaceSeatId) {
+        var pendingSeat = null;
+        seats.some(function(s){ if (String(s.Id) === String(ui.pendingPlaceSeatId)) { pendingSeat = s; return true; } return false; });
+        var pendingLabel = pendingSeat ? (pendingSeat.SeatLabel || pendingSeat.SeatID || 'Seat') : 'seat';
+        html += '<div class="picker-hint" style="background:rgba(255,199,105,.12);border-color:rgba(255,199,105,.35)"><strong>Placing:</strong> click anywhere on the floor plan to place seat &quot;' + escHtml(pendingLabel) + '&quot;. <button class="btn subtle" data-action="cancel-place-existing" style="margin-left:12px;padding:4px 10px">Cancel placement</button></div>';
+      } else {
+        html += '<div class="picker-hint"><strong>Click</strong> empty space to create a new seat. <strong>Click</strong> an existing seat to edit or delete it. <strong>Drag</strong> a seat to reposition it. <strong>Click</strong> an unplaced seat in the sidebar to drop it on the map. Scroll/pinch to zoom.</div>';
+      }
     }
+  } else {
+    html += '<div class="picker-toolbar"><button class="btn subtle" data-action="print-floorplan" title="Print the current seat map">Print</button><button class="btn subtle" data-action="show-seat-map-help" title="Keyboard shortcuts and tips">?</button></div>';
   }
-  html += '<div class="floorplan-wrapper">';
+  if (ui.pendingSwapSeatId && canSeeAdmin()) {
+    var swapSeat = null;
+    seats.some(function(s){ if (String(s.Id) === String(ui.pendingSwapSeatId)) { swapSeat = s; return true; } return false; });
+    var swapLabel = swapSeat ? (swapSeat.SeatLabel || swapSeat.SeatID || 'seat') : 'seat';
+    var swapOcc = (swapSeat && swapSeat.CurrentPersonID && swapSeat.CurrentPersonID.Title) || '(empty)';
+    html += '<div class="picker-hint" style="background:rgba(101,213,255,.12);border-color:rgba(101,213,255,.35)"><strong>Swap:</strong> click another seat to trade occupants with ' + escHtml(swapLabel) + ' (' + escHtml(swapOcc) + '). <button class="btn subtle" data-action="swap-seat-cancel" style="margin-left:12px;padding:4px 10px">Cancel swap</button></div>';
+  }
+  var selectedIds = ui.selectedSeatIds || {};
+  var selectedCount = Object.keys(selectedIds).length;
+  if (selectedCount && canSeeAdmin()) {
+    html += '<div class="batch-toolbar">';
+    html += '<span class="bt-count">' + selectedCount + ' selected</span>';
+    html += '<button class="btn subtle" data-action="batch-assign">Assign\u2026</button>';
+    html += '<button class="btn subtle" data-action="batch-release">Release</button>';
+    html += '<span class="bt-sep">|</span>';
+    html += '<button class="btn subtle" data-action="batch-maintenance">Maintenance</button>';
+    html += '<button class="btn subtle" data-action="batch-in-service">In Service</button>';
+    html += '<span class="bt-sep">|</span>';
+    html += '<button class="btn subtle danger" data-action="batch-delete">Delete</button>';
+    html += '<span class="bt-sep">|</span>';
+    html += '<button class="btn subtle" data-action="batch-clear">Clear</button>';
+    html += '<span class="small-note" style="margin-left:auto">Ctrl/Shift+click markers to add · or use <em>Select</em> on any seat</span>';
+    html += '</div>';
+  }
+  html += '<div class="floorplan-wrapper print-floorplan-scope">';
   html += '<div class="floorplan-main">';
   html += '<div id="' + containerId + '" class="floorplan-container' + (isPicker ? ' picker-crosshair' : '') + '" data-image-url="' + escAttr(imageUrl) + '" data-facility-id="' + escAttr(facility ? facility.Id : '') + '" data-room-id="' + escAttr(room ? room.Id : '') + '">';
   html += '<div id="floorplanInner" class="floorplan-inner">';
   html += '<img id="floorplanImg" src="' + escAttr(imageUrl) + '" alt="Floor plan" onload="onFloorPlanLoad()" onerror="onFloorPlanError()" />';
+  var mapFilter = ui.sbFilter || 'all';
+  var selMap = ui.selectedSeatIds || {};
   placedSeats.forEach(function(s){
     var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
-    var cls = occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available');
+    var statusKey = occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available');
+    var cls = statusKey;
     if (isPicker) { cls += ' draggable'; }
     var justPlaced = ui._justPlacedId && String(ui._justPlacedId) === String(s.Id);
     if (justPlaced) { cls += ' just-placed'; }
-    var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
-    var tooltip = JSON.stringify({ label: s.SeatLabel || s.SeatID || 'Seat', occupant: occupant, port: s.PortNumber || '', phone: s.PhoneNumber || '', networks: networks.trim(), vtc: normalizeBoolean(s.VTCEnabled), status: s.SeatStatus || (occupant ? 'Occupied' : 'Available'), notes: s.Notes || '', seatId: s.Id });
-    html += '<div class="seat-marker ' + cls + '" style="left:' + s.XCoord + 'px;top:' + s.YCoord + 'px" data-seat-tooltip="' + escAttr(tooltip) + '" data-seat-id="' + escAttr(s.Id) + '"><span class="seat-marker-label">' + escHtml(s.SeatLabel || s.SeatID || '') + '</span></div>';
+    if (selMap[String(s.Id)]) { cls += ' multi-selected'; }
+    var hidden = (mapFilter !== 'all' && mapFilter !== statusKey) ? 'display:none;' : '';
+    var statusText = s.SeatStatus || (occupant ? 'Occupied' : 'Available');
+    var seatLabel = s.SeatLabel || s.SeatID || 'Seat';
+    var ariaLabel = 'Seat ' + seatLabel + ': ' + (occupant || 'unoccupied') + ', ' + statusText;
+    html += '<div class="seat-marker ' + cls + '" style="' + hidden + 'left:' + s.XCoord + 'px;top:' + s.YCoord + 'px" data-seat-id="' + escAttr(s.Id) + '" data-seat-status="' + statusKey + '" role="button" tabindex="0" aria-label="' + escAttr(ariaLabel) + '"><span class="seat-marker-label">' + escHtml(seatLabel) + '</span></div>';
   });
   if (isPicker && ui.pickerPending) {
     html += '<div class="picker-pending" style="left:' + ui.pickerPending.x + 'px;top:' + ui.pickerPending.y + 'px"></div>';
@@ -4420,15 +4625,34 @@ function renderFloorPlanView(seats, room, facility, imageUrl){
   html += '</div>';
   html += '</div>';
   /* Seat sidebar */
-  html += '<div class="floorplan-sidebar">';
-  html += '<div class="sb-head"><span>Seats (' + seats.length + ')</span><input class="sb-search" id="seatSidebarSearch" placeholder="Search seats..." /></div>';
+  var sbFilter = ui.sbFilter || 'all';
+  var counts = { all: seats.length, occupied: 0, available: 0, maintenance: 0, unplaced: 0 };
+  seats.forEach(function(s){
+    var isPlaced = s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== '';
+    var occ = s.CurrentPersonID && s.CurrentPersonID.Title;
+    if (!isPlaced) { counts.unplaced++; }
+    else if (occ) { counts.occupied++; }
+    else if (String(s.SeatStatus || '').toLowerCase() === 'maintenance') { counts.maintenance++; }
+    else { counts.available++; }
+  });
+  var sbCollapsed = ui.sidebarCollapsed ? ' collapsed' : '';
+  html += '<div class="floorplan-sidebar' + sbCollapsed + '">';
+  html += '<div class="sb-head"><button class="sb-toggle" data-action="toggle-sidebar" title="' + (ui.sidebarCollapsed ? 'Expand seat list' : 'Collapse seat list') + '">\u2039</button><span>Seats (' + seats.length + ')</span><input class="sb-search" id="seatSidebarSearch" placeholder="Search seats..." /></div>';
+  html += '<div class="sb-filters">';
+  ['all','occupied','available','maintenance','unplaced'].forEach(function(k){
+    var labels = { all:'All', occupied:'Occupied', available:'Available', maintenance:'Maint', unplaced:'Unplaced' };
+    html += '<button class="sb-chip' + (sbFilter === k ? ' active' : '') + '" data-action="sb-set-filter" data-filter="' + k + '">' + labels[k] + '<span class="ct">' + counts[k] + '</span></button>';
+  });
+  html += '</div>';
   html += '<div class="sb-list" id="seatSidebarList">';
   placedSeats.concat(unplacedSeats).forEach(function(s){
     var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
     var isPlaced = s.XCoord != null && s.YCoord != null && s.XCoord !== '' && s.YCoord !== '';
-    var dotCls = !isPlaced ? 'unplaced' : (occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available'));
-    html += '<div class="sb-item" data-action="sidebar-seat-click" data-seat-id="' + escAttr(s.Id) + '" data-seat-x="' + escAttr(s.XCoord || '') + '" data-seat-y="' + escAttr(s.YCoord || '') + '">';
-    html += '<div class="sb-dot ' + dotCls + '"></div>';
+    var statusKey = !isPlaced ? 'unplaced' : (occupant ? 'occupied' : (String(s.SeatStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available'));
+    var hidden = (sbFilter !== 'all' && sbFilter !== statusKey) ? ' style="display:none"' : '';
+    var selCls = selMap[String(s.Id)] ? ' multi-selected' : '';
+    html += '<div class="sb-item' + selCls + '" data-seat-status="' + statusKey + '"' + hidden + ' data-action="sidebar-seat-click" data-seat-id="' + escAttr(s.Id) + '" data-seat-x="' + escAttr(s.XCoord || '') + '" data-seat-y="' + escAttr(s.YCoord || '') + '">';
+    html += '<div class="sb-dot ' + statusKey + '"></div>';
     html += '<div class="sb-info"><div class="sb-name">' + escHtml(s.SeatLabel || s.SeatID || s.Title || 'Seat') + '</div><div class="sb-sub">' + escHtml(occupant || (isPlaced ? 'Available' : 'Not placed')) + '</div></div>';
     if (canSeeAdmin() && isPicker) {
       html += '<div class="sb-actions"><button data-action="edit-seat-inline" data-seat-id="' + escAttr(s.Id) + '" title="Edit">&#9998;</button><button data-action="delete-seat" data-seat-id="' + escAttr(s.Id) + '" title="Delete">&#10005;</button></div>';
@@ -4455,6 +4679,9 @@ function onFloorPlanLoad(){
   ui.panX = 0; ui.panY = 0;
   applyFloorPlanTransform();
   initFloorPlanInteraction();
+  if (ui._justPlacedId) {
+    setTimeout(function(){ var u = ensureFacilityUi(); u._justPlacedId = null; }, 600);
+  }
 }
 function onFloorPlanError(){
   var container = document.getElementById('floorplanContainer');
@@ -4466,44 +4693,33 @@ function applyFloorPlanTransform(){
   var ui = ensureFacilityUi();
   inner.style.transform = 'translate(' + ui.panX + 'px,' + ui.panY + 'px) scale(' + ui.zoom + ')';
 }
-function initFloorPlanInteraction(){
-  var container = document.getElementById('floorplanContainer');
-  if (!container || container._fpInit) { return; }
-  container._fpInit = true;
-  var ui = ensureFacilityUi();
-  var dragging = false; var startX = 0; var startY = 0; var startPanX = 0; var startPanY = 0; var moved = false;
-  var seatDragging = null; var seatDragStartX = 0; var seatDragStartY = 0; var seatOrigX = 0; var seatOrigY = 0; var seatMoved = false;
-  container.addEventListener('mousedown', function(e){
-    if (e.button !== 0) { return; }
-    /* Seat drag in picker mode */
-    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
-      var marker = e.target.closest ? e.target.closest('.seat-marker.draggable') : null;
-      if (marker) {
-        seatDragging = marker; seatMoved = false;
-        seatDragStartX = e.clientX; seatDragStartY = e.clientY;
-        seatOrigX = parseInt(marker.style.left, 10) || 0;
-        seatOrigY = parseInt(marker.style.top, 10) || 0;
-        marker.classList.add('dragging-seat');
-        e.preventDefault(); e.stopPropagation();
-        return;
-      }
-      return;
-    }
-    dragging = true; moved = false; startX = e.clientX; startY = e.clientY; startPanX = ui.panX; startPanY = ui.panY;
-    container.classList.add('dragging');
-    e.preventDefault();
-  });
+/* Module-level drag state — shared between container and document listeners */
+var _fpDrag = { dragging: false, moved: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0, seatDragging: null, seatMoved: false, seatDragStartX: 0, seatDragStartY: 0, seatOrigX: 0, seatOrigY: 0 };
+var _fpPinch = { active: false, startDist: 0, startZoom: 1 };
+var _fpTouchEndAt = 0;
+var _fpDocListenersAttached = false;
+var MOVE_THRESHOLD = 3;
+function _fpTouchDist(touches){
+  var dx = touches[0].clientX - touches[1].clientX;
+  var dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+function ensureFloorPlanDocListeners(){
+  if (_fpDocListenersAttached) { return; }
+  _fpDocListenersAttached = true;
   document.addEventListener('mousemove', function(e){
-    /* Seat dragging */
-    if (seatDragging) {
-      var dx = (e.clientX - seatDragStartX) / ui.zoom;
-      var dy = (e.clientY - seatDragStartY) / ui.zoom;
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) { seatMoved = true; }
-      seatDragging.style.left = Math.round(seatOrigX + dx) + 'px';
-      seatDragging.style.top = Math.round(seatOrigY + dy) + 'px';
+    var container = document.getElementById('floorplanContainer');
+    if (!container) { return; }
+    var ui = ensureFacilityUi();
+    if (_fpDrag.seatDragging) {
+      if (!document.body.contains(_fpDrag.seatDragging)) { _fpDrag.seatDragging = null; return; }
+      var dx = (e.clientX - _fpDrag.seatDragStartX) / ui.zoom;
+      var dy = (e.clientY - _fpDrag.seatDragStartY) / ui.zoom;
+      if (Math.abs(dx) > MOVE_THRESHOLD || Math.abs(dy) > MOVE_THRESHOLD) { _fpDrag.seatMoved = true; }
+      _fpDrag.seatDragging.style.left = Math.round(_fpDrag.seatOrigX + dx) + 'px';
+      _fpDrag.seatDragging.style.top = Math.round(_fpDrag.seatOrigY + dy) + 'px';
       return;
     }
-    /* Crosshair tracking in picker mode */
     if (ui.floorPlanMode === 'picker') {
       var chH = document.getElementById('fpCrosshairH');
       var chV = document.getElementById('fpCrosshairV');
@@ -4523,35 +4739,107 @@ function initFloorPlanInteraction(){
         }
       }
     }
-    if (!dragging) { return; }
-    var ddx = e.clientX - startX; var ddy = e.clientY - startY;
-    if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) { moved = true; }
-    ui.panX = startPanX + ddx; ui.panY = startPanY + ddy;
+    if (!_fpDrag.dragging) { return; }
+    var ddx = e.clientX - _fpDrag.startX; var ddy = e.clientY - _fpDrag.startY;
+    if (Math.abs(ddx) > MOVE_THRESHOLD || Math.abs(ddy) > MOVE_THRESHOLD) { _fpDrag.moved = true; }
+    ui.panX = _fpDrag.startPanX + ddx; ui.panY = _fpDrag.startPanY + ddy;
+    clampFloorPlanPan();
     applyFloorPlanTransform();
   });
-  document.addEventListener('mouseup', function(e){
-    if (seatDragging) {
-      seatDragging.classList.remove('dragging-seat');
-      if (seatMoved) {
-        var newX = parseInt(seatDragging.style.left, 10);
-        var newY = parseInt(seatDragging.style.top, 10);
-        var seatId = seatDragging.getAttribute('data-seat-id');
-        saveSeatPosition(seatId, newX, newY);
+  document.addEventListener('mouseup', function(){
+    var container = document.getElementById('floorplanContainer');
+    if (_fpDrag.seatDragging) {
+      var marker = _fpDrag.seatDragging;
+      marker.classList.remove('dragging-seat');
+      if (_fpDrag.seatMoved) {
+        var newX = parseInt(marker.style.left, 10);
+        var newY = parseInt(marker.style.top, 10);
+        saveSeatPosition(marker.getAttribute('data-seat-id'), newX, newY, marker, _fpDrag.seatOrigX, _fpDrag.seatOrigY);
       }
-      seatDragging = null; seatMoved = false;
+      _fpDrag.seatDragging = null; _fpDrag.seatMoved = false;
       return;
     }
-    if (dragging) { dragging = false; container.classList.remove('dragging'); }
+    if (_fpDrag.dragging) {
+      _fpDrag.dragging = false;
+      if (container) { container.classList.remove('dragging'); }
+    }
+  });
+}
+function clampFloorPlanPan(){
+  var container = document.getElementById('floorplanContainer');
+  var img = document.getElementById('floorplanImg');
+  if (!container || !img || !img.naturalWidth) { return; }
+  var ui = ensureFacilityUi();
+  var cw = container.clientWidth, ch = container.clientHeight;
+  var iw = img.naturalWidth * ui.zoom, ih = img.naturalHeight * ui.zoom;
+  var margin = 80;
+  ui.panX = Math.max(Math.min(ui.panX, cw - margin), margin - iw);
+  ui.panY = Math.max(Math.min(ui.panY, ch - margin), margin - ih);
+}
+function initFloorPlanInteraction(){
+  ensureFloorPlanDocListeners();
+  var container = document.getElementById('floorplanContainer');
+  if (!container || container._fpInit) { return; }
+  container._fpInit = true;
+  var ui = ensureFacilityUi();
+  container.addEventListener('mousedown', function(e){
+    if (e.button !== 0) { return; }
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      var marker = e.target.closest ? e.target.closest('.seat-marker.draggable') : null;
+      if (marker) {
+        _fpDrag.seatDragging = marker; _fpDrag.seatMoved = false;
+        _fpDrag.seatDragStartX = e.clientX; _fpDrag.seatDragStartY = e.clientY;
+        _fpDrag.seatOrigX = parseInt(marker.style.left, 10) || 0;
+        _fpDrag.seatOrigY = parseInt(marker.style.top, 10) || 0;
+        marker.classList.add('dragging-seat');
+        e.preventDefault(); e.stopPropagation();
+        return;
+      }
+      return;
+    }
+    _fpDrag.dragging = true; _fpDrag.moved = false;
+    _fpDrag.startX = e.clientX; _fpDrag.startY = e.clientY;
+    _fpDrag.startPanX = ui.panX; _fpDrag.startPanY = ui.panY;
+    container.classList.add('dragging');
+    e.preventDefault();
   });
   container.addEventListener('wheel', function(e){
     e.preventDefault();
-    var delta = e.deltaY > 0 ? -0.1 : 0.1;
-    ui.zoom = Math.max(0.15, Math.min(5, ui.zoom + delta));
+    var oldZoom = ui.zoom;
+    var factor = e.deltaY > 0 ? 0.9 : 1.1;
+    var newZoom = Math.max(0.15, Math.min(5, oldZoom * factor));
+    if (newZoom === oldZoom) { return; }
+    var cr = container.getBoundingClientRect();
+    var mx = e.clientX - cr.left;
+    var my = e.clientY - cr.top;
+    ui.panX = mx - ((mx - ui.panX) * (newZoom / oldZoom));
+    ui.panY = my - ((my - ui.panY) * (newZoom / oldZoom));
+    ui.zoom = newZoom;
+    clampFloorPlanPan();
     applyFloorPlanTransform();
   }, { passive: false });
   container.addEventListener('click', function(e){
-    if (moved || seatMoved) { return; }
+    /* Suppress synthesized click that follows a touch tap (~300ms) */
+    if (_fpTouchEndAt && (Date.now() - _fpTouchEndAt) < 500) { return; }
+    if (_fpDrag.moved || _fpDrag.seatMoved) { return; }
+    /* Ctrl/Cmd/Shift-click on a marker toggles selection instead of editing */
+    if ((e.ctrlKey || e.metaKey || e.shiftKey) && canSeeAdmin()) {
+      var selMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
+      if (selMarker) { e.preventDefault(); toggleSeatSelection(selMarker.getAttribute('data-seat-id')); return; }
+    }
+    if (ui.pendingSwapSeatId && canSeeAdmin()) {
+      var swapMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
+      if (swapMarker) { performSeatSwap(ui.pendingSwapSeatId, swapMarker.getAttribute('data-seat-id')); return; }
+      return;
+    }
     if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      if (ui.pendingPlaceSeatId) {
+        var onMarker = e.target.closest ? e.target.closest('.seat-marker') : null;
+        if (onMarker) { return; }
+        var coords = floorPlanClientToImage(e.clientX, e.clientY);
+        if (coords) { placeExistingSeat(ui.pendingPlaceSeatId, coords.x, coords.y); }
+        return;
+      }
       var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
       if (marker) { openSeatEditModal(marker.getAttribute('data-seat-id')); return; }
       handlePickerClick(e);
@@ -4572,6 +4860,137 @@ function initFloorPlanInteraction(){
     if (!marker && e.target.classList && e.target.classList.contains('seat-marker')) { marker = e.target; }
     if (marker) { hideSeatTooltip(); }
   });
+  container.addEventListener('keydown', function(e){
+    var marker = e.target.closest ? e.target.closest('.seat-marker') : null;
+    if (!marker) { return; }
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      if (ui.floorPlanMode === 'picker' && canSeeAdmin()) { openSeatEditModal(marker.getAttribute('data-seat-id')); }
+      else { showSeatTooltipPinned(marker, e); }
+    } else if (e.key === 'Escape') {
+      hideSeatTooltip();
+    }
+  });
+  /* ── Touch support: pan, pinch-zoom, tap, and seat-drag in picker mode ── */
+  container.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2) {
+      _fpPinch.active = true;
+      _fpPinch.startDist = _fpTouchDist(e.touches);
+      _fpPinch.startZoom = ui.zoom;
+      _fpDrag.dragging = false;
+      if (_fpDrag.seatDragging) { _fpDrag.seatDragging.classList.remove('dragging-seat'); _fpDrag.seatDragging = null; }
+      e.preventDefault();
+      return;
+    }
+    if (e.touches.length !== 1) { return; }
+    var t = e.touches[0];
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      var marker = t.target && t.target.closest ? t.target.closest('.seat-marker.draggable') : null;
+      if (marker) {
+        _fpDrag.seatDragging = marker; _fpDrag.seatMoved = false;
+        _fpDrag.seatDragStartX = t.clientX; _fpDrag.seatDragStartY = t.clientY;
+        _fpDrag.seatOrigX = parseInt(marker.style.left, 10) || 0;
+        _fpDrag.seatOrigY = parseInt(marker.style.top, 10) || 0;
+        marker.classList.add('dragging-seat');
+        e.preventDefault();
+        return;
+      }
+    }
+    _fpDrag.dragging = true; _fpDrag.moved = false;
+    _fpDrag.startX = t.clientX; _fpDrag.startY = t.clientY;
+    _fpDrag.startPanX = ui.panX; _fpDrag.startPanY = ui.panY;
+    container.classList.add('dragging');
+    e.preventDefault();
+  }, { passive: false });
+  container.addEventListener('touchmove', function(e){
+    if (_fpPinch.active && e.touches.length === 2) {
+      var dist = _fpTouchDist(e.touches);
+      if (!dist || !_fpPinch.startDist) { e.preventDefault(); return; }
+      var oldZoom = ui.zoom;
+      var newZoom = Math.max(0.15, Math.min(5, _fpPinch.startZoom * (dist / _fpPinch.startDist)));
+      if (newZoom !== oldZoom) {
+        var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        var cr = container.getBoundingClientRect();
+        var mx = cx - cr.left, my = cy - cr.top;
+        ui.panX = mx - ((mx - ui.panX) * (newZoom / oldZoom));
+        ui.panY = my - ((my - ui.panY) * (newZoom / oldZoom));
+        ui.zoom = newZoom;
+        clampFloorPlanPan();
+        applyFloorPlanTransform();
+      }
+      e.preventDefault();
+      return;
+    }
+    if (e.touches.length !== 1) { return; }
+    var t = e.touches[0];
+    if (_fpDrag.seatDragging) {
+      var sdx = (t.clientX - _fpDrag.seatDragStartX) / ui.zoom;
+      var sdy = (t.clientY - _fpDrag.seatDragStartY) / ui.zoom;
+      if (Math.abs(sdx) > MOVE_THRESHOLD || Math.abs(sdy) > MOVE_THRESHOLD) { _fpDrag.seatMoved = true; }
+      _fpDrag.seatDragging.style.left = Math.round(_fpDrag.seatOrigX + sdx) + 'px';
+      _fpDrag.seatDragging.style.top = Math.round(_fpDrag.seatOrigY + sdy) + 'px';
+      e.preventDefault();
+      return;
+    }
+    if (_fpDrag.dragging) {
+      var ddx = t.clientX - _fpDrag.startX, ddy = t.clientY - _fpDrag.startY;
+      if (Math.abs(ddx) > MOVE_THRESHOLD || Math.abs(ddy) > MOVE_THRESHOLD) { _fpDrag.moved = true; }
+      ui.panX = _fpDrag.startPanX + ddx; ui.panY = _fpDrag.startPanY + ddy;
+      clampFloorPlanPan();
+      applyFloorPlanTransform();
+      e.preventDefault();
+    }
+  }, { passive: false });
+  container.addEventListener('touchend', function(e){
+    _fpTouchEndAt = Date.now();
+    if (_fpPinch.active) {
+      if (e.touches.length < 2) { _fpPinch.active = false; }
+      return;
+    }
+    var changed = e.changedTouches && e.changedTouches[0];
+    if (_fpDrag.seatDragging) {
+      var marker = _fpDrag.seatDragging;
+      marker.classList.remove('dragging-seat');
+      if (_fpDrag.seatMoved) {
+        var newX = parseInt(marker.style.left, 10);
+        var newY = parseInt(marker.style.top, 10);
+        saveSeatPosition(marker.getAttribute('data-seat-id'), newX, newY, marker, _fpDrag.seatOrigX, _fpDrag.seatOrigY);
+      } else if (changed) {
+        if (ui.floorPlanMode === 'picker' && canSeeAdmin()) { openSeatEditModal(marker.getAttribute('data-seat-id')); }
+        else { showSeatTooltipPinned(marker, e); }
+      }
+      _fpDrag.seatDragging = null; _fpDrag.seatMoved = false;
+      return;
+    }
+    if (_fpDrag.dragging) {
+      var wasMoved = _fpDrag.moved;
+      _fpDrag.dragging = false;
+      container.classList.remove('dragging');
+      if (!wasMoved && changed) {
+        if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+          if (ui.pendingPlaceSeatId) {
+            var coords = floorPlanClientToImage(changed.clientX, changed.clientY);
+            if (coords) { placeExistingSeat(ui.pendingPlaceSeatId, coords.x, coords.y); }
+            return;
+          }
+          var tapped = document.elementFromPoint(changed.clientX, changed.clientY);
+          var tapMarker = tapped && tapped.closest ? tapped.closest('.seat-marker') : null;
+          if (tapMarker) { openSeatEditModal(tapMarker.getAttribute('data-seat-id')); return; }
+          handlePickerClick({ clientX: changed.clientX, clientY: changed.clientY });
+          return;
+        }
+        var tapped2 = document.elementFromPoint(changed.clientX, changed.clientY);
+        var viewMarker = tapped2 && tapped2.closest ? tapped2.closest('.seat-marker') : null;
+        if (viewMarker) { showSeatTooltipPinned(viewMarker, e); }
+      }
+    }
+  }, { passive: false });
+  container.addEventListener('touchcancel', function(){
+    if (_fpDrag.seatDragging) { _fpDrag.seatDragging.classList.remove('dragging-seat'); _fpDrag.seatDragging = null; }
+    _fpDrag.dragging = false; _fpPinch.active = false;
+    container.classList.remove('dragging');
+  });
 }
 function floorPlanZoom(direction){
   var ui = ensureFacilityUi();
@@ -4582,10 +5001,34 @@ function floorPlanZoom(direction){
 }
 
 /* ─── Seat Tooltip ─── */
-function showSeatTooltip(marker, e){
-  var raw = marker.getAttribute('data-seat-tooltip');
-  if (!raw) { return; }
-  var data; try { data = JSON.parse(raw); } catch(err) { return; }
+function getSeatTooltipData(seatId){
+  var seats = APP.state.data.seats || [];
+  for (var i = 0; i < seats.length; i++) {
+    if (String(seats[i].Id) === String(seatId)) {
+      var s = seats[i];
+      var occupant = s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '';
+      var occupantId = s.CurrentPersonID && (s.CurrentPersonID.Id || s.CurrentPersonID) || null;
+      var occupantEmail = '', occupantPhone = '', occupantOrg = '';
+      if (occupantId) {
+        var people = APP.state.data.people || [];
+        for (var j = 0; j < people.length; j++) {
+          if (people[j].Id === occupantId) {
+            occupantEmail = people[j].Email || '';
+            occupantPhone = people[j].Phone || people[j].WorkPhone || '';
+            occupantOrg = people[j].OrgID ? (people[j].OrgID.Title || '') : '';
+            break;
+          }
+        }
+      }
+      var networks = (normalizeBoolean(s.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(s.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(s.HasJWICS) ? 'JWICS' : '');
+      return { label: s.SeatLabel || s.SeatID || 'Seat', occupant: occupant, occupantId: occupantId, occupantEmail: occupantEmail, occupantPhone: occupantPhone, occupantOrg: occupantOrg, port: s.PortNumber || '', phone: s.PhoneNumber || '', networks: networks.trim(), vtc: normalizeBoolean(s.VTCEnabled), status: s.SeatStatus || (occupant ? 'Occupied' : 'Available'), notes: s.Notes || '', seatId: s.Id };
+    }
+  }
+  return null;
+}
+function showSeatTooltip(marker){
+  var data = getSeatTooltipData(marker.getAttribute('data-seat-id'));
+  if (!data) { return; }
   var tip = document.getElementById('seatTooltip');
   if (!tip) { return; }
   tip.style.pointerEvents = 'none';
@@ -4593,10 +5036,9 @@ function showSeatTooltip(marker, e){
   tip.style.display = 'block';
   positionTooltip(tip, marker);
 }
-function showSeatTooltipPinned(marker, e){
-  var raw = marker.getAttribute('data-seat-tooltip');
-  if (!raw) { return; }
-  var data; try { data = JSON.parse(raw); } catch(err) { return; }
+function showSeatTooltipPinned(marker){
+  var data = getSeatTooltipData(marker.getAttribute('data-seat-id'));
+  if (!data) { return; }
   var tip = document.getElementById('seatTooltip');
   if (!tip) { return; }
   var prev = document.querySelector('.seat-marker.selected');
@@ -4610,21 +5052,51 @@ function showSeatTooltipPinned(marker, e){
 function buildSeatTooltipHtml(data, showActions){
   var html = '<div class="st-name">' + escHtml(data.label) + '</div>';
   html += '<div class="st-row"><span class="st-label">Occupant</span><span>' + escHtml(data.occupant || 'Available') + '</span></div>';
+  if (data.occupantId) {
+    if (data.occupantOrg) { html += '<div class="st-row"><span class="st-label">Org</span><span>' + escHtml(data.occupantOrg) + '</span></div>'; }
+    if (data.occupantEmail) { html += '<div class="st-row"><span class="st-label">Email</span><span><a href="mailto:' + escAttr(data.occupantEmail) + '" style="color:var(--accent)">' + escHtml(data.occupantEmail) + '</a></span></div>'; }
+    if (data.occupantPhone) { html += '<div class="st-row"><span class="st-label">Personal Phone</span><span>' + escHtml(data.occupantPhone) + '</span></div>'; }
+  }
   html += '<div class="st-row"><span class="st-label">Status</span><span>' + statusBadge(data.status) + '</span></div>';
   if (data.port) { html += '<div class="st-row"><span class="st-label">Port</span><span>' + escHtml(data.port) + '</span></div>'; }
-  if (data.phone) { html += '<div class="st-row"><span class="st-label">Phone</span><span>' + escHtml(data.phone) + '</span></div>'; }
+  if (data.phone) { html += '<div class="st-row"><span class="st-label">Seat Phone</span><span>' + escHtml(data.phone) + '</span></div>'; }
   if (data.vtc) { html += '<div class="st-row"><span class="st-label">VTC</span><span class="badge ok">Yes</span></div>'; }
   if (data.networks) { html += '<div class="st-nets">' + data.networks.split(' ').map(function(n){ return '<span class="badge info">' + escHtml(n) + '</span>'; }).join('') + '</div>'; }
   if (data.notes) { html += '<div class="st-row" style="margin-top:4px"><span class="mini muted">' + escHtml(data.notes) + '</span></div>'; }
-  if (showActions && canSeeAdmin()) {
-    html += '<div class="st-actions"><button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button><button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button></div>';
+  if (showActions && (data.occupantId || canSeeAdmin())) {
+    html += '<div class="st-actions">';
+    if (data.occupantId) {
+      html += '<button data-action="view-person" data-id="' + escAttr(data.occupantId) + '">View Profile</button>';
+    }
+    if (canSeeAdmin()) {
+      if (data.occupant) {
+        html += '<button data-action="release-seat" data-seat-id="' + escAttr(data.seatId) + '" title="Clear the assigned person">Release</button>';
+        html += '<button data-action="swap-seat-start" data-seat-id="' + escAttr(data.seatId) + '" title="Swap occupant with another seat">Swap\u2026</button>';
+      } else {
+        html += '<button data-action="quick-assign-open" data-seat-id="' + escAttr(data.seatId) + '" title="Assign a person to this seat">Assign\u2026</button>';
+      }
+      var isMaint = String(data.status || '').toLowerCase() === 'maintenance';
+      html += '<button data-action="toggle-maintenance" data-seat-id="' + escAttr(data.seatId) + '" title="' + (isMaint ? 'Return this seat to service' : 'Flag this seat for maintenance') + '">' + (isMaint ? 'In Service' : 'Maintenance') + '</button>';
+      var ui = ensureFacilityUi();
+      var isSel = ui.selectedSeatIds && ui.selectedSeatIds[String(data.seatId)];
+      html += '<button data-action="toggle-seat-select" data-seat-id="' + escAttr(data.seatId) + '" title="' + (isSel ? 'Remove from batch selection' : 'Add to batch selection') + '">' + (isSel ? 'Deselect' : 'Select') + '</button>';
+      html += '<button data-action="edit-seat-inline" data-seat-id="' + escAttr(data.seatId) + '">Edit</button>';
+      html += '<button class="danger" data-action="delete-seat" data-seat-id="' + escAttr(data.seatId) + '">Delete</button>';
+    }
+    html += '</div>';
   }
   return html;
 }
 function positionTooltip(tip, marker){
   var rect = marker.getBoundingClientRect();
-  tip.style.left = Math.min(rect.left + 20, window.innerWidth - 340) + 'px';
-  tip.style.top = Math.max(10, rect.top - 10) + 'px';
+  var tipW = tip.offsetWidth || 240;
+  var tipH = tip.offsetHeight || 120;
+  var left = rect.left + 20;
+  if (left + tipW > window.innerWidth - 10) { left = Math.max(10, rect.left - tipW - 10); }
+  var top = rect.top - 10;
+  if (top + tipH > window.innerHeight - 10) { top = Math.max(10, window.innerHeight - tipH - 10); }
+  tip.style.left = Math.max(10, left) + 'px';
+  tip.style.top = Math.max(10, top) + 'px';
 }
 function hideSeatTooltip(){
   var tip = document.getElementById('seatTooltip');
@@ -4635,6 +5107,7 @@ function hideSeatTooltip(){
 
 /* ─── Seat Edit / Delete / Reposition ─── */
 function openSeatEditModal(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var seats = APP.state.data.seats || [];
   var seat = null;
   for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
@@ -4646,16 +5119,13 @@ function openSeatEditModal(seatId){
     var sel = seat.RoomID && (seat.RoomID.Id || seat.RoomID) == r.Id ? ' selected' : '';
     return '<option value="' + escAttr(r.Id) + '"' + sel + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + '</option>';
   }).join('');
-  var personOpts = (APP.state.data.people || []).map(function(p){
-    var sel = seat.CurrentPersonID && (seat.CurrentPersonID.Id || seat.CurrentPersonID) == p.Id ? ' selected' : '';
-    return '<option value="' + escAttr(p.Id) + '"' + sel + '>' + escHtml(formatPerson(p)) + '</option>';
-  }).join('');
+  var currentPersonId = seat.CurrentPersonID ? (seat.CurrentPersonID.Id || seat.CurrentPersonID) : '';
   APP.modalState.editSeatId = seatId;
   var body = '<div class="form-grid">'
     + formField('Coordinates', '<input class="input" value="X: ' + (seat.XCoord || 0) + ', Y: ' + (seat.YCoord || 0) + '" disabled />')
     + formField('Room', '<select id="editSeatRoom" class="select"><option value="">-- Select --</option>' + roomOpts + '</select>')
     + formField('Seat Label', '<input id="editSeatLabel" class="input" value="' + escAttr(seat.SeatLabel || '') + '" />')
-    + formField('Assign Person', '<select id="editSeatPerson" class="select"><option value="">-- None (Available) --</option>' + personOpts + '</select>')
+    + formField('Assign Person', renderPersonPicker('editSeatPerson', currentPersonId, 'Search person by name...', true))
     + formField('Port Number', '<input id="editSeatPort" class="input" value="' + escAttr(seat.PortNumber || '') + '" />')
     + formField('Phone Number', '<input id="editSeatPhone" class="input" value="' + escAttr(seat.PhoneNumber || '') + '" />')
     + formField('NIPR', '<select id="editSeatNIPR" class="select"><option value="Yes"' + (normalizeBoolean(seat.HasNIPR) ? ' selected' : '') + '>Yes</option><option value="No"' + (!normalizeBoolean(seat.HasNIPR) ? ' selected' : '') + '>No</option></select>')
@@ -4669,13 +5139,14 @@ function openSeatEditModal(seatId){
     'Edit seat properties and assignments');
 }
 function saveSeatEdit(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var seatId = APP.modalState.editSeatId;
   if (!seatId) { return; }
   var seatLabel = document.getElementById('editSeatLabel').value;
   var roomId = document.getElementById('editSeatRoom').value;
   var errors = runValidation([function(){ return validateRequired(seatLabel, 'Seat Label'); }]);
   if (showValidationErrors(errors)) { return; }
-  var personId = document.getElementById('editSeatPerson').value;
+  var personId = getPersonPickerValue('editSeatPerson');
   var values = {
     Title: seatLabel,
     SeatLabel: seatLabel,
@@ -4690,81 +5161,508 @@ function saveSeatEdit(){
   };
   if (roomId) { values.RoomID = parseInt(roomId, 10); }
   if (personId) { values.CurrentPersonID = parseInt(personId, 10); } else { values.CurrentPersonID = null; }
+  if (roomId) {
+    var dup = seatLabelExistsInRoom(seatLabel, roomId, seatId);
+    if (dup) {
+      confirmDialog('Duplicate seat label',
+        'Another seat in this room is already labeled "' + seatLabel + '". Save anyway?',
+        'Save anyway',
+        function(){ _updateSeat(seatId, values); },
+        { danger: true });
+      return;
+    }
+  }
+  _updateSeat(seatId, values);
+}
+function _updateSeat(seatId, values){
   updateListItem(APP.lists.Seats, seatId, values, { entityType: 'Seat', reason: 'Seat edit' }).then(function(){
     toast('Seat updated!', 'ok');
     closeModal();
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
   }).catch(function(){ toast('Seat update failed.', 'danger'); });
 }
+function snapshotSeatForUndo(seat){
+  var lookup = function(v){ return v && (v.Id || v.Id === 0) ? (v.Id || v) : v; };
+  var snap = {
+    Title: seat.Title || seat.SeatLabel,
+    SeatLabel: seat.SeatLabel,
+    SeatID: seat.SeatID,
+    RoomID: lookup(seat.RoomID),
+    XCoord: seat.XCoord,
+    YCoord: seat.YCoord,
+    PortNumber: seat.PortNumber,
+    PhoneNumber: seat.PhoneNumber,
+    HasNIPR: seat.HasNIPR,
+    HasSIPR: seat.HasSIPR,
+    HasJWICS: seat.HasJWICS,
+    VTCEnabled: seat.VTCEnabled,
+    CurrentPersonID: lookup(seat.CurrentPersonID),
+    SeatStatus: seat.SeatStatus,
+    Notes: seat.Notes
+  };
+  var values = {};
+  Object.keys(snap).forEach(function(k){ if (snap[k] !== undefined && snap[k] !== null) { values[k] = snap[k]; } });
+  return values;
+}
+function undoDeleteSeat(values){
+  createListItem(APP.lists.Seats, values, { entityType: 'Seat', reason: 'Undo delete' }).then(function(){
+    toast('Seat restored.', 'ok');
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Restore failed.', 'danger'); });
+}
 function deleteSeat(seatId){
-  if (!confirm('Delete this seat permanently? This cannot be undone.')) { return; }
-  deleteListItem(APP.lists.Seats, seatId, { entityType: 'Seat', reason: 'Seat deletion' }).then(function(){
-    toast('Seat deleted.', 'ok');
-    hideSeatTooltip();
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var label = seat.SeatLabel || seat.SeatID || 'this seat';
+  confirmDialog('Delete seat "' + label + '"?',
+    'This permanently removes the seat record. You\u2019ll have about 10 seconds to undo from the toast.',
+    'Delete',
+    function(){
+      var snapshot = snapshotSeatForUndo(seat);
+      deleteListItem(APP.lists.Seats, seatId, { entityType: 'Seat', reason: 'Seat deletion' }).then(function(){
+        hideSeatTooltip();
+        toastWithAction('Seat "' + label + '" deleted.', 'warn', 'Undo', function(){ undoDeleteSeat(snapshot); }, 10000);
+        return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+      }).catch(function(){ toast('Delete failed.', 'danger'); });
+    },
+    { danger: true });
+}
+function openSeatMapHelpModal(){
+  var body = '<div style="line-height:1.7;font-size:13px">'
+    + '<div style="font-weight:700;margin-bottom:8px;color:var(--accent)">Seat Map Tips</div>'
+    + '<div class="kv" style="grid-template-columns:140px 1fr;gap:6px 14px">'
+    + '<div class="k">Mouse</div><div class="v">Click a seat to see its details. Drag the plan to pan. Scroll to zoom.</div>'
+    + '<div class="k">Touch</div><div class="v">One finger to pan. Two fingers to pinch-zoom. Tap a seat for details.</div>'
+    + '<div class="k">Keyboard</div><div class="v">Tab to a seat, then <kbd>Enter</kbd> or <kbd>Space</kbd> to open it. <kbd>/</kbd> focuses the sidebar search. <kbd>Esc</kbd> cancels the current mode (tooltip, swap, placement, selection, picker) or closes an open modal. <kbd>?</kbd> shows this help.</div>'
+    + '<div class="k">Chips</div><div class="v">The sidebar chips (Occupied / Available / Maint / Unplaced) filter both the list <em>and</em> the map at once.</div>'
+    + '<div class="k">Floors</div><div class="v">Multi-floor buildings show a Floor chip row. Pick one to narrow the map to that floor\'s seats.</div>'
+    + '<div class="k">Search</div><div class="v">Type a name or seat label in the sidebar search — it filters live.</div>'
+    + (canSeeAdmin() ? '<div class="k">Admin: edit</div><div class="v">"Edit Seat Map" puts the plan in placement mode. Click empty space to create, drag a seat to move, click a seat to edit or delete.</div>' : '')
+    + (canSeeAdmin() ? '<div class="k">Admin: swap</div><div class="v">From any seat tooltip, use <strong>Swap…</strong>, then click another seat to trade occupants.</div>' : '')
+    + (canSeeAdmin() ? '<div class="k">Admin: assign</div><div class="v">Empty seats show <strong>Assign…</strong>. The picker searches by name, email, or organization.</div>' : '')
+    + (canSeeAdmin() ? '<div class="k">Admin: batch</div><div class="v"><kbd>Ctrl</kbd>- or <kbd>Shift</kbd>-click markers (or use <strong>Select</strong> on a tooltip) to pick multiple seats. A batch toolbar lets you assign, release, toggle maintenance, or delete them all at once.</div>' : '')
+    + '<div class="k">Print</div><div class="v">The <strong>Print</strong> button prints just the floor plan (no sidebar/toolbar) for briefings.</div>'
+    + '<div class="k">Export</div><div class="v">The top-right "Export…" button saves the current room or building seats as CSV.</div>'
+    + '</div></div>';
+  openModal('Seat Map Help', body, '<div></div><button class="btn primary" data-action="close-modal">Got it</button>');
+}
+function printFloorPlan(){
+  var scope = document.querySelector('.print-floorplan-scope');
+  if (!scope) { toast('Nothing to print — open a seat map first.', 'warn'); return; }
+  var img = document.getElementById('floorplanImg');
+  var container = document.getElementById('floorplanContainer');
+  var ui = ensureFacilityUi();
+  var saved = { zoom: ui.zoom, panX: ui.panX, panY: ui.panY };
+  if (img && container && img.naturalWidth) {
+    var pad = 16;
+    var targetW = Math.max(320, container.clientWidth - pad);
+    var targetH = Math.max(240, container.clientHeight - pad);
+    var fit = Math.min(targetW / img.naturalWidth, targetH / img.naturalHeight, 1);
+    ui.zoom = fit;
+    ui.panX = Math.max(0, (container.clientWidth - img.naturalWidth * fit) / 2);
+    ui.panY = Math.max(0, (container.clientHeight - img.naturalHeight * fit) / 2);
+    applyFloorPlanTransform();
+  }
+  document.body.classList.add('printing-floorplan');
+  var cleanup = function(){
+    document.body.classList.remove('printing-floorplan');
+    ui.zoom = saved.zoom; ui.panX = saved.panX; ui.panY = saved.panY;
+    applyFloorPlanTransform();
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(function(){ try { window.print(); } catch (e) { cleanup(); toast('Print failed.', 'danger'); } }, 100);
+}
+function openQuickAssignModal(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  hideSeatTooltip();
+  APP.modalState.quickAssignSeatId = seatId;
+  var label = seat.SeatLabel || seat.SeatID || 'Seat';
+  var currentId = seat.CurrentPersonID ? (seat.CurrentPersonID.Id || seat.CurrentPersonID) : '';
+  var body = '<div class="form-grid">'
+    + formField('Seat', '<input class="input" value="' + escAttr(label) + '" disabled />')
+    + formField('Assign Person', renderPersonPicker('quickAssignPerson', currentId, 'Search by name, email, or org...', true))
+    + '</div>'
+    + '<div class="small-note" style="margin-top:10px">Use the full Edit dialog for port, phone, and network changes.</div>';
+  openModal('Quick Assign: ' + label, body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="quick-assign-save">Save Assignment</button></div>');
+}
+function saveQuickAssign(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seatId = APP.modalState.quickAssignSeatId;
+  if (!seatId) { return; }
+  var personId = getPersonPickerValue('quickAssignPerson');
+  var values = personId
+    ? { CurrentPersonID: parseInt(personId, 10), SeatStatus: 'Occupied' }
+    : { CurrentPersonID: null, SeatStatus: 'Available' };
+  updateListItem(APP.lists.Seats, seatId, values, { entityType: 'Seat', reason: 'Quick assign' }).then(function(){
+    toast(personId ? 'Seat assigned.' : 'Seat cleared.', 'ok');
     closeModal();
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
-  }).catch(function(){ toast('Delete failed.', 'danger'); });
+  }).catch(function(){ toast('Assignment failed.', 'danger'); });
 }
-function saveSeatPosition(seatId, x, y){
+function batchApplyToSelected(label, reason, buildValues, onDone){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var selected = getSelectedSeats();
+  if (!selected.length) { toast('No seats selected.', 'warn'); return; }
+  toast(label + ' ' + selected.length + ' seat' + (selected.length === 1 ? '' : 's') + '\u2026', 'ok');
+  var jobs = selected.map(function(seat){
+    var values = buildValues(seat);
+    if (!values) { return Promise.resolve({ ok: true, skipped: true }); }
+    return updateListItem(APP.lists.Seats, seat.Id, values, { entityType: 'Seat', before: seat, reason: reason })
+      .then(function(){ return { ok: true }; }, function(err){ return { ok: false, err: err }; });
+  });
+  Promise.all(jobs).then(function(results){
+    var ok = 0, failed = 0;
+    results.forEach(function(r){ if (r.ok) { ok++; } else { failed++; } });
+    if (failed) { toast(ok + ' updated, ' + failed + ' failed.', 'warn'); }
+    else { toast(ok + ' seat' + (ok === 1 ? '' : 's') + ' updated.', 'ok'); }
+    if (typeof onDone === 'function') { onDone(); }
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  });
+}
+function batchAssignOpen(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var selected = getSelectedSeats();
+  if (!selected.length) { toast('No seats selected.', 'warn'); return; }
+  APP.modalState.batchAssignMode = true;
+  var body = '<div class="form-grid">'
+    + formField('Apply to', '<input class="input" value="' + selected.length + ' selected seat(s)" disabled />')
+    + formField('Assign Person', renderPersonPicker('batchAssignPerson', '', 'Search by name, email, or org...', true))
+    + '</div>'
+    + '<div class="small-note" style="margin-top:10px">Every selected seat will be assigned to the chosen person (or released if left blank). Other seat settings are untouched.</div>';
+  openModal('Batch Assign: ' + selected.length + ' seat(s)', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="batch-assign-save">Apply</button></div>');
+}
+function batchAssignSave(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var personId = getPersonPickerValue('batchAssignPerson');
+  closeModal();
+  batchApplyToSelected(
+    personId ? 'Assigning' : 'Releasing',
+    personId ? 'Batch assign' : 'Batch release',
+    function(){ return personId ? { CurrentPersonID: parseInt(personId, 10), SeatStatus: 'Occupied' } : { CurrentPersonID: null, SeatStatus: 'Available' }; }
+  );
+}
+function batchRelease(){
+  batchApplyToSelected('Releasing', 'Batch release', function(){ return { CurrentPersonID: null, SeatStatus: 'Available' }; });
+}
+function batchMaintenance(){
+  batchApplyToSelected('Flagging maintenance on', 'Batch maintenance', function(){ return { SeatStatus: 'Maintenance' }; });
+}
+function batchInService(){
+  batchApplyToSelected('Returning to service', 'Batch in service', function(seat){
+    var hasOcc = seat.CurrentPersonID && seat.CurrentPersonID.Title;
+    return { SeatStatus: hasOcc ? 'Occupied' : 'Available' };
+  });
+}
+function batchDelete(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var selected = getSelectedSeats();
+  if (!selected.length) { toast('No seats selected.', 'warn'); return; }
+  var snapshots = selected.map(snapshotSeatForUndo);
+  confirmDialog('Delete ' + selected.length + ' seat(s)?',
+    'This permanently removes ' + selected.length + ' seat record(s). Undo is available briefly via the toast.',
+    'Delete All',
+    function(){
+      var jobs = selected.map(function(seat){
+        return deleteListItem(APP.lists.Seats, seat.Id, { entityType: 'Seat', reason: 'Batch delete' })
+          .then(function(){ return { ok: true }; }, function(err){ return { ok: false, err: err }; });
+      });
+      Promise.all(jobs).then(function(results){
+        var ok = 0, failed = 0;
+        results.forEach(function(r){ if (r.ok) { ok++; } else { failed++; } });
+        clearSeatSelection();
+        if (failed) { toast(ok + ' deleted, ' + failed + ' failed.', 'warn'); }
+        else {
+          toastWithAction(ok + ' seat(s) deleted.', 'warn', 'Undo All', function(){
+            var restores = snapshots.map(function(v){
+              return createListItem(APP.lists.Seats, v, { entityType: 'Seat', reason: 'Undo batch delete' })
+                .then(function(){ return { ok: true }; }, function(){ return { ok: false }; });
+            });
+            Promise.all(restores).then(function(rs){
+              var rok = rs.filter(function(r){ return r.ok; }).length;
+              toast(rok + ' restored, ' + (rs.length - rok) + ' failed.', rok === rs.length ? 'ok' : 'warn');
+              return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+            });
+          }, 12000);
+        }
+        return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+      });
+    },
+    { danger: true });
+}
+function startSeatSwap(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var ui = ensureFacilityUi();
+  ui.pendingSwapSeatId = seatId;
+  hideSeatTooltip();
+  renderFacilities();
+}
+function cancelSeatSwap(){
+  var ui = ensureFacilityUi();
+  ui.pendingSwapSeatId = null;
+  renderFacilities();
+}
+function performSeatSwap(seatAId, seatBId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  if (String(seatAId) === String(seatBId)) { toast('Pick a different seat to swap with.', 'warn'); return; }
+  var seats = APP.state.data.seats || [];
+  var a = null, b = null;
+  for (var i = 0; i < seats.length; i++) {
+    if (String(seats[i].Id) === String(seatAId)) { a = seats[i]; }
+    if (String(seats[i].Id) === String(seatBId)) { b = seats[i]; }
+  }
+  if (!a || !b) { toast('Seat not found.', 'danger'); return; }
+  var aOccId = a.CurrentPersonID ? (a.CurrentPersonID.Id || a.CurrentPersonID) : null;
+  var bOccId = b.CurrentPersonID ? (b.CurrentPersonID.Id || b.CurrentPersonID) : null;
+  var aName = a.SeatLabel || a.SeatID || 'Seat A';
+  var bName = b.SeatLabel || b.SeatID || 'Seat B';
+  var aOccName = (a.CurrentPersonID && a.CurrentPersonID.Title) || '(empty)';
+  var bOccName = (b.CurrentPersonID && b.CurrentPersonID.Title) || '(empty)';
+  confirmDialog('Swap these seats?',
+    'Move "' + aOccName + '" from ' + aName + ' to ' + bName + ', and move "' + bOccName + '" from ' + bName + ' to ' + aName + '?',
+    'Swap',
+    function(){
+      var updA = updateListItem(APP.lists.Seats, seatAId, { CurrentPersonID: bOccId, SeatStatus: bOccId ? 'Occupied' : 'Available' }, { entityType: 'Seat', before: a, reason: 'Seat swap' });
+      var updB = updateListItem(APP.lists.Seats, seatBId, { CurrentPersonID: aOccId, SeatStatus: aOccId ? 'Occupied' : 'Available' }, { entityType: 'Seat', before: b, reason: 'Seat swap' });
+      Promise.all([updA.then(function(){ return { ok: true }; }, function(err){ return { ok: false, err: err }; }), updB.then(function(){ return { ok: true }; }, function(err){ return { ok: false, err: err }; })]).then(function(results){
+        var ui = ensureFacilityUi();
+        ui.pendingSwapSeatId = null;
+        var failed = results.filter(function(r){ return !r.ok; });
+        if (failed.length) { toast('Swap partially failed — ' + failed.length + '/2 updates errored. Refresh recommended.', 'danger'); }
+        else { toast('Seats swapped.', 'ok'); }
+        return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+      });
+    });
+}
+function toggleSeatMaintenance(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var isMaint = String(seat.SeatStatus || '').toLowerCase() === 'maintenance';
+  var hasOccupant = seat.CurrentPersonID && seat.CurrentPersonID.Title;
+  var newStatus = isMaint ? (hasOccupant ? 'Occupied' : 'Available') : 'Maintenance';
+  updateListItem(APP.lists.Seats, seatId, { SeatStatus: newStatus }, { entityType: 'Seat', before: seat, reason: 'Toggle maintenance' }).then(function(){
+    hideSeatTooltip();
+    toast(isMaint ? 'Seat returned to service.' : 'Seat flagged for maintenance.', 'ok');
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Status update failed.', 'danger'); });
+}
+function seatLabelExistsInRoom(label, roomId, excludeSeatId){
+  var seats = APP.state.data.seats || [];
+  var lbl = String(label || '').trim().toLowerCase();
+  var rid = String(roomId);
+  for (var i = 0; i < seats.length; i++) {
+    var s = seats[i];
+    if (excludeSeatId != null && String(s.Id) === String(excludeSeatId)) { continue; }
+    var sRoom = s.RoomID && (s.RoomID.Id || s.RoomID);
+    if (String(sRoom) !== rid) { continue; }
+    if (String(s.SeatLabel || '').trim().toLowerCase() === lbl) { return s; }
+  }
+  return null;
+}
+function releaseSeat(seatId){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  var seats = APP.state.data.seats || [];
+  var seat = null;
+  for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seat = seats[i]; break; } }
+  if (!seat) { toast('Seat not found.', 'danger'); return; }
+  var prior = seat.CurrentPersonID && (seat.CurrentPersonID.Id || seat.CurrentPersonID);
+  if (!prior) { toast('Seat is already unoccupied.', 'warn'); return; }
+  var occupantName = seat.CurrentPersonID.Title || 'the person';
+  updateListItem(APP.lists.Seats, seatId, { CurrentPersonID: null, SeatStatus: 'Available' }, { entityType: 'Seat', before: seat, reason: 'Quick release from tooltip' }).then(function(){
+    hideSeatTooltip();
+    toastWithAction('Released ' + occupantName + '.', 'ok', 'Undo', function(){
+      updateListItem(APP.lists.Seats, seatId, { CurrentPersonID: prior, SeatStatus: 'Occupied' }, { entityType: 'Seat', reason: 'Undo release' }).then(function(){
+        toast('Assignment restored.', 'ok');
+        return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+      }).catch(function(){ toast('Undo failed.', 'danger'); });
+    }, 10000);
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Release failed.', 'danger'); });
+}
+function exportSeatsScopeCsv(){
+  var ui = ensureFacilityUi();
+  var seats = APP.state.data.seats || [];
+  var rooms = APP.state.data.rooms || [];
+  var facilities = APP.state.data.facilities || [];
+  var scope = seats;
+  var scopeLabel = 'all_seats';
+  if (ui.selectedRoomId) {
+    scope = seats.filter(function(s){ return s.RoomID && s.RoomID.Id === ui.selectedRoomId; });
+    var rm = null; rooms.some(function(r){ if (r.Id === ui.selectedRoomId) { rm = r; return true; } return false; });
+    scopeLabel = 'room_' + ((rm && (rm.RoomNumber || rm.Title)) || ui.selectedRoomId);
+  } else if (ui.selectedFacilityId) {
+    var roomIds = {};
+    rooms.forEach(function(r){ if (r.FacilityID && r.FacilityID.Id === ui.selectedFacilityId) { roomIds[r.Id] = true; } });
+    scope = seats.filter(function(s){ return s.RoomID && roomIds[s.RoomID.Id]; });
+    var fc = null; facilities.some(function(f){ if (f.Id === ui.selectedFacilityId) { fc = f; return true; } return false; });
+    scopeLabel = 'facility_' + ((fc && (fc.BuildingNumber || fc.Title)) || ui.selectedFacilityId);
+  }
+  if (!scope.length) { toast('No seats in the current view to export.', 'warn'); return; }
+  var headers = ['SeatLabel','Room','Occupant','Port','Phone','NIPR','SIPR','JWICS','VTC','Status','XCoord','YCoord','Notes'];
+  var roomsById = {};
+  rooms.forEach(function(r){ roomsById[r.Id] = r; });
+  var rows = scope.map(function(s){
+    var room = s.RoomID && roomsById[s.RoomID.Id];
+    return [
+      s.SeatLabel || s.SeatID || '',
+      room ? (room.RoomNumber || room.Title || '') : '',
+      s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : '',
+      s.PortNumber || '',
+      s.PhoneNumber || '',
+      normalizeBoolean(s.HasNIPR) ? 'Yes' : 'No',
+      normalizeBoolean(s.HasSIPR) ? 'Yes' : 'No',
+      normalizeBoolean(s.HasJWICS) ? 'Yes' : 'No',
+      normalizeBoolean(s.VTCEnabled) ? 'Yes' : 'No',
+      s.SeatStatus || (s.CurrentPersonID && s.CurrentPersonID.Title ? 'Occupied' : 'Available'),
+      s.XCoord != null ? s.XCoord : '',
+      s.YCoord != null ? s.YCoord : '',
+      s.Notes || ''
+    ];
+  });
+  var csv = headers.join(',') + '\n' + rows.map(function(r){
+    return r.map(function(cell){
+      var v = String(cell == null ? '' : cell);
+      if (/[",\n]/.test(v)) { v = '"' + v.replace(/"/g, '""') + '"'; }
+      return v;
+    }).join(',');
+  }).join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'seats_' + scopeLabel.replace(/[^a-z0-9_-]/gi, '_') + '_' + (new Date()).toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  toast('Exported ' + scope.length + ' seat(s).', 'ok');
+}
+function saveSeatPosition(seatId, x, y, marker, origX, origY){
   updateListItem(APP.lists.Seats, seatId, { XCoord: String(x), YCoord: String(y) }, { entityType: 'Seat', reason: 'Drag reposition' }).then(function(){
     toast('Seat repositioned to (' + x + ', ' + y + ').', 'ok');
     var seats = APP.state.data.seats || [];
     for (var i = 0; i < seats.length; i++) { if (String(seats[i].Id) === String(seatId)) { seats[i].XCoord = String(x); seats[i].YCoord = String(y); break; } }
-  }).catch(function(){ toast('Reposition failed — refresh to see actual position.', 'danger'); });
+  }).catch(function(){
+    if (marker && marker.style) { marker.style.left = origX + 'px'; marker.style.top = origY + 'px'; }
+    toast('Reposition failed — seat returned to original position.', 'danger');
+  });
 }
 function highlightSeatOnMap(seatId, x, y){
-  if (x === '' || x == null) { toast('This seat is not placed on the map yet.', 'warn'); return; }
+  var ui = ensureFacilityUi();
+  if (ui.pendingSwapSeatId && canSeeAdmin()) { performSeatSwap(ui.pendingSwapSeatId, seatId); return; }
+  if (x === '' || x == null) {
+    if (ui.floorPlanMode === 'picker' && canSeeAdmin()) {
+      ui.pendingPlaceSeatId = seatId;
+      renderFacilities();
+      return;
+    }
+    toast('Seat not placed — enter "Edit Seat Map" mode to drop it on the plan.', 'warn');
+    return;
+  }
   var marker = document.querySelector('.seat-marker[data-seat-id="' + seatId + '"]');
   if (!marker) { return; }
-  var ui = ensureFacilityUi();
   var container = document.getElementById('floorplanContainer');
   if (!container) { return; }
   var cw = container.clientWidth; var ch = container.clientHeight;
   ui.panX = (cw / 2) - (Number(x) * ui.zoom);
   ui.panY = (ch / 2) - (Number(y) * ui.zoom);
+  clampFloorPlanPan();
   applyFloorPlanTransform();
   var prev = document.querySelector('.seat-marker.selected');
   if (prev) { prev.classList.remove('selected'); }
   marker.classList.add('selected');
   setTimeout(function(){ marker.classList.remove('selected'); }, 2000);
 }
+function placeExistingSeat(seatId, x, y){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
+  updateListItem(APP.lists.Seats, seatId, { XCoord: String(x), YCoord: String(y) }, { entityType: 'Seat', reason: 'Place unplaced seat' }).then(function(){
+    var ui = ensureFacilityUi();
+    ui.pendingPlaceSeatId = null;
+    ui._justPlacedId = seatId;
+    toast('Seat placed at (' + x + ', ' + y + ').', 'ok');
+    return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
+  }).catch(function(){ toast('Placement failed.', 'danger'); });
+}
 function filterSeatSidebar(query){
+  var ui = ensureFacilityUi();
   var list = document.getElementById('seatSidebarList');
   if (!list) { return; }
   var items = list.querySelectorAll('.sb-item');
   var q = (query || '').toLowerCase();
+  var filter = ui.sbFilter || 'all';
   for (var i = 0; i < items.length; i++) {
+    var statusOk = (filter === 'all') || items[i].getAttribute('data-seat-status') === filter;
     var text = items[i].textContent.toLowerCase();
-    items[i].style.display = text.indexOf(q) !== -1 ? '' : 'none';
+    var textOk = !q || text.indexOf(q) !== -1;
+    items[i].style.display = (statusOk && textOk) ? '' : 'none';
+  }
+}
+function setSidebarFilter(filter){
+  var ui = ensureFacilityUi();
+  ui.sbFilter = filter;
+  var chips = document.querySelectorAll('.sb-chip');
+  for (var i = 0; i < chips.length; i++) {
+    chips[i].classList.toggle('active', chips[i].getAttribute('data-filter') === filter);
+  }
+  var searchEl = document.getElementById('seatSidebarSearch');
+  filterSeatSidebar(searchEl ? searchEl.value : '');
+  var markers = document.querySelectorAll('.floorplan-inner .seat-marker');
+  for (var j = 0; j < markers.length; j++) {
+    var st = markers[j].getAttribute('data-seat-status');
+    markers[j].style.display = (filter === 'all' || filter === st) ? '' : 'none';
   }
 }
 function getNextSeatLabel(){
   var seats = APP.state.data.seats || [];
   var ui = ensureFacilityUi();
-  var facilitySeats = seats.filter(function(s){
+  var scopedSeats = seats.filter(function(s){
     if (ui.selectedRoomId) { return s.RoomID && (s.RoomID.Id || s.RoomID) == ui.selectedRoomId; }
     return true;
   });
+  var bestPrefix = '';
+  var bestWidth = 0;
   var maxNum = 0;
-  facilitySeats.forEach(function(s){
-    var label = s.SeatLabel || '';
-    var m = label.match(/(\d+)\s*$/);
-    if (m) { var n = parseInt(m[1], 10); if (n > maxNum) { maxNum = n; } }
+  scopedSeats.forEach(function(s){
+    var label = String(s.SeatLabel || '');
+    var m = label.match(/^(.*?)(\d+)\s*$/);
+    if (m) {
+      var n = parseInt(m[2], 10);
+      if (n > maxNum) { maxNum = n; bestPrefix = m[1]; bestWidth = m[2].length; }
+    }
   });
-  return String(maxNum + 1);
+  var nextNum = String(maxNum + 1);
+  while (nextNum.length < bestWidth) { nextNum = '0' + nextNum; }
+  return bestPrefix + nextNum;
 }
 
 /* ─── Coordinate Picker Tool ─── */
-function handlePickerClick(e){
-  var container = document.getElementById('floorplanContainer');
+function floorPlanClientToImage(clientX, clientY){
   var inner = document.getElementById('floorplanInner');
-  if (!container || !inner) { return; }
+  if (!inner) { return null; }
   var ui = ensureFacilityUi();
   var rect = inner.getBoundingClientRect();
-  var x = Math.round((e.clientX - rect.left) / ui.zoom);
-  var y = Math.round((e.clientY - rect.top) / ui.zoom);
-  ui.pickerPending = { x: x, y: y };
-  openSeatPlacementModal(x, y);
+  return { x: Math.round((clientX - rect.left) / ui.zoom), y: Math.round((clientY - rect.top) / ui.zoom) };
+}
+function handlePickerClick(e){
+  var coords = floorPlanClientToImage(e.clientX, e.clientY);
+  if (!coords) { return; }
+  var ui = ensureFacilityUi();
+  ui.pickerPending = coords;
+  openSeatPlacementModal(coords.x, coords.y);
 }
 function openSeatPlacementModal(x, y){
   var ui = ensureFacilityUi();
@@ -4774,9 +5672,6 @@ function openSeatPlacementModal(x, y){
     var sel = ui.selectedRoomId && r.Id === ui.selectedRoomId ? ' selected' : '';
     return '<option value="' + escAttr(r.Id) + '"' + sel + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + '</option>';
   }).join('');
-  var personOpts = (APP.state.data.people || []).map(function(p){
-    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
-  }).join('');
   APP.modalState.pickerCoords = { x: x, y: y };
   var suggestedLabel = getNextSeatLabel();
   var last = APP.state._lastPickerValues || {};
@@ -4784,7 +5679,7 @@ function openSeatPlacementModal(x, y){
     + formField('Coordinates', '<div style="display:flex;gap:8px;align-items:center"><input class="input" value="X: ' + x + ', Y: ' + y + '" disabled style="flex:1" /><span class="badge info" style="font-size:10px">Click elsewhere to reposition</span></div>')
     + formField('Room', '<select id="pickerRoom" class="select"><option value="">-- Select --</option>' + roomOpts + '</select>')
     + formField('Seat Label', '<input id="pickerSeatLabel" class="input" placeholder="e.g., A-01, B-12" value="' + escAttr(suggestedLabel) + '" />')
-    + formField('Assign Person', '<select id="pickerPerson" class="select"><option value="">-- None (Available) --</option>' + personOpts + '</select>')
+    + formField('Assign Person', renderPersonPicker('pickerPerson', '', 'Search person by name...', true))
     + formField('Port Number', '<input id="pickerPort" class="input" placeholder="e.g., P-1A-04" value="' + escAttr(last.port || '') + '" />')
     + formField('Phone Number', '<input id="pickerPhone" class="input" placeholder="DSN or commercial" />')
     + formField('NIPR', '<select id="pickerNIPR" class="select"><option value="Yes"' + (last.nipr ? ' selected' : '') + '>Yes</option><option value="No"' + (!last.nipr ? ' selected' : '') + '>No</option></select>')
@@ -4798,8 +5693,10 @@ function openSeatPlacementModal(x, y){
 function clearPickerPending(){
   var ui = ensureFacilityUi();
   ui.pickerPending = null;
+  if (APP.modalState) { APP.modalState.pickerCoords = null; }
 }
 function savePickerSeat(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var coords = APP.modalState.pickerCoords;
   if (!coords) { toast('Missing coordinate data.', 'danger'); return; }
   var roomId = document.getElementById('pickerRoom').value;
@@ -4809,7 +5706,7 @@ function savePickerSeat(){
     function(){ return validateRequired(seatLabel, 'Seat Label'); }
   ]);
   if (showValidationErrors(errors)) { return; }
-  var personId = document.getElementById('pickerPerson').value;
+  var personId = getPersonPickerValue('pickerPerson');
   /* Remember network selections for rapid repeat placement */
   APP.state._lastPickerValues = {
     port: document.getElementById('pickerPort').value,
@@ -4835,6 +5732,18 @@ function savePickerSeat(){
     SeatStatus: personId ? 'Occupied' : 'Available',
     Notes: document.getElementById('pickerNotes').value
   };
+  var dup = seatLabelExistsInRoom(seatLabel, roomId);
+  if (dup) {
+    confirmDialog('Duplicate seat label',
+      'A seat labeled "' + seatLabel + '" already exists in this room. Creating a second one will split assignments between two records. Are you sure?',
+      'Create anyway',
+      function(){ _createPickerSeat(values, seatLabel); },
+      { danger: true });
+    return;
+  }
+  _createPickerSeat(values, seatLabel);
+}
+function _createPickerSeat(values, seatLabel){
   createListItem(APP.lists.Seats, values, { entityType: 'Seat', reason: 'Coordinate picker placement' }).then(function(result){
     toast('Seat "' + seatLabel + '" placed!', 'ok');
     var ui = ensureFacilityUi();
@@ -4844,27 +5753,51 @@ function savePickerSeat(){
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
   }).catch(function(){ toast('Seat creation failed.', 'danger'); });
 }
+function isValidFloorPlanUrl(url){
+  if (!url) { return false; }
+  return /^(https?:\/\/|\/)/i.test(url);
+}
 function setFloorPlanUrl(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var ui = ensureFacilityUi();
   var facility = null;
   (APP.state.data.facilities || []).some(function(f){ if (f.Id === ui.selectedFacilityId) { facility = f; return true; } return false; });
   if (!facility) { toast('Select a facility first.', 'danger'); return; }
-  var currentUrl = facility.FloorPlanUrl || '';
+  var room = null;
+  if (ui.selectedRoomId) {
+    (APP.state.data.rooms || []).some(function(r){ if (r.Id === ui.selectedRoomId) { room = r; return true; } return false; });
+  }
+  var target = room || facility;
+  var targetLabel = room ? ('Room ' + (room.RoomNumber || room.Title || '')) : (facility.BuildingNumber || facility.Title || 'Building');
+  var currentUrl = (target.FloorPlanUrl) || '';
+  var scopeNote = room
+    ? 'This URL will override the facility floor plan for this room only.'
+    : 'This URL applies to the whole facility (rooms can override it).';
   var body = '<div class="form-grid">'
-    + formField('Building', '<input class="input" value="' + escAttr(facility.BuildingNumber || facility.Title || '') + '" disabled />')
+    + formField('Target', '<input class="input" value="' + escAttr(targetLabel) + '" disabled />')
     + '<div class="full">' + formField('Floor Plan Image URL', '<input id="floorPlanUrlInput" class="input" placeholder="e.g., /sites/CCSDAdminSPA/SiteAssets/Images/Building Plans/Bldg 2028 Floor 1.jpg" value="' + escAttr(currentUrl) + '" />') + '</div>'
-    + '<div class="full"><div class="small-note">Enter the SharePoint-relative or full URL to the floor plan image (JPG/PNG). This will be stored on the facility record.</div></div>'
+    + '<div class="full"><div class="small-note">Must start with <code>http://</code>, <code>https://</code>, or <code>/</code> (site-relative). ' + escHtml(scopeNote) + '</div></div>'
     + '</div>';
-  openModal('Set Floor Plan URL', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-floorplan-url">Save URL</button></div>', facility.BuildingNumber || '');
+  APP.modalState.floorPlanTarget = room ? { kind: 'room', id: room.Id } : { kind: 'facility', id: facility.Id };
+  openModal('Set Floor Plan URL', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-floorplan-url">Save URL</button></div>', targetLabel);
 }
 function saveFloorPlanUrl(){
-  var ui = ensureFacilityUi();
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var url = (document.getElementById('floorPlanUrlInput').value || '').trim();
   if (!url) { toast('URL is required.', 'danger'); return; }
-  var facility = null;
-  (APP.state.data.facilities || []).some(function(f){ if (f.Id === ui.selectedFacilityId) { facility = f; return true; } return false; });
-  if (!facility) { toast('No facility selected.', 'danger'); return; }
-  updateListItem(APP.lists.Facilities, facility.Id, { FloorPlanUrl: url }, { entityType: 'Facility', before: facility, reason: 'Set floor plan URL' }).then(function(){
+  if (!isValidFloorPlanUrl(url)) { toast('URL must start with http://, https://, or /.', 'danger'); return; }
+  var target = APP.modalState && APP.modalState.floorPlanTarget;
+  if (!target) { toast('No target selected.', 'danger'); return; }
+  var list, record;
+  if (target.kind === 'room') {
+    list = APP.lists.Rooms;
+    (APP.state.data.rooms || []).some(function(r){ if (r.Id === target.id) { record = r; return true; } return false; });
+  } else {
+    list = APP.lists.Facilities;
+    (APP.state.data.facilities || []).some(function(f){ if (f.Id === target.id) { record = f; return true; } return false; });
+  }
+  if (!record) { toast('Target record not found.', 'danger'); return; }
+  updateListItem(list, record.Id, { FloorPlanUrl: url }, { entityType: target.kind === 'room' ? 'Room' : 'Facility', before: record, reason: 'Set floor plan URL' }).then(function(){
     toast('Floor plan URL saved.', 'ok');
     closeModal();
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
@@ -4884,14 +5817,22 @@ function renderRoomDetail(facilityId, roomId){
   if (!room) { return '<div class="empty">Select a room to view seat details.</div>'; }
   var roomSeats = seats.filter(function(s){ return s.RoomID && s.RoomID.Id === room.Id; });
   var occupied = roomSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
-  var html = '<div class="org-detail-hero" style="margin-bottom:16px">';
+  var facility = null;
+  (APP.state.data.facilities || []).some(function(f){ if (String(f.Id) === String(facilityId)) { facility = f; return true; } return false; });
+  var crumbBuilding = (facility && (facility.BuildingNumber || facility.Title)) || 'Building';
+  var crumbFloor = room.Floor ? ('Floor ' + room.Floor) : null;
+  var crumbRoom = 'Room ' + (room.RoomNumber || room.Title || room.RoomID || '');
+  var html = '<div class="small-note" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">'
+    + '<a href="javascript:void(0)" data-action="select-facility" data-id="' + escAttr(facilityId) + '" style="color:var(--accent);text-decoration:none">' + escHtml(crumbBuilding) + '</a>'
+    + (crumbFloor ? '<span style="opacity:.5">\u203A</span><span>' + escHtml(crumbFloor) + '</span>' : '')
+    + '<span style="opacity:.5">\u203A</span><strong>' + escHtml(crumbRoom) + '</strong>'
+    + '</div>';
+  html += '<div class="org-detail-hero" style="margin-bottom:16px">';
   html += '<div class="org-detail-title">Room ' + escHtml(room.RoomNumber || room.Title || room.RoomID || '') + '</div>';
   html += '<div class="org-detail-sub">' + escHtml(room.RoomType || 'Room') + (room.Floor ? ' • Floor ' + escHtml(room.Floor) : '') + (normalizeBoolean(room.IsSCIF) ? ' • SCIF' : '') + '</div>';
   html += '<div class="org-kpis"><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length)) + '</div><div class="t">Total Seats</div></div><div class="org-kpi"><div class="n">' + escHtml(String(occupied)) + '</div><div class="t">Occupied</div></div><div class="org-kpi"><div class="n">' + escHtml(String(roomSeats.length - occupied)) + '</div><div class="t">Available</div></div><div class="org-kpi"><div class="n">' + escHtml(String(room.MaxSeats || roomSeats.length)) + '</div><div class="t">Max Capacity</div></div></div>';
   html += '</div>';
   html += '<div class="section-head"><div class="section-title">Seat Map</div></div>';
-  var facility = null;
-  (APP.state.data.facilities || []).some(function(f){ if (String(f.Id) === String(facilityId)) { facility = f; return true; } return false; });
   html += renderSeatMap(roomSeats, room, facility);
   return html;
 }
@@ -4912,7 +5853,8 @@ function renderFacilities(){
     html += metricCard('SCIF Spaces', scifRooms, 'Rooms flagged as SCIF', Math.min(100, scifRooms * 15));
     html += '</div>';
     html += '<div class="org-branch-shell" style="margin-top:16px">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="facility-capacity-report">Capacity</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-seat-import">Bulk Seats</button>' : '') + '<button class="btn subtle" data-action="export-facilities">Export CSV</button></div></div><div class="card-body">';
+    var exportLabel = ui.selectedRoomId ? 'Export Room Seats' : (ui.selectedFacilityId ? 'Export Building Seats' : 'Export All Seats');
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="facility-capacity-report">Capacity</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-seat-import">Bulk Seats</button>' : '') + '<button class="btn subtle" data-action="export-seats-scope">' + exportLabel + '</button></div></div><div class="card-body">';
     facilities.forEach(function(f){
       var fRooms = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; });
       var roomIds = {};
@@ -4920,7 +5862,9 @@ function renderFacilities(){
       var fSeats = seats.filter(function(s){ return s.RoomID && roomIds[s.RoomID.Id]; });
       var fOccupied = fSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
       var networks = (normalizeBoolean(f.HasNIPR) ? 'NIPR ' : '') + (normalizeBoolean(f.HasSIPR) ? 'SIPR ' : '') + (normalizeBoolean(f.HasJWICS) ? 'JWICS' : '');
-      var search = [f.Title, f.BuildingNumber, f.Base, f.Address, networks].join(' ').toLowerCase();
+      var roomSummary = fRooms.map(function(r){ return (r.RoomNumber || r.Title || ''); }).join(' ');
+      var seatSummary = fSeats.map(function(s){ return (s.SeatLabel || '') + ' ' + (s.CurrentPersonID && s.CurrentPersonID.Title ? s.CurrentPersonID.Title : ''); }).join(' ');
+      var search = [f.Title, f.BuildingNumber, f.Base, f.Address, networks, roomSummary, seatSummary].join(' ').toLowerCase();
       var isSelected = ui.selectedFacilityId === f.Id;
       html += '<div class="org-card' + (isSelected ? ' selected' : '') + '" data-search-card="' + escAttr(search) + '" style="margin-bottom:10px">';
       html += '<div class="org-card-top"><div><div class="org-card-title">' + escHtml(f.BuildingNumber || f.Title || f.FacilityID || 'Facility') + '</div><div class="org-card-sub">' + escHtml(f.Base || '') + (f.Address ? ' • ' + escHtml(f.Address) : '') + '</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">' + (networks.trim() ? networks.trim().split(' ').map(function(n){ return statusBadge(n); }).join('') : statusBadge('No Networks')) + '</div></div>';
@@ -4931,7 +5875,11 @@ function renderFacilities(){
         fRooms.forEach(function(r){
           var rSeats = seats.filter(function(s){ return s.RoomID && s.RoomID.Id === r.Id; });
           var rOccupied = rSeats.filter(function(s){ return s.CurrentPersonID && s.CurrentPersonID.Title; }).length;
-          html += '<button class="btn' + (ui.selectedRoomId === r.Id ? ' primary' : ' subtle') + '" data-action="select-room" data-id="' + escAttr(r.Id) + '" data-facility="' + escAttr(f.Id) + '">' + escHtml(r.RoomNumber || r.Title || 'Room') + ' (' + rOccupied + '/' + rSeats.length + ')' + (normalizeBoolean(r.IsSCIF) ? ' [SCIF]' : '') + '</button>';
+          var maxSeats = Number(r.MaxSeats) || 0;
+          var overCap = maxSeats > 0 && rSeats.length > maxSeats;
+          var warnSuffix = overCap ? ' \u26A0' : '';
+          var warnTitle = overCap ? 'Room has ' + rSeats.length + ' seats but capacity is ' + maxSeats + '.' : '';
+          html += '<button class="btn' + (ui.selectedRoomId === r.Id ? ' primary' : ' subtle') + (overCap ? ' warn' : '') + '" data-action="select-room" data-id="' + escAttr(r.Id) + '" data-facility="' + escAttr(f.Id) + '"' + (warnTitle ? ' title="' + escAttr(warnTitle) + '"' : '') + '>' + escHtml(r.RoomNumber || r.Title || 'Room') + ' (' + rOccupied + '/' + rSeats.length + (maxSeats ? ' of ' + maxSeats : '') + ')' + (normalizeBoolean(r.IsSCIF) ? ' [SCIF]' : '') + warnSuffix + '</button>';
         });
         html += '</div>';
       }
@@ -4947,13 +5895,26 @@ function renderFacilities(){
       facilities.some(function(f){ if (f.Id === ui.selectedFacilityId) { selFacility = f; return true; } return false; });
       var fpUrl = selFacility ? getFloorPlanUrl(selFacility, null) : '';
       if (fpUrl) {
-        var allFacSeats = seats.filter(function(s){
-          if (!s.RoomID) { return false; }
-          return rooms.some(function(r){ return r.Id === s.RoomID.Id && r.FacilityID && r.FacilityID.Id === ui.selectedFacilityId; });
-        });
-        html += '<div class="org-detail-hero" style="margin-bottom:16px"><div class="org-detail-title">' + escHtml((selFacility.BuildingNumber || selFacility.Title || 'Building') + ' — Full Floor Plan') + '</div><div class="org-detail-sub">All seats across all rooms shown on the building floor plan. Select a room above to filter.</div></div>';
+        var facRoomsById = {};
+        rooms.forEach(function(r){ if (r.FacilityID && r.FacilityID.Id === ui.selectedFacilityId) { facRoomsById[r.Id] = r; } });
+        var allFacSeats = seats.filter(function(s){ return s.RoomID && facRoomsById[s.RoomID.Id]; });
+        var floorNums = getFloorNumbers(ui.selectedFacilityId);
+        if (ui.selectedFloor) {
+          allFacSeats = allFacSeats.filter(function(s){
+            var r = s.RoomID && facRoomsById[s.RoomID.Id];
+            return r && String(r.Floor) === String(ui.selectedFloor);
+          });
+        }
+        html += '<div class="org-detail-hero" style="margin-bottom:16px"><div class="org-detail-title">' + escHtml((selFacility.BuildingNumber || selFacility.Title || 'Building') + ' \u2014 Full Floor Plan') + (ui.selectedFloor ? ' <span style="font-size:12px;color:var(--muted);font-weight:500">(Floor ' + escHtml(ui.selectedFloor) + ')</span>' : '') + '</div><div class="org-detail-sub">All seats across all rooms shown on the building floor plan. Select a room above to filter.</div></div>';
+        if (floorNums.length > 1) {
+          html += '<div class="sb-filters" style="padding:0 0 10px 0;border:none">';
+          html += '<button class="sb-chip' + (!ui.selectedFloor ? ' active' : '') + '" data-action="set-floor-filter" data-floor="">All Floors</button>';
+          floorNums.forEach(function(f){
+            html += '<button class="sb-chip' + (String(ui.selectedFloor) === String(f) ? ' active' : '') + '" data-action="set-floor-filter" data-floor="' + escAttr(f) + '">Floor ' + escHtml(f) + '</button>';
+          });
+          html += '</div>';
+        }
         html += renderFloorPlanView(allFacSeats, null, selFacility, fpUrl);
-        html += '<div id="seatTooltip" class="seat-tooltip" style="display:none"></div>';
       } else {
         html += '<div class="empty">Select a room from the facility panel to view its seat map.' + (canSeeAdmin() ? ' Or <button class="btn subtle" data-action="enter-floorplan-url" style="display:inline">set a floor plan image URL</button> for this building.' : '') + '</div>';
       }
@@ -4967,36 +5928,64 @@ function renderFacilities(){
 
 /* ─── Bulk Seat Import from CSV ─── */
 function openBulkSeatImportModal(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var rooms = APP.state.data.rooms || [];
   var roomOptions = rooms.map(function(r){ return '<option value="' + escAttr(r.Id) + '">' + escHtml((r.RoomNumber || r.Title || 'Room') + (r.FacilityID ? ' @ ' + (r.FacilityID.Title || '') : '')) + '</option>'; }).join('');
-  var body = '<div style="margin-bottom:12px">Bulk-create seats. Format: <code>SeatLabel, X%, Y%</code></div>'
+  var body = '<div style="margin-bottom:12px">Bulk-create seats. Format per line: <code>SeatLabel, X, Y</code> where X/Y are pixel coordinates on the floor-plan image. Omit X/Y to create unplaced seats.</div>'
     + '<div class="form-grid">' + formField('Room', '<select id="bulkSeatRoom" class="select"><option value="">-- Select Room --</option>' + roomOptions + '</select>') + '</div>'
-    + '<div style="margin-top:12px">' + formField('CSV Data', '<textarea id="bulkSeatCsv" class="textarea" rows="8" placeholder="A-101, 25.5, 42.3\nA-102, 30.2, 42.3\nA-103, 35.0, 42.3"></textarea>') + '</div>';
+    + '<div style="margin-top:12px">' + formField('CSV Data', '<textarea id="bulkSeatCsv" class="textarea" rows="8" placeholder="A-101, 120, 240&#10;A-102, 160, 240&#10;A-103"></textarea>') + '</div>';
   openModal('Bulk Seat Import', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-bulk-seats">Import</button></div>');
 }
 function saveBulkSeats(){
+  if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; }
   var roomId = document.getElementById('bulkSeatRoom').value;
   if (!roomId) { toast('Please select a room.', 'danger'); return; }
   var raw = (document.getElementById('bulkSeatCsv').value || '').trim();
   if (!raw) { toast('No data provided.', 'danger'); return; }
   var lines = raw.split('\n').filter(function(l){ return l.trim(); });
-  var promises = lines.map(function(line){
+  var rowErrors = [];
+  var seenLabels = {};
+  var promises = lines.map(function(line, idx){
     var parts = line.split(',').map(function(s){ return s.trim(); });
-    if (parts.length < 1) { return Promise.resolve(); }
-    return createListItem(APP.lists.Seats, {
-      Title: parts[0] || 'Seat',
+    var label = parts[0];
+    if (!label) { rowErrors.push('Line ' + (idx + 1) + ': missing seat label'); return Promise.resolve({ skipped: true }); }
+    var lk = label.toLowerCase();
+    if (seenLabels[lk]) { rowErrors.push('Line ' + (idx + 1) + ' (' + label + '): duplicate of line ' + seenLabels[lk]); return Promise.resolve({ skipped: true }); }
+    seenLabels[lk] = idx + 1;
+    if (seatLabelExistsInRoom(label, roomId)) { rowErrors.push('Line ' + (idx + 1) + ' (' + label + '): seat with this label already exists in room'); return Promise.resolve({ skipped: true }); }
+    var values = {
+      Title: label,
+      SeatLabel: label,
+      SeatID: label,
       RoomID: parseInt(roomId, 10),
-      SeatX: parts[1] ? parseFloat(parts[1]) : 0,
-      SeatY: parts[2] ? parseFloat(parts[2]) : 0,
-      SeatType: 'Standard'
-    }, { entityType: 'Seat', reason: 'Bulk import' });
+      HasNIPR: false,
+      HasSIPR: false,
+      HasJWICS: false,
+      VTCEnabled: false,
+      SeatStatus: 'Available'
+    };
+    if (parts[1] !== undefined && parts[1] !== '' && parts[2] !== undefined && parts[2] !== '') {
+      var x = parseInt(parts[1], 10);
+      var y = parseInt(parts[2], 10);
+      if (isNaN(x) || isNaN(y)) { rowErrors.push('Line ' + (idx + 1) + ' (' + label + '): invalid X/Y'); return Promise.resolve({ skipped: true }); }
+      values.XCoord = String(x);
+      values.YCoord = String(y);
+    }
+    return createListItem(APP.lists.Seats, values, { entityType: 'Seat', reason: 'Bulk import' });
   });
   toast('Importing ' + lines.length + ' seats...', 'ok');
-  Promise.all(promises).then(function(){
-    toast(lines.length + ' seats imported.', 'ok');
+  Promise.all(promises.map(function(p){ return p.then(function(r){ return { ok: !(r && r.skipped) }; }, function(err){ return { ok: false, err: err }; }); })).then(function(results){
+    var created = 0, failed = rowErrors.length;
+    results.forEach(function(r, i){ if (r.ok) { created++; } else if (!r.err) { /* already counted in rowErrors */ } else { failed++; rowErrors.push('Line ' + (i + 1) + ': ' + (r.err && r.err.message ? r.err.message : 'create failed')); } });
     closeModal();
+    if (failed) {
+      toast(created + ' imported, ' + failed + ' failed.', 'warn');
+      console.warn('[Seat bulk import]', rowErrors);
+    } else {
+      toast(created + ' seats imported.', 'ok');
+    }
     return ensureFacilitiesLoaded(true).then(function(){ renderFacilities(); });
-  }).catch(function(){ toast('Some imports may have failed.', 'danger'); });
+  });
 }
 
 /* ─── Multi-Floor Navigation ─── */
@@ -7646,17 +8635,27 @@ function filterAssetTables(term){
   }
 }
 var debouncedFilterCards = debounce(function(selector, value){ filterCards(selector, value); }, 180);
+var debouncedFilterSeatSidebar = debounce(function(value){ filterSeatSidebar(value); }, 140);
 var debouncedOrgSearch = debounce(function(value){ ensureOrgChartUi(); APP.state.orgUi.search = value || ''; renderOrganizationsView(); }, 250);
 var debouncedAssetFilter = debounce(function(value){ getAssetUi(); APP.state.assetUi.search = value || ''; filterAssetTables(value); }, 180);
 function handleInput(e){
   var id = e.target && e.target.id;
+  if (e.target && e.target.classList && e.target.classList.contains('person-picker-search')) {
+    var baseId = id.replace(/Search$/, '');
+    personPickerRenderMenu(baseId, e.target.value);
+    /* If user clears text and had a selection, unset it */
+    var hidden = document.getElementById(baseId);
+    var clearBtn = document.querySelector('.person-picker-clear[data-picker-base="' + baseId + '"]');
+    if (hidden && !e.target.value) { hidden.value = ''; if (clearBtn) { clearBtn.style.display = 'none'; } }
+    return;
+  }
   if (id === 'peopleSearchInput') { debouncedFilterCards('#peopleGrid', e.target.value); }
   if (id === 'orgSearchInput') { debouncedOrgSearch(e.target.value); return; }
   if (id === 'trainingSearchInput') { debouncedFilterCards('#trainingGrid', e.target.value); }
   if (id === 'requestsSearchInput') { debouncedFilterCards('#requestTableBody', e.target.value); }
   if (id === 'facilitiesSearchInput') { debouncedFilterCards('#facilitiesTableBody', e.target.value); }
   if (id === 'assetSearchInput') { debouncedAssetFilter(e.target.value); return; }
-  if (id === 'seatSidebarSearch') { filterSeatSidebar(e.target.value); return; }
+  if (id === 'seatSidebarSearch') { debouncedFilterSeatSidebar(e.target.value); return; }
   if (id === 'calOrgScope') { var ui = ensureCalendarUi(); ui.scopeOrgId = e.target.value ? Number(e.target.value) : null; renderCalendar(); return; }
   if (id === 'calTypeFilter') { ensureCalendarUi().typeFilter = e.target.value; renderCalendar(); return; }
   if (id === 'calSearchInput') { ensureCalendarUi().search = e.target.value; renderCalendar(); return; }
@@ -7729,8 +8728,32 @@ function handleClick(e){
   if (action === 'refresh-all') { refreshAll(); return; }
   if (action === 'select-facility') { ensureFacilityUi(); var fid = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = APP.state.facilityUi.selectedFacilityId === fid ? null : fid; APP.state.facilityUi.selectedRoomId = null; renderFacilities(); return; }
   if (action === 'select-room') { ensureFacilityUi(); APP.state.facilityUi.selectedRoomId = Number(el.getAttribute('data-id')); APP.state.facilityUi.selectedFacilityId = Number(el.getAttribute('data-facility')); renderFacilities(); return; }
-  if (action === 'enter-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
-  if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; renderFacilities(); return; }
+  if (action === 'confirm-dialog-ok') { var cb = APP.modalState && APP.modalState._pendingConfirm; closeModal(); if (typeof cb === 'function') { cb(); } return; }
+  if (action === 'cancel-place-existing') { ensureFacilityUi(); APP.state.facilityUi.pendingPlaceSeatId = null; renderFacilities(); return; }
+  if (action === 'sb-set-filter') { setSidebarFilter(el.getAttribute('data-filter') || 'all'); return; }
+  if (action === 'person-picker-select') { personPickerSelect(el.getAttribute('data-picker-base'), el.getAttribute('data-person-id') || '', el.getAttribute('data-person-name') || ''); return; }
+  if (action === 'person-picker-clear') { personPickerClear(el.getAttribute('data-picker-base')); return; }
+  if (action === 'toggle-maintenance') { toggleSeatMaintenance(el.getAttribute('data-seat-id')); return; }
+  if (action === 'quick-assign-open') { openQuickAssignModal(el.getAttribute('data-seat-id')); return; }
+  if (action === 'quick-assign-save') { saveQuickAssign(); return; }
+  if (action === 'swap-seat-start') { startSeatSwap(el.getAttribute('data-seat-id')); return; }
+  if (action === 'swap-seat-cancel') { cancelSeatSwap(); return; }
+  if (action === 'toggle-seat-select') { toggleSeatSelection(el.getAttribute('data-seat-id')); return; }
+  if (action === 'batch-clear') { clearSeatSelection(); return; }
+  if (action === 'batch-assign') { batchAssignOpen(); return; }
+  if (action === 'batch-assign-save') { batchAssignSave(); return; }
+  if (action === 'batch-release') { batchRelease(); return; }
+  if (action === 'batch-maintenance') { batchMaintenance(); return; }
+  if (action === 'batch-in-service') { batchInService(); return; }
+  if (action === 'batch-delete') { batchDelete(); return; }
+  if (action === 'set-floor-filter') { ensureFacilityUi(); var f = el.getAttribute('data-floor') || ''; APP.state.facilityUi.selectedFloor = f || null; renderFacilities(); return; }
+  if (action === 'toggle-sidebar') { ensureFacilityUi(); APP.state.facilityUi.sidebarCollapsed = !APP.state.facilityUi.sidebarCollapsed; renderFacilities(); return; }
+  if (action === 'show-seat-map-help') { openSeatMapHelpModal(); return; }
+  if (action === 'release-seat') { releaseSeat(el.getAttribute('data-seat-id')); return; }
+  if (action === 'export-seats-scope') { exportSeatsScopeCsv(); return; }
+  if (action === 'print-floorplan') { printFloorPlan(); return; }
+  if (action === 'enter-seat-picker') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'picker'; renderFacilities(); return; }
+  if (action === 'exit-seat-picker') { ensureFacilityUi(); APP.state.facilityUi.floorPlanMode = 'view'; APP.state.facilityUi.pickerPending = null; APP.state.facilityUi.pendingPlaceSeatId = null; renderFacilities(); return; }
   if (action === 'save-picker-seat') { savePickerSeat(); return; }
   if (action === 'edit-seat-inline') { openSeatEditModal(el.getAttribute('data-seat-id')); return; }
   if (action === 'save-seat-edit') { saveSeatEdit(); return; }
@@ -7851,11 +8874,55 @@ function bootstrap(){
   initSessionTimeout();
   document.addEventListener('click', handleClick);
   document.addEventListener('input', handleInput);
+  document.addEventListener('focusin', function(e){
+    if (e.target && e.target.classList && e.target.classList.contains('person-picker-search')) {
+      var baseId = e.target.id.replace(/Search$/, '');
+      personPickerRenderMenu(baseId, e.target.value);
+    } else {
+      /* Close any open person-picker menus when focus leaves them */
+      var menus = document.querySelectorAll('.person-picker-menu');
+      for (var i = 0; i < menus.length; i++) {
+        if (e.target && (e.target.closest && e.target.closest('.person-picker') === menus[i].parentNode)) { continue; }
+        menus[i].style.display = 'none';
+      }
+    }
+  });
+  document.addEventListener('mousedown', function(e){
+    var inPicker = e.target && e.target.closest && e.target.closest('.person-picker');
+    if (inPicker) { return; }
+    var menus = document.querySelectorAll('.person-picker-menu');
+    for (var i = 0; i < menus.length; i++) { menus[i].style.display = 'none'; }
+  });
   document.addEventListener('fullscreenchange', updateFullscreenUI);
   document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
   initSortableHeaders();
   document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape') { closeModal(); return; }
+    var tag = (e.target && e.target.tagName || '').toLowerCase();
+    var inField = tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable);
+    if (e.key === 'Escape') {
+      var modalOpen = document.getElementById('modalMask') && document.getElementById('modalMask').style.display === 'flex';
+      if (modalOpen) { closeModal(); return; }
+      if (APP.state.route === 'facilities') {
+        var ui = APP.state.facilityUi;
+        if (ui) {
+          var tip = document.getElementById('seatTooltip');
+          if (tip && tip.style.display === 'block') { hideSeatTooltip(); return; }
+          if (ui.pendingSwapSeatId) { cancelSeatSwap(); return; }
+          if (ui.pendingPlaceSeatId) { ui.pendingPlaceSeatId = null; renderFacilities(); return; }
+          if (ui.selectedSeatIds && Object.keys(ui.selectedSeatIds).length) { clearSeatSelection(); return; }
+          if (ui.floorPlanMode === 'picker') { ui.floorPlanMode = 'view'; ui.pickerPending = null; renderFacilities(); return; }
+        }
+      }
+      closeModal();
+      return;
+    }
+    if (e.key === '?' && APP.state.route === 'facilities' && !inField) {
+      e.preventDefault(); openSeatMapHelpModal(); return;
+    }
+    if (e.key === '/' && APP.state.route === 'facilities' && !inField) {
+      var search = document.getElementById('seatSidebarSearch') || document.getElementById('facilitiesSearchInput');
+      if (search) { e.preventDefault(); search.focus(); search.select && search.select(); return; }
+    }
     if (!e.altKey) { return; }
     var shortcuts = { h: 'home', p: 'people', o: 'organizations', t: 'training', r: 'requests', f: 'facilities', c: 'calendar', a: 'assets', s: 'security' };
     if (canSeeAdmin()) { shortcuts.d = 'diagnostics'; }
