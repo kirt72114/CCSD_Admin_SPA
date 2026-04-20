@@ -148,7 +148,7 @@ var S=[
 {n:'FrequencyMonths',t:'Number'},
 {n:'RequiredFor',t:'Choice',c:['All','Civilian','Military-Active Duty','Military-Reserve','Military-National Guard','Contractor','Enlisted','Officer','Contracting','Program Managers','Supervisors','SES','Key Leadership','TS/SCI','Secret','NATO','Records Managers','Content Managers']},
 {n:'CostPerPerson',t:'Currency'},{n:'IsMandatory',t:'Boolean'},{n:'IsActive',t:'Boolean'},
-{n:'Notes',t:'Note'},{n:'TrainingLink',t:'URL'},{n:'SF182',t:'Boolean'},
+{n:'Notes',t:'Note'},{n:'TrainingLink',t:'URL'},{n:'SF182 Required',t:'Boolean'},
 {n:'TrainingDutyHours',t:'Number'},{n:'TrainingNonDutyHours',t:'Number'},
 {n:'OwningOrgID',t:'Lookup'},{n:'TrainingType',t:'Lookup'}
 ]},
@@ -316,7 +316,7 @@ var S=[
 {n:'Code',t:'Text'},{n:'Value',t:'Text'},{n:'Description',t:'Note'},{n:'Notes',t:'Note'}
 ]},
 {n:'CCSD_AppRoles',cat:'Core',cols:[
-{n:'Role',t:'Choice',c:['HR','Security','IT','Facilities','Training','Admin','Supervisor','App Admin','Personnel Admin','Reports']},
+{n:'Role',t:'MultiChoice',c:['HR','Security','IT','Facilities','Training','Admin','Supervisor','App Admin','Personnel Admin','Reports']},
 {n:'Member',t:'User'},{n:'IsActive',t:'Boolean'},
 {n:'PrincipalType',t:'Text'},{n:'Principal',t:'Text'},{n:'ScopeType',t:'Text'},
 {n:'ScopeOrgID',t:'Lookup'},{n:'ScopeFacilityID',t:'Lookup'},{n:'ScopeSystemID',t:'Lookup'},
@@ -383,7 +383,7 @@ var S=[
 {n:'SupervisorEmailConfirmed',t:'Text'},
 {n:'Status',t:'Choice'},{n:'DateArrived',t:'DateTime'},{n:'ProjectedDeparture',t:'DateTime'},
 {n:'OfficePhone',t:'Text'},{n:'CellPhone',t:'Text'},{n:'AltPhone',t:'Text'},
-{n:'IsSupervisor',t:'Boolean'},{n:'Step',t:'Number'},{n:'AFSC',t:'Text'},
+{n:'IsSupervisor',t:'Boolean'},{n:'Step',t:'Choice',c:['1','2','3','4','5','6','7','8','9','10','11','12']},{n:'AFSC',t:'Text'},
 {n:'EducationLevel',t:'Choice'},{n:'Notes',t:'Note'},
 {n:'BuildingNumber',t:'Text'},{n:'RoomNumber',t:'Text'},{n:'DataCallStatus',t:'Choice'}
 ]},
@@ -559,7 +559,7 @@ var S=[
 ]},
 {n:'CCSD_OvertimeAuthorization',cat:'Future',cols:[
 {n:'PersonID',t:'Lookup'},{n:'Date',t:'DateTime'},{n:'Hours',t:'Number'},
-{n:'Type',t:'Choice',c:['Overtime','Comp Time','Credit Hours']},
+{n:'OvertimeType',t:'Choice',c:['Overtime','Comp Time','Credit Hours']},
 {n:'ApprovedBy',t:'Lookup'},{n:'Reason',t:'Note'},{n:'PayPeriod',t:'Text'},{n:'Notes',t:'Note'}
 ]},
 {n:'CCSD_SecurityContainers',cat:'Security P3',cols:[
