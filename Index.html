@@ -2801,25 +2801,99 @@ function findTrainingById(id){
 }
 function renderTrainingSubmissionTable(rows){
   if (!rows || !rows.length) { return '<div class="empty">No pending submissions.</div>'; }
-  var html = '<div class="table-wrap"><table><thead><tr><th>Person</th><th>Training</th><th>Completion Date</th><th>Proof</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>';
+  var html = '<div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="small-note">' + rows.length + ' pending submission' + (rows.length === 1 ? '' : 's') + '. Tick boxes to bulk-approve.</div><button class="btn subtle success" data-action="bulk-approve-submissions">Approve Selected</button></div>';
+  html += '<div class="table-wrap"><table><thead><tr><th style="width:30px"><input type="checkbox" data-action="toggle-submission-select-all" /></th><th>Person</th><th>Training</th><th>Completion Date</th><th>Proof</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>';
   rows.forEach(function(s){
     var personName = (s.PersonID && s.PersonID.Title) || (s.Person && s.Person.Title) || '';
     var trainingName = (s.TrainingID && s.TrainingID.Title) || '';
-    html += '<tr><td>' + escHtml(personName) + '</td><td>' + escHtml(trainingName) + '</td><td>' + escHtml(formatDate(s.CompletionDate)) + '</td><td>' + escHtml(normalizeBoolean(s.ProofAttached) ? 'Yes' : 'No') + '</td><td>' + statusBadge(s.Status || 'Pending') + '</td><td class="mini">' + escHtml(trimText(s.Notes || '', 80)) + '</td><td><div class="quick-actions"><button class="btn subtle success" data-action="review-submission-approve" data-id="' + escAttr(s.Id) + '">Approve</button><button class="btn subtle danger" data-action="review-submission-reject" data-id="' + escAttr(s.Id) + '">Reject</button></div></td></tr>';
+    html += '<tr><td><input type="checkbox" class="submission-select" data-id="' + escAttr(s.Id) + '" /></td><td>' + escHtml(personName) + '</td><td>' + escHtml(trainingName) + '</td><td>' + escHtml(formatDate(s.CompletionDate)) + '</td><td>' + escHtml(normalizeBoolean(s.ProofAttached) ? 'Yes' : 'No') + '</td><td>' + statusBadge(s.Status || 'Pending') + '</td><td class="mini">' + escHtml(trimText(s.Notes || '', 80)) + '</td><td><div class="quick-actions"><button class="btn subtle success" data-action="review-submission-approve" data-id="' + escAttr(s.Id) + '">Approve</button><button class="btn subtle danger" data-action="review-submission-reject" data-id="' + escAttr(s.Id) + '">Reject</button></div></td></tr>';
   });
   html += '</tbody></table></div>';
   return html;
 }
+function toggleSubmissionSelectAll(headerCheckbox){
+  var checked = !!(headerCheckbox && headerCheckbox.checked);
+  var boxes = document.querySelectorAll('input.submission-select');
+  for (var i = 0; i < boxes.length; i++) { boxes[i].checked = checked; }
+}
+function bulkApproveSelectedSubmissions(){
+  var boxes = document.querySelectorAll('input.submission-select:checked');
+  var ids = [];
+  for (var i = 0; i < boxes.length; i++) { ids.push(boxes[i].getAttribute('data-id')); }
+  if (!ids.length) { toast('Select at least one submission to approve.', 'warn'); return; }
+  if (!canReviewTraining()) { toast('You do not have training review permissions.', 'danger'); return; }
+  var list = APP.state.data.trainingSubmissions || [];
+  var catalogMap = getTrainingCatalogMap();
+  var reviewerId = APP.state.currentUser ? APP.state.currentUser.id : null;
+  var reviewedOn = new Date().toISOString();
+  var tasks = ids.map(function(id){
+    var row = null;
+    list.some(function(s){ if (String(s.Id) === String(id)) { row = s; return true; } return false; });
+    if (!row) { return Promise.resolve({ ok: false, id: id, reason: 'not-found' }); }
+    var trainingId = row.TrainingID && row.TrainingID.Id ? row.TrainingID.Id : null;
+    var training = trainingId ? catalogMap[trainingId] : null;
+    var derivedExp = getEffectiveTrainingExpiration({ CompletionDate: row.CompletionDate, ExpirationDate: null }, training);
+    var recordValues = {
+      Title: (row.TrainingID && row.TrainingID.Title ? row.TrainingID.Title : 'Training Record') + ' - ' + (row.PersonID && row.PersonID.Title ? row.PersonID.Title : ''),
+      PersonID: row.PersonID && row.PersonID.Id ? row.PersonID.Id : null,
+      TrainingID: trainingId,
+      CompletionDate: row.CompletionDate,
+      Status: 'Current',
+      EnteredOn: reviewedOn,
+      Notes: 'Created automatically from bulk-approved submission #' + row.Id
+    };
+    if (derivedExp) { recordValues.ExpirationDate = derivedExp.toISOString(); }
+    return updateListItem(APP.lists.TrainingSubmissions, row.Id, { Status: 'Approved', Reviewer: reviewerId, ReviewedOn: reviewedOn }, { entityType: 'Training Submission', before: row, reason: 'Bulk approval' })
+      .then(function(){ return createListItem(APP.lists.TrainingRecords, recordValues, { entityType: 'Training Record', reason: 'Bulk-approved training submission' }); })
+      .then(function(){ return { ok: true, id: id, row: row }; })
+      .catch(function(){ return { ok: false, id: id, reason: 'error' }; });
+  });
+  toast('Approving ' + ids.length + ' submission' + (ids.length === 1 ? '' : 's') + '...', 'ok');
+  Promise.all(tasks).then(function(results){
+    var ok = results.filter(function(r){ return r.ok; });
+    var failed = results.filter(function(r){ return !r.ok; });
+    ok.forEach(function(r){
+      var personId = r.row.PersonID && r.row.PersonID.Id ? r.row.PersonID.Id : null;
+      var trainingName = r.row.TrainingID && r.row.TrainingID.Title ? r.row.TrainingID.Title : 'training submission';
+      if (personId) {
+        sendNotification({
+          title: 'Training Submission Approved',
+          body: 'Your submission for "' + trainingName + '" has been approved.',
+          audienceType: 'Individual',
+          recipientPersonId: personId,
+          notificationType: 'Training',
+          sourceModule: 'Training',
+          isSystemGenerated: true,
+          relatedEntityType: 'TrainingSubmission',
+          relatedEntityID: r.row.Id
+        }).catch(function(){});
+      }
+    });
+    if (failed.length) { toast(ok.length + ' approved, ' + failed.length + ' failed.', 'warn'); }
+    else { toast(ok.length + ' submission' + (ok.length === 1 ? '' : 's') + ' approved.', 'ok'); }
+    return Promise.all([ensureTrainingSubmissionsLoaded(true), ensureTrainingRecordsLoaded(true)]).then(function(){ renderTraining(); });
+  });
+}
 function openTrainingModal(id){
   var t = findTrainingById(id);
   if (!t) { toast('Training not found.', 'danger'); return; }
+  var prereqIds = getTrainingPrerequisiteIds(t);
+  var prereqNames = prereqIds.map(function(pid){
+    var pt = findTrainingById(pid);
+    return pt ? (pt.TrainingName || pt.Title || ('#' + pid)) : ('#' + pid);
+  }).join(', ');
   var body = '<div class="kv">'
     + '<div class="k">Name</div><div class="v">' + escHtml(t.TrainingName || t.Title || '') + '</div>'
     + '<div class="k">Code</div><div class="v">' + escHtml(t.TrainingCode || '') + '</div>'
     + '<div class="k">Category</div><div class="v">' + escHtml(t.Category || '') + '</div>'
     + '<div class="k">Frequency</div><div class="v">' + escHtml(t.FrequencyMonths ? t.FrequencyMonths + ' months' : 'One-time') + '</div>'
+    + '<div class="k">Due-Soon Window</div><div class="v">' + escHtml(getTrainingDueSoonDays(t) + ' days') + '</div>'
     + '<div class="k">Required For</div><div class="v">' + escHtml(t.RequiredFor || 'Not specified') + '</div>'
     + '<div class="k">Mandatory</div><div class="v">' + escHtml(normalizeBoolean(t.IsMandatory) ? 'Yes' : 'No') + '</div>'
+    + (prereqNames ? '<div class="k">Prerequisites</div><div class="v">' + escHtml(prereqNames) + '</div>' : '')
+    + (t.DeliveryMethod ? '<div class="k">Delivery Method</div><div class="v">' + escHtml(t.DeliveryMethod) + '</div>' : '')
+    + (t.Venue ? '<div class="k">Venue</div><div class="v">' + escHtml(t.Venue) + '</div>' : '')
+    + (t.Instructor ? '<div class="k">Instructor</div><div class="v">' + escHtml(t.Instructor) + '</div>' : '')
     + '<div class="k">Cost</div><div class="v">' + escHtml(t.CostPerPerson ? formatCurrencySafe(t.CostPerPerson) : 'N/A') + '</div>'
     + '<div class="k">Duty Hours</div><div class="v">' + escHtml(t.TrainingDutyHours || '') + '</div>'
     + '<div class="k">Non-Duty Hours</div><div class="v">' + escHtml(t.TrainingNonDutyHours || '') + '</div>'
@@ -3251,6 +3325,11 @@ function getEffectiveTrainingExpiration(record, training){
   derived.setMonth(derived.getMonth() + months);
   return isNaN(derived.getTime()) ? null : derived;
 }
+function getTrainingDueSoonDays(training){
+  var raw = training && training.DueSoonDays != null ? Number(training.DueSoonDays) : NaN;
+  if (isFinite(raw) && raw > 0) { return Math.floor(raw); }
+  return 30;
+}
 function getTrainingLatestRecordByTrainingId(){
   var map = {};
   (APP.state.data.trainingRecords || []).forEach(function(r){
@@ -3295,9 +3374,10 @@ function getMyTrainingModel(){
       else {
         var exp = getEffectiveTrainingExpiration(latest, t);
         var d = daysUntil(exp);
+        var dueWindow = getTrainingDueSoonDays(t);
         if (!exp) { status = 'Current'; }
         else if (d < 0) { status = 'Expired'; }
-        else if (d <= 30) { status = 'Due Soon'; dueText = d + ' days'; }
+        else if (d <= dueWindow) { status = 'Due Soon'; dueText = d + ' days'; }
         else { status = 'Current'; dueText = d + ' days'; }
       }
     }
@@ -5568,7 +5648,7 @@ function renderTraining(){
     var html = '';
     html += '<div class="exec-strip"><div class="title">Training Readiness</div><div class="item"><span class="swatch"></span>Compliance ' + escHtml(String(pct)) + '%</div><div class="item"><span class="swatch"></span>Current ' + escHtml(String(currentCount)) + '</div><div class="item"><span class="swatch"></span>Due Soon ' + escHtml(String(dueSoonCount)) + '</div><div class="item"><span class="swatch"></span>Expired/Missing ' + escHtml(String(expiredCount + missingCount)) + '</div><div class="item"><span class="swatch"></span>Pending Review ' + escHtml(String(reviewerRows.length)) + '</div></div>';
     html += '<div class="grid cols-2">';
-    html += '<div class="card glow"><div class="card-head"><div><div class="card-title">My Training</div><div class="card-sub">Required training, completion history, due soon items, and pending reviews.</div></div><div class="filter-row"><input id="trainingSearchInput" class="input" style="width:260px" placeholder="Search training" /></div></div><div class="card-body"><div class="list-inline">' + statusBadge('Current: ' + currentCount) + statusBadge('Due Soon: ' + dueSoonCount) + statusBadge('Expired: ' + expiredCount) + statusBadge('Missing: ' + missingCount) + statusBadge('Pending Review: ' + pendingCount) + '</div><div style="margin-top:14px" class="progress"><span style="width:' + pct + '%"></span></div><div class="small-note" style="margin-top:8px">Compliance is calculated against training requirements applicable to the current person.</div><div class="tile-grid" id="trainingGrid" style="margin-top:16px">';
+    html += '<div class="card glow"><div class="card-head"><div><div class="card-title">My Training</div><div class="card-sub">Required training, completion history, due soon items, and pending reviews.</div></div><div class="filter-row"><input id="trainingSearchInput" class="input" style="width:260px" placeholder="Search training" /> <button class="btn subtle" data-action="export-my-transcript">Export Transcript</button></div></div><div class="card-body"><div class="list-inline">' + statusBadge('Current: ' + currentCount) + statusBadge('Due Soon: ' + dueSoonCount) + statusBadge('Expired: ' + expiredCount) + statusBadge('Missing: ' + missingCount) + statusBadge('Pending Review: ' + pendingCount) + '</div><div style="margin-top:14px" class="progress"><span style="width:' + pct + '%"></span></div><div class="small-note" style="margin-top:8px">Compliance is calculated against training requirements applicable to the current person.</div><div class="tile-grid" id="trainingGrid" style="margin-top:16px">';
     currentRows.forEach(function(r){
       var t = r.training;
       var search = [t.TrainingName, t.Title, t.TrainingCode, t.Category, r.status].join(' ').toLowerCase();
@@ -5576,8 +5656,12 @@ function renderTraining(){
       html += '<div class="tile-title">' + escHtml(t.TrainingName || t.Title || t.TrainingCode || 'Training') + '</div>';
       html += '<div class="tile-sub">' + escHtml(t.Category || '') + (t.TrainingCode ? ' • ' + escHtml(t.TrainingCode) : '') + '</div>';
       html += '<div style="margin-top:10px">' + statusBadge(r.status) + '</div>';
-      html += '<div class="small-note" style="margin-top:10px">' + (r.latest && r.latest.CompletionDate ? 'Completed ' + escHtml(formatDate(r.latest.CompletionDate)) : 'No completion on file') + (r.latest && r.latest.ExpirationDate ? ' • Expires ' + escHtml(formatDate(r.latest.ExpirationDate)) : '') + '</div>';
-      html += '<div style="margin-top:12px" class="quick-actions"><button class="btn subtle" data-action="open-training-submit" data-id="' + escAttr(t.Id) + '">Submit Completion</button>' + ((normalizeBoolean(t.SF182) || String(t.SF182 || '').toLowerCase() === 'yes') ? '<button class="btn subtle" data-action="open-sf182-from-training" data-id="' + escAttr(t.Id) + '">Start SF182</button>' : '') + '</div>';
+      var effExp = r.latest ? getEffectiveTrainingExpiration(r.latest, t) : null;
+      var expiresNote = effExp ? ' • Expires ' + escHtml(formatDate(effExp)) + (r.latest && !r.latest.ExpirationDate ? ' (derived)' : '') : '';
+      html += '<div class="small-note" style="margin-top:10px">' + (r.latest && r.latest.CompletionDate ? 'Completed ' + escHtml(formatDate(r.latest.CompletionDate)) : 'No completion on file') + expiresNote + '</div>';
+      var meta = [t.DeliveryMethod, t.Venue, t.Instructor].filter(Boolean).map(escHtml).join(' • ');
+      if (meta) { html += '<div class="mini muted" style="margin-top:4px">' + meta + '</div>'; }
+      html += '<div style="margin-top:12px" class="quick-actions"><button class="btn subtle" data-action="open-training-submit" data-id="' + escAttr(t.Id) + '">Submit Completion</button><button class="btn subtle" data-action="open-training-history" data-id="' + escAttr(t.Id) + '">History</button>' + ((normalizeBoolean(t.SF182) || String(t.SF182 || '').toLowerCase() === 'yes') ? '<button class="btn subtle" data-action="open-sf182-from-training" data-id="' + escAttr(t.Id) + '">Start SF182</button>' : '') + '</div>';
       html += '</div>';
     });
     html += '</div></div></div>';
@@ -5597,22 +5681,85 @@ function renderTraining(){
     setView('<div class="card"><div class="card-body"><div class="empty">Training failed to load.</div></div></div>');
   });
 }
+function getTrainingPrerequisiteIds(training){
+  if (!training) { return []; }
+  var raw = training.Prerequisites;
+  if (raw == null) { return []; }
+  if (Array.isArray(raw)) {
+    return raw.map(function(p){ return p && p.Id != null ? p.Id : p; })
+      .filter(function(v){ return v != null && String(v).length > 0; })
+      .map(function(v){ return String(v); });
+  }
+  return String(raw).split(/[,;]/).map(function(s){ return s.trim(); }).filter(Boolean);
+}
+function getUnmetPrerequisites(training){
+  var ids = getTrainingPrerequisiteIds(training);
+  if (!ids.length) { return []; }
+  var model = getMyTrainingModel();
+  var statusById = {};
+  model.forEach(function(r){ statusById[String(r.training.Id)] = r.status; });
+  return ids.map(function(id){
+    var prereq = findTrainingById(id) || { Id: id, TrainingName: 'Training #' + id };
+    var status = statusById[String(id)] || 'Unknown';
+    return { training: prereq, status: status };
+  }).filter(function(p){ return p.status !== 'Current'; });
+}
+function getMyCurrentStatusForTraining(trainingId){
+  var model = getMyTrainingModel();
+  var match = null;
+  model.some(function(r){ if (String(r.training.Id) === String(trainingId)) { match = r; return true; } return false; });
+  return match;
+}
 function openTrainingSubmissionModal(id){
   var t = findTrainingById(id);
   if (!t) { toast('Training not found.', 'danger'); return; }
   APP.modalState.trainingId = t.Id;
-  var body = '<div class="form-grid">'
+  var unmet = getUnmetPrerequisites(t);
+  var mine = getMyCurrentStatusForTraining(t.Id);
+  var warnings = '';
+  var warnBoxStyle = 'style="padding:10px 12px;border-radius:6px;background:rgba(255,176,46,0.1);border-left:3px solid var(--warn);margin-bottom:12px;font-size:12px"';
+  var dangerBoxStyle = 'style="padding:10px 12px;border-radius:6px;background:rgba(231,76,60,0.1);border-left:3px solid var(--danger);margin-bottom:12px;font-size:12px"';
+  if (mine && mine.status === 'Current' && mine.latest) {
+    warnings += '<div ' + warnBoxStyle + '><strong>Already Current.</strong> Your latest completion on ' + escHtml(formatDate(mine.latest.CompletionDate)) + (mine.latest.ExpirationDate ? ' expires ' + escHtml(formatDate(mine.latest.ExpirationDate)) : '') + '. You may resubmit only if you\'ve retaken this training.</div>';
+  } else if (mine && mine.status === 'Pending Review') {
+    warnings += '<div ' + warnBoxStyle + '><strong>Submission already pending review.</strong> Please wait for the current submission to be reviewed before submitting another.</div>';
+  }
+  if (unmet.length) {
+    warnings += '<div ' + dangerBoxStyle + '><strong>Prerequisites not yet complete:</strong><ul style="margin:6px 0 0 18px;padding:0">'
+      + unmet.map(function(p){ return '<li>' + escHtml(p.training.TrainingName || p.training.Title || ('#' + p.training.Id)) + ' — ' + escHtml(p.status) + '</li>'; }).join('')
+      + '</ul></div>';
+  }
+  var body = warnings + '<div class="form-grid">'
     + formField('Training', '<input class="input" value="' + escAttr(t.TrainingName || t.Title || '') + '" disabled />')
     + formField('Completion Date', '<input id="trainingCompletionDate" type="date" class="input" value="' + escAttr(formatDate(new Date())) + '" />')
     + formField('Proof Attached', '<select id="trainingProofAttached" class="select"><option value="Yes">Yes</option><option value="No">No</option></select>')
     + formField('Certificate/Proof Upload', '<input id="trainingCertFile" type="file" class="input" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" /><div class="small-note" style="margin-top:4px">PDF, image, or Word doc (max 10 MB)</div>')
     + '<div class="full">' + formField('Notes', '<textarea id="trainingSubmissionNotes" class="textarea" placeholder="Certificate details, location, comments, or proof references."></textarea>') + '</div>'
     + '</div>';
-  openModal('Submit Training Completion', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-training-submission">Submit</button></div>', t.TrainingCode || '');
+  var submitDisabled = (unmet.length || (mine && mine.status === 'Pending Review')) ? ' disabled title="Resolve the issues above to submit"' : '';
+  openModal('Submit Training Completion', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-training-submission"' + submitDisabled + '>Submit</button></div>', t.TrainingCode || '');
+}
+function validateProofFile(file){
+  if (!file) { return ''; }
+  if (file.size > 10 * 1024 * 1024) { return 'File exceeds 10 MB limit.'; }
+  var allowedExt = ['pdf','png','jpg','jpeg','doc','docx'];
+  var allowedMime = ['application/pdf','image/png','image/jpeg','image/jpg','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  var name = String(file.name || '').toLowerCase();
+  var dot = name.lastIndexOf('.');
+  var ext = dot >= 0 ? name.slice(dot + 1) : '';
+  if (allowedExt.indexOf(ext) < 0) { return 'Proof file type not allowed. Use PDF, PNG, JPG, or Word document.'; }
+  var mime = String(file.type || '').toLowerCase();
+  if (mime && allowedMime.indexOf(mime) < 0) { return 'Proof file MIME type (' + mime + ') is not allowed. Use PDF, PNG, JPG, or Word document.'; }
+  return '';
 }
 function saveTrainingSubmission(){
   var trainingId = APP.modalState.trainingId;
   if (!trainingId) { toast('Missing training context.', 'danger'); return; }
+  var t = findTrainingById(trainingId);
+  var unmet = getUnmetPrerequisites(t);
+  if (unmet.length) { toast('Prerequisites not complete for this training.', 'danger'); return; }
+  var mine = getMyCurrentStatusForTraining(trainingId);
+  if (mine && mine.status === 'Pending Review') { toast('A submission for this training is already pending review.', 'danger'); return; }
   var completionDate = document.getElementById('trainingCompletionDate').value;
   var errors = runValidation([
     function(){ return validateRequired(completionDate, 'Completion Date'); },
@@ -5621,10 +5768,18 @@ function saveTrainingSubmission(){
       var d = parseDate(completionDate);
       if (d && d.getTime() > Date.now() + 86400000) { return 'Completion date cannot be in the future.'; }
       return '';
+    },
+    function(){
+      if (!mine || mine.status !== 'Current' || !mine.latest) { return ''; }
+      var newDate = parseDate(completionDate);
+      var latestDate = parseDate(mine.latest.CompletionDate);
+      if (newDate && latestDate && newDate.getTime() <= latestDate.getTime()) {
+        return 'You are already Current for this training with a completion on ' + formatDate(latestDate) + '. Enter a later completion date if you retook it.';
+      }
+      return '';
     }
   ]);
   if (showValidationErrors(errors)) { return; }
-  var t = findTrainingById(trainingId);
   var person = APP.state.currentPersonnel;
   var user = APP.state.currentUser;
   var values = {
@@ -5639,7 +5794,8 @@ function saveTrainingSubmission(){
   };
   var fileInput = document.getElementById('trainingCertFile');
   var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-  if (file && file.size > 10 * 1024 * 1024) { toast('File exceeds 10 MB limit.', 'danger'); return; }
+  var fileError = validateProofFile(file);
+  if (fileError) { toast(fileError, 'danger'); return; }
   createListItem(APP.lists.TrainingSubmissions, values, { entityType: 'Training Submission', reason: 'Member submitted completion' }).then(function(result){
     if (file && result && result.d && result.d.Id) {
       return attachFileToListItem(APP.lists.TrainingSubmissions, result.d.Id, file).then(function(){
@@ -5743,6 +5899,88 @@ function createSF182FromTrainingId(id){
   }).catch(function(){ toast('SF182 request failed.', 'danger'); });
 }
 
+/* ─── Training Transcript (per-person history) ─── */
+function getMyTrainingRecords(){
+  var records = APP.state.data.trainingRecords || [];
+  var person = APP.state.currentPersonnel;
+  var myPersonId = person ? person.Id : null;
+  return records.filter(function(r){
+    var rid = r.PersonID && r.PersonID.Id ? r.PersonID.Id : null;
+    return myPersonId && rid === myPersonId;
+  }).slice().sort(function(a, b){
+    var da = parseDate(a.CompletionDate);
+    var db = parseDate(b.CompletionDate);
+    var ta = da ? da.getTime() : 0;
+    var tb = db ? db.getTime() : 0;
+    return tb - ta;
+  });
+}
+function openTrainingTranscriptModal(trainingId){
+  var t = findTrainingById(trainingId);
+  if (!t) { toast('Training not found.', 'danger'); return; }
+  var all = getMyTrainingRecords().filter(function(r){
+    return r.TrainingID && String(r.TrainingID.Id) === String(trainingId);
+  });
+  var body = '<div class="kv" style="margin-bottom:14px">'
+    + '<div class="k">Training</div><div class="v">' + escHtml(t.TrainingName || t.Title || '') + '</div>'
+    + '<div class="k">Code</div><div class="v">' + escHtml(t.TrainingCode || '') + '</div>'
+    + '<div class="k">Frequency</div><div class="v">' + escHtml(t.FrequencyMonths ? t.FrequencyMonths + ' months' : 'One-time') + '</div>'
+    + '<div class="k">Completions on file</div><div class="v">' + all.length + '</div>'
+    + '</div>';
+  if (!all.length) {
+    body += '<div class="empty">No completion records on file for this training.</div>';
+  } else {
+    body += '<div class="table-wrap"><table><thead><tr><th>Completion Date</th><th>Expiration</th><th>Status</th><th>Source</th><th>Entered By</th><th>Notes</th></tr></thead><tbody>';
+    all.forEach(function(r){
+      var effExp = getEffectiveTrainingExpiration(r, t);
+      body += '<tr>'
+        + '<td>' + escHtml(formatDate(r.CompletionDate)) + '</td>'
+        + '<td>' + escHtml(effExp ? formatDate(effExp) : 'N/A') + (effExp && !r.ExpirationDate ? ' <span class="mini muted">(derived)</span>' : '') + '</td>'
+        + '<td>' + statusBadge(r.Status || '') + '</td>'
+        + '<td>' + escHtml(r.SourceSystem || '') + '</td>'
+        + '<td>' + escHtml((r.EnteredBy && r.EnteredBy.Title) || '') + '</td>'
+        + '<td class="mini">' + escHtml(trimText(r.Notes || '', 120)) + '</td>'
+        + '</tr>';
+    });
+    body += '</tbody></table></div>';
+  }
+  openModal('Training History', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', t.TrainingCode || '');
+}
+function exportMyTrainingTranscript(){
+  var person = APP.state.currentPersonnel;
+  if (!person) { toast('No personnel record found for the current user.', 'danger'); return; }
+  var records = getMyTrainingRecords();
+  var catalogMap = getTrainingCatalogMap();
+  var headers = ['TrainingName','TrainingCode','Category','CompletionDate','ExpirationDate','EffectiveExpirationDate','Status','SourceSystem','EnteredBy','Notes'];
+  var csv = headers.join(',') + '\n';
+  records.forEach(function(r){
+    var tid = r.TrainingID && r.TrainingID.Id ? r.TrainingID.Id : null;
+    var t = tid ? catalogMap[tid] : null;
+    var effExp = getEffectiveTrainingExpiration(r, t);
+    var cols = [
+      (t && (t.TrainingName || t.Title)) || (r.TrainingID && r.TrainingID.Title) || '',
+      (t && t.TrainingCode) || '',
+      (t && t.Category) || '',
+      formatDate(r.CompletionDate) || '',
+      formatDate(r.ExpirationDate) || '',
+      effExp ? formatDate(effExp) : '',
+      r.Status || '',
+      r.SourceSystem || '',
+      (r.EnteredBy && r.EnteredBy.Title) || '',
+      (r.Notes || '').replace(/\r?\n/g, ' ')
+    ];
+    csv += cols.map(function(c){ return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
+  });
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  var personLabel = (person.LastName || 'me') + (person.FirstName ? '_' + person.FirstName : '');
+  a.download = 'training_transcript_' + personLabel + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Transcript exported (' + records.length + ' records).', 'ok');
+}
+
 /* ─── Training Gap Analysis per Org ─── */
 function openTrainingGapAnalysis(){
   Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureTrainingCatalogLoaded(), ensureTrainingRecordsLoaded()]).then(function(){
@@ -5757,7 +5995,7 @@ function openTrainingGapAnalysis(){
         return String(oid) === String(org.Id) && String(p.Status || '').toLowerCase().indexOf('depart') < 0;
       });
       if (!orgPeople.length) { return; }
-      var totalApplicable = 0; var totalCurrent = 0;
+      var totalApplicable = 0; var totalCurrent = 0; var gapCost = 0;
       orgPeople.forEach(function(p){
         catalog.forEach(function(t){
           if (!trainingAppliesToPerson(t, p)) { return; }
@@ -5767,18 +6005,24 @@ function openTrainingGapAnalysis(){
             if (r.TrainingID && String(r.TrainingID.Id || r.TrainingID) === String(t.Id) && r.PersonID && String(r.PersonID.Id || r.PersonID) === String(p.Id)) { rec = r; return true; }
             return false;
           });
-          if (rec && rec.ExpirationDate && new Date(rec.ExpirationDate) > new Date()) { totalCurrent++; }
-          else if (rec && !rec.ExpirationDate && rec.CompletionDate) { totalCurrent++; }
+          var effExp = getEffectiveTrainingExpiration(rec, t);
+          if (rec && (!effExp || effExp > new Date())) { totalCurrent++; }
+          else { gapCost += Number(t.CostPerPerson) || 0; }
         });
       });
       var pct = totalApplicable ? Math.round((totalCurrent / totalApplicable) * 100) : 100;
-      orgStats.push({ org: org, people: orgPeople.length, applicable: totalApplicable, current: totalCurrent, pct: pct });
+      orgStats.push({ org: org, people: orgPeople.length, applicable: totalApplicable, current: totalCurrent, pct: pct, gapCost: gapCost });
     });
     orgStats.sort(function(a, b){ return a.pct - b.pct; });
-    var body = '<table class="table-wrap" style="width:100%;font-size:12px"><thead><tr><th>Organization</th><th>Personnel</th><th>Compliance</th><th>Gaps</th></tr></thead><tbody>';
+    var totalGapCost = orgStats.reduce(function(sum, s){ return sum + (s.gapCost || 0); }, 0);
+    var body = '';
+    if (totalGapCost > 0) {
+      body += '<div class="small-note" style="margin-bottom:10px">Estimated total cost to close expired and missing training across all orgs: <strong>' + escHtml(formatCurrencySafe(totalGapCost)) + '</strong>.</div>';
+    }
+    body += '<table class="table-wrap" style="width:100%;font-size:12px"><thead><tr><th>Organization</th><th>Personnel</th><th>Compliance</th><th>Gaps</th><th>Gap Cost</th></tr></thead><tbody>';
     orgStats.forEach(function(s){
       var color = s.pct >= 80 ? 'var(--ok)' : s.pct >= 60 ? 'var(--warn)' : 'var(--danger)';
-      body += '<tr><td>' + escHtml(getOrgDisplayName(s.org)) + '</td><td>' + s.people + '</td><td><span style="color:' + color + ';font-weight:700">' + s.pct + '%</span></td><td>' + (s.applicable - s.current) + '</td></tr>';
+      body += '<tr><td>' + escHtml(getOrgDisplayName(s.org)) + '</td><td>' + s.people + '</td><td><span style="color:' + color + ';font-weight:700">' + s.pct + '%</span></td><td>' + (s.applicable - s.current) + '</td><td>' + escHtml(s.gapCost > 0 ? formatCurrencySafe(s.gapCost) : '—') + '</td></tr>';
     });
     body += '</tbody></table>';
     openModal('Training Gap Analysis by Organization', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
@@ -10815,7 +11059,7 @@ function getTeamTrainingModel(){
   return team.map(function(p){
     var applicable = catalog.filter(function(t){ return trainingAppliesToPerson(t, p); });
     var personRecords = records.filter(function(r){ return r.PersonID && r.PersonID.Id === p.Id; });
-    var current = 0; var expired = 0; var missing = 0; var dueSoon = 0;
+    var current = 0; var expired = 0; var missing = 0; var dueSoon = 0; var gapCost = 0;
     applicable.forEach(function(t){
       var rec = null;
       personRecords.forEach(function(r){
@@ -10824,17 +11068,18 @@ function getTeamTrainingModel(){
         var bestDate = rec ? parseDate(rec.CompletionDate) : null;
         if (!rec || (recDate && (!bestDate || recDate.getTime() > bestDate.getTime()))) { rec = r; }
       });
-      if (!rec) { missing++; return; }
+      if (!rec) { missing++; gapCost += Number(t.CostPerPerson) || 0; return; }
       var exp = getEffectiveTrainingExpiration(rec, t);
       var d = daysUntil(exp);
+      var dueWindow = getTrainingDueSoonDays(t);
       if (!exp) { current++; }
-      else if (d < 0) { expired++; }
-      else if (d <= 30) { dueSoon++; current++; }
+      else if (d < 0) { expired++; gapCost += Number(t.CostPerPerson) || 0; }
+      else if (d <= dueWindow) { dueSoon++; current++; }
       else { current++; }
     });
     var total = applicable.length;
     var pct = total ? Math.round((current / total) * 100) : 100;
-    return { person: p, total: total, current: current, expired: expired, missing: missing, dueSoon: dueSoon, pct: pct };
+    return { person: p, total: total, current: current, expired: expired, missing: missing, dueSoon: dueSoon, pct: pct, gapCost: gapCost };
   });
 }
 function renderTeamTraining(){
@@ -10842,11 +11087,13 @@ function renderTeamTraining(){
   if (!model.length) { return '<div class="empty">No team members found in your organization or reporting chain.</div>'; }
   model.sort(function(a, b){ return a.pct - b.pct; });
   var avgPct = model.length ? Math.round(model.reduce(function(sum, m){ return sum + m.pct; }, 0) / model.length) : 100;
-  var html = '<div class="stats-row"><div class="stat-mini">Team Members <div class="n">' + model.length + '</div></div><div class="stat-mini">Avg Compliance <div class="n">' + avgPct + '%</div></div><div class="stat-mini">At Risk <div class="n">' + model.filter(function(m){ return m.pct < 80; }).length + '</div></div></div>';
+  var totalGapCost = model.reduce(function(sum, m){ return sum + (m.gapCost || 0); }, 0);
+  var html = '<div class="stats-row"><div class="stat-mini">Team Members <div class="n">' + model.length + '</div></div><div class="stat-mini">Avg Compliance <div class="n">' + avgPct + '%</div></div><div class="stat-mini">At Risk <div class="n">' + model.filter(function(m){ return m.pct < 80; }).length + '</div></div>' + (totalGapCost > 0 ? '<div class="stat-mini">Compliance Gap Cost <div class="n">' + escHtml(formatCurrencySafe(totalGapCost)) + '</div></div>' : '') + '</div>';
   html += '<div class="team-grid">';
   model.forEach(function(m){
     var riskClass = m.pct >= 90 ? 'ok' : (m.pct >= 70 ? 'warn' : 'danger');
-    html += '<div class="team-card"><div class="name">' + escHtml(formatPerson(m.person)) + '</div><div class="role">' + escHtml((m.person.OrgID && m.person.OrgID.Title) || '') + ' • ' + escHtml((m.person.PositionID && m.person.PositionID.Title) || '') + '</div><div class="training-bar" style="margin-top:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="badge ' + riskClass + '">' + m.pct + '% Compliant</span><span class="mini muted">' + m.current + '/' + m.total + '</span></div><div class="progress"><span style="width:' + m.pct + '%"></span></div></div><div class="mini muted" style="margin-top:6px">' + (m.expired ? '<span class="badge danger">Expired: ' + m.expired + '</span> ' : '') + (m.missing ? '<span class="badge warn">Missing: ' + m.missing + '</span> ' : '') + (m.dueSoon ? '<span class="badge warn">Due Soon: ' + m.dueSoon + '</span>' : '') + (!m.expired && !m.missing && !m.dueSoon ? '<span class="badge ok">All Current</span>' : '') + '</div><div style="margin-top:8px"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(m.person.Id) + '">View</button></div></div>';
+    var gapCostHtml = m.gapCost > 0 ? ' <span class="mini muted" title="Estimated cost to close expired and missing training">Gap: ' + escHtml(formatCurrencySafe(m.gapCost)) + '</span>' : '';
+    html += '<div class="team-card"><div class="name">' + escHtml(formatPerson(m.person)) + '</div><div class="role">' + escHtml((m.person.OrgID && m.person.OrgID.Title) || '') + ' • ' + escHtml((m.person.PositionID && m.person.PositionID.Title) || '') + '</div><div class="training-bar" style="margin-top:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="badge ' + riskClass + '">' + m.pct + '% Compliant</span><span class="mini muted">' + m.current + '/' + m.total + '</span></div><div class="progress"><span style="width:' + m.pct + '%"></span></div></div><div class="mini muted" style="margin-top:6px">' + (m.expired ? '<span class="badge danger">Expired: ' + m.expired + '</span> ' : '') + (m.missing ? '<span class="badge warn">Missing: ' + m.missing + '</span> ' : '') + (m.dueSoon ? '<span class="badge warn">Due Soon: ' + m.dueSoon + '</span>' : '') + (!m.expired && !m.missing && !m.dueSoon ? '<span class="badge ok">All Current</span>' : '') + gapCostHtml + '</div><div style="margin-top:8px"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(m.person.Id) + '">View</button></div></div>';
   });
   html += '</div>';
   return html;
@@ -14603,6 +14850,10 @@ function handleClick(e){
   if (action === 'request-sf182' || action === 'open-sf182-from-training') { createSF182FromTrainingId(el.getAttribute('data-id')); return; }
   if (action === 'review-submission-approve') { reviewSubmission(el.getAttribute('data-id'), true); return; }
   if (action === 'review-submission-reject') { reviewSubmission(el.getAttribute('data-id'), false); return; }
+  if (action === 'open-training-history') { openTrainingTranscriptModal(el.getAttribute('data-id')); return; }
+  if (action === 'export-my-transcript') { exportMyTrainingTranscript(); return; }
+  if (action === 'bulk-approve-submissions') { bulkApproveSelectedSubmissions(); return; }
+  if (action === 'toggle-submission-select-all') { toggleSubmissionSelectAll(el); return; }
   if (action === 'view-request') { openRequestDetail(el.getAttribute('data-id')); return; }
   if (action === 'open-create-request') { openCreateRequestModal(); return; }
   if (action === 'open-request-templates') {
