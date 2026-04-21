@@ -639,9 +639,57 @@ tr:hover td{background:#eef5ff}
 .org-chart-hint{position:absolute;bottom:12px;right:12px;z-index:5;font-size:10px;color:#5d7488;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);padding:5px 10px;border-radius:8px;border:1px solid #d6e1ec;font-weight:600}
 .org-chart-empty{padding:60px 24px;text-align:center;color:#5b7085}
 
+/* Dimmed (non-path) + highlighted path */
+.org-chart-stage.has-selection .org-chart-card.dimmed{opacity:.32;filter:saturate(.55)}
+.org-chart-stage.has-selection .org-chart-card.dimmed:hover{opacity:.7;filter:none}
+.org-chart-edge.dimmed{opacity:.22}
+.org-chart-edge.path{stroke:#0f5ab8;stroke-width:2.4}
+
+/* Hidden-count pill on collapsed branches */
+.org-chart-card-hidden{position:absolute;right:6px;bottom:-9px;z-index:2;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:999px;font-size:9px;font-weight:900;letter-spacing:.03em;color:#fff;background:linear-gradient(135deg,#0f5ab8,#1f7ae0);border:1px solid rgba(255,255,255,.7);box-shadow:0 3px 8px rgba(15,90,184,.28);pointer-events:none;text-transform:uppercase}
+.org-chart-card.my-org .org-chart-card-hidden{background:linear-gradient(135deg,#17794f,#1fa862);box-shadow:0 3px 8px rgba(23,121,79,.28)}
+
+/* Keyboard focus cursor */
+.org-chart-card.cursor{outline:3px solid #ffc220;outline-offset:2px;box-shadow:0 0 0 6px rgba(255,194,32,.18), 0 14px 28px rgba(15,90,184,.18)}
+
+/* Compact density */
+.org-chart-stage.compact .org-chart-card{padding:6px 8px;border-radius:11px}
+.org-chart-stage.compact .org-chart-card:before{width:4px}
+.org-chart-stage.compact .org-chart-card-top{padding-left:2px}
+.org-chart-stage.compact .org-chart-card-name{font-size:11px;-webkit-line-clamp:2}
+.org-chart-stage.compact .org-chart-card-code{font-size:8px;padding:1px 4px}
+.org-chart-stage.compact .org-chart-card-leader{font-size:10px;padding-left:2px}
+.org-chart-stage.compact .org-chart-card-role{display:none}
+.org-chart-stage.compact .org-chart-card-stats{display:none}
+.org-chart-stage.compact .org-chart-card-collapse{width:18px;height:18px;font-size:11px;bottom:-8px}
+.org-chart-stage.compact .org-chart-card-hidden{font-size:8px;padding:2px 5px;right:4px;bottom:-7px}
+
+/* Viewport culling (browser skips offscreen paint) */
+.org-chart-card{content-visibility:auto;contain-intrinsic-size:112px 230px}
+.org-chart-stage.compact .org-chart-card{contain-intrinsic-size:62px 170px}
+
+/* Mini-map */
+.org-chart-minimap{position:absolute;bottom:12px;left:12px;z-index:5;width:220px;height:150px;border:1px solid #c9d7e7;border-radius:10px;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);box-shadow:0 8px 20px rgba(15,36,61,.12);overflow:hidden;cursor:crosshair;user-select:none}
+.org-chart-minimap:hover{border-color:#8db5de}
+.org-chart-minimap.hidden{display:none}
+.org-chart-minimap svg{display:block;width:100%;height:100%;pointer-events:none}
+.org-chart-minimap-node{fill:#c4d5e8;stroke:none}
+.org-chart-minimap-node.selected{fill:#0f5ab8}
+.org-chart-minimap-node.my-org{fill:#17794f}
+.org-chart-minimap-edge{stroke:#c4d5e8;stroke-width:1;fill:none}
+.org-chart-minimap-viewport{fill:rgba(15,90,184,.12);stroke:#0f5ab8;stroke-width:1.5;pointer-events:none}
+.org-chart-minimap-label{position:absolute;top:4px;left:8px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5d7488;pointer-events:none}
+.org-chart-minimap-close{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:4px;border:0;background:rgba(255,255,255,.7);color:#5d7488;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;font-weight:900}
+.org-chart-minimap-close:hover{background:#f0f6fc;color:#0f5ab8}
+
+/* Legend adjusts when minimap is visible */
+.org-chart-stage.has-minimap .org-chart-legend{bottom:172px}
+
 @media (max-width:900px){
   .org-chart-viewport{height:520px}
   .org-chart-hint{display:none}
+  .org-chart-minimap{width:160px;height:110px}
+  .org-chart-stage.has-minimap .org-chart-legend{bottom:132px}
 }
 
 /* ─── Calendar Module ─── */
@@ -4045,7 +4093,7 @@ function exportPeopleCSV(){
 }
 
 function ensureOrgChartUi(){
-  if (!APP.state.orgUi) { APP.state.orgUi = { selectedOrgId: null, expanded: {}, search: '', focusOrgId: null, showAboveRoot: false, viewMode: 'chart', chartZoom: 1, chartPanX: 0, chartPanY: 0, chartFitPending: true }; }
+  if (!APP.state.orgUi) { APP.state.orgUi = { selectedOrgId: null, expanded: {}, search: '', focusOrgId: null, showAboveRoot: false, viewMode: 'chart', chartZoom: 1, chartPanX: 0, chartPanY: 0, chartFitPending: true, chartDensity: 'comfortable', chartCenterPending: null, chartMinimap: true, chartHighlightPath: true }; }
   if (!APP.state.orgUi.expanded) { APP.state.orgUi.expanded = {}; }
   if (APP.state.orgUi.showAboveRoot == null) { APP.state.orgUi.showAboveRoot = false; }
   if (!APP.state.orgUi.viewMode) { APP.state.orgUi.viewMode = 'chart'; }
@@ -4053,6 +4101,9 @@ function ensureOrgChartUi(){
   if (APP.state.orgUi.chartPanX == null) { APP.state.orgUi.chartPanX = 0; }
   if (APP.state.orgUi.chartPanY == null) { APP.state.orgUi.chartPanY = 0; }
   if (APP.state.orgUi.chartFitPending == null) { APP.state.orgUi.chartFitPending = true; }
+  if (APP.state.orgUi.chartDensity !== 'compact' && APP.state.orgUi.chartDensity !== 'comfortable') { APP.state.orgUi.chartDensity = 'comfortable'; }
+  if (APP.state.orgUi.chartMinimap == null) { APP.state.orgUi.chartMinimap = true; }
+  if (APP.state.orgUi.chartHighlightPath == null) { APP.state.orgUi.chartHighlightPath = true; }
   return APP.state.orgUi;
 }
 function getOrgDisplayName(org){
@@ -4555,13 +4606,12 @@ function openOrgContactCard(orgId){
   openModal('Contact Card — ' + escHtml(getOrgDisplayName(org)), body, footer, org.OrgCode || org.OrgID || '');
 }
 /* ─── Traditional Org Chart: layout + SVG render + pan/zoom ─── */
-var ORG_CHART_NODE_W = 230;
-var ORG_CHART_NODE_H = 112;
-var ORG_CHART_H_GAP = 28;
-var ORG_CHART_V_GAP = 64;
-var ORG_CHART_PAD = 48;
+function orgChartDims(density){
+  if (density === 'compact') { return { w: 170, h: 62, hGap: 22, vGap: 46, pad: 36 }; }
+  return { w: 230, h: 112, hGap: 28, vGap: 64, pad: 48 };
+}
 
-function computeOrgChartLayout(index, rootIds, search, matchMemo, expanded){
+function computeOrgChartLayout(index, rootIds, search, matchMemo, expanded, dims){
   var nodes = [];
   var edges = [];
   var measureMemo = {};
@@ -4582,8 +4632,8 @@ function computeOrgChartLayout(index, rootIds, search, matchMemo, expanded){
     var childWidths = children.map(function(c){ return measure(c).w; });
     var totalChildW = 0;
     childWidths.forEach(function(w){ totalChildW += w; });
-    if (children.length > 1) { totalChildW += (children.length - 1) * ORG_CHART_H_GAP; }
-    var w = Math.max(ORG_CHART_NODE_W, totalChildW);
+    if (children.length > 1) { totalChildW += (children.length - 1) * dims.hGap; }
+    var w = Math.max(dims.w, totalChildW);
     var m = { children: children, childWidths: childWidths, totalChildW: totalChildW, w: w };
     measureMemo[orgId] = m;
     return m;
@@ -4592,15 +4642,15 @@ function computeOrgChartLayout(index, rootIds, search, matchMemo, expanded){
   function place(orgId, depth, xStart, parentId){
     var m = measureMemo[orgId];
     var w = m.w;
-    var nodeX = xStart + (w - ORG_CHART_NODE_W) / 2;
-    var nodeY = depth * (ORG_CHART_NODE_H + ORG_CHART_V_GAP);
+    var nodeX = xStart + (w - dims.w) / 2;
+    var nodeY = depth * (dims.h + dims.vGap);
     nodes.push({ id: orgId, x: nodeX, y: nodeY, depth: depth, parentId: parentId, hasChildren: (index.childrenByParentId[orgId] || []).length > 0, visibleChildCount: m.children.length });
     if (depth > maxDepth) { maxDepth = depth; }
     var childX = xStart + (w - m.totalChildW) / 2;
     m.children.forEach(function(childId, i){
       edges.push({ parent: orgId, child: childId });
       place(childId, depth + 1, childX, orgId);
-      childX += m.childWidths[i] + ORG_CHART_H_GAP;
+      childX += m.childWidths[i] + dims.hGap;
     });
   }
 
@@ -4610,12 +4660,28 @@ function computeOrgChartLayout(index, rootIds, search, matchMemo, expanded){
     if (search && !orgBranchMatchesSearch(index, rootId, search, matchMemo)) { return; }
     var m = measure(rootId);
     place(rootId, 0, offsetX, null);
-    offsetX += m.w + ORG_CHART_H_GAP * 2;
+    offsetX += m.w + dims.hGap * 2;
   });
 
-  var totalW = Math.max(0, offsetX - ORG_CHART_H_GAP * 2);
-  var totalH = (maxDepth + 1) * ORG_CHART_NODE_H + maxDepth * ORG_CHART_V_GAP;
+  var totalW = Math.max(0, offsetX - dims.hGap * 2);
+  var totalH = (maxDepth + 1) * dims.h + maxDepth * dims.vGap;
   return { nodes: nodes, edges: edges, width: totalW, height: totalH };
+}
+
+function computeOrgHighlightSet(index, selectedOrgId){
+  var highlight = {};
+  if (!selectedOrgId || !index.byId[selectedOrgId]) { return highlight; }
+  var chain = getOrgBreadcrumb(index, selectedOrgId);
+  chain.forEach(function(o){ highlight[o.Id] = 'ancestor'; });
+  highlight[selectedOrgId] = 'selected';
+  var stack = [selectedOrgId];
+  while (stack.length) {
+    var id = stack.pop();
+    (index.childrenByParentId[id] || []).forEach(function(c){
+      if (!highlight[c]) { highlight[c] = 'descendant'; stack.push(c); }
+    });
+  }
+  return highlight;
 }
 
 function orgChartCardClass(index, orgId, ui){
@@ -4641,7 +4707,8 @@ function renderOrgChartDiagram(index, ui){
   if (!ui.orgChartExpanded) { ui.orgChartExpanded = {}; }
   rootIds.forEach(function(r){ if (ui.orgChartExpanded[r] == null) { ui.orgChartExpanded[r] = true; } });
   Object.keys(ui.expanded || {}).forEach(function(k){ if (ui.expanded[k] && ui.orgChartExpanded[k] == null) { ui.orgChartExpanded[k] = true; } });
-  var layout = computeOrgChartLayout(index, rootIds, search, matchMemo, ui.orgChartExpanded);
+  var dims = orgChartDims(ui.chartDensity);
+  var layout = computeOrgChartLayout(index, rootIds, search, matchMemo, ui.orgChartExpanded, dims);
 
   if (!layout.nodes.length) {
     return '<div class="org-chart-stage"><div class="org-chart-empty">No organizations match the current search or selected branch.</div></div>';
@@ -4650,24 +4717,39 @@ function renderOrgChartDiagram(index, ui){
   var nodeById = {};
   layout.nodes.forEach(function(n){ nodeById[n.id] = n; });
 
-  var canvasW = layout.width + ORG_CHART_PAD * 2;
-  var canvasH = layout.height + ORG_CHART_PAD * 2;
+  var canvasW = layout.width + dims.pad * 2;
+  var canvasH = layout.height + dims.pad * 2;
+
+  var highlight = ui.chartHighlightPath ? computeOrgHighlightSet(index, ui.selectedOrgId) : {};
+  var hasSelection = ui.chartHighlightPath && ui.selectedOrgId && Object.keys(highlight).length > 0;
 
   var edgesSvg = '';
   layout.edges.forEach(function(e){
     var p = nodeById[e.parent];
     var c = nodeById[e.child];
     if (!p || !c) { return; }
-    var px = p.x + ORG_CHART_NODE_W / 2 + ORG_CHART_PAD;
-    var py = p.y + ORG_CHART_NODE_H + ORG_CHART_PAD;
-    var cx = c.x + ORG_CHART_NODE_W / 2 + ORG_CHART_PAD;
-    var cy = c.y + ORG_CHART_PAD;
+    var px = p.x + dims.w / 2 + dims.pad;
+    var py = p.y + dims.h + dims.pad;
+    var cx = c.x + dims.w / 2 + dims.pad;
+    var cy = c.y + dims.pad;
     var midY = py + (cy - py) / 2;
-    var cls = 'org-chart-edge' + ((ui.selectedOrgId === e.child || ui.selectedOrgId === e.parent) ? ' to-selected' : '');
+    var cls = 'org-chart-edge';
+    if (hasSelection) {
+      var pHit = highlight[e.parent]; var cHit = highlight[e.child];
+      var onPath = (pHit === 'ancestor' || pHit === 'selected') && (cHit === 'ancestor' || cHit === 'selected' || (pHit === 'selected' && cHit === 'descendant'));
+      var touchesSelection = pHit && cHit;
+      if (onPath) { cls += ' path'; }
+      else if (!touchesSelection) { cls += ' dimmed'; }
+    } else if (ui.selectedOrgId === e.child || ui.selectedOrgId === e.parent) {
+      cls += ' to-selected';
+    }
     edgesSvg += '<path class="' + cls + '" d="M ' + px + ' ' + py + ' V ' + midY + ' H ' + cx + ' V ' + cy + '"/>';
   });
 
   var nodesHtml = '';
+  var minimapNodes = '';
+  var minimapEdges = '';
+  var isCompact = ui.chartDensity === 'compact';
   layout.nodes.forEach(function(n){
     var org = index.byId[n.id];
     if (!org) { return; }
@@ -4677,22 +4759,25 @@ function renderOrgChartDiagram(index, ui){
     var leaderName = primary && primary.person ? formatPerson(primary.person) : 'Vacant';
     var leaderRole = primary && primary.position ? (primary.position.PositionTitle || primary.position.Title || '') : (primary ? 'Supervisor' : '');
     var cls = orgChartCardClass(index, n.id, ui);
+    if (hasSelection && !highlight[n.id]) { cls += ' dimmed'; }
     var totalKids = (index.childrenByParentId[n.id] || []).length;
+    var visibleKids = n.visibleChildCount || 0;
+    var hiddenKids = Math.max(0, totalKids - visibleKids);
     var expanded = !!ui.orgChartExpanded[n.id];
-    var x = n.x + ORG_CHART_PAD;
-    var y = n.y + ORG_CHART_PAD;
-    nodesHtml += '<foreignObject x="' + x + '" y="' + y + '" width="' + ORG_CHART_NODE_W + '" height="' + ORG_CHART_NODE_H + '" style="overflow:visible">';
-    nodesHtml += '<div xmlns="http://www.w3.org/1999/xhtml" class="' + cls + '" data-action="org-select" data-id="' + escAttr(n.id) + '" title="' + escAttr(getOrgDisplayName(org)) + '">';
-    if (isCurrentUserOrg(n.id)) { nodesHtml += '<div class="org-chart-card-myorg-badge">YOUR ORG</div>'; }
+    var x = n.x + dims.pad;
+    var y = n.y + dims.pad;
+    nodesHtml += '<foreignObject x="' + x + '" y="' + y + '" width="' + dims.w + '" height="' + dims.h + '" style="overflow:visible">';
+    nodesHtml += '<div xmlns="http://www.w3.org/1999/xhtml" class="' + cls + '" data-action="org-select" data-id="' + escAttr(n.id) + '" data-org-node="' + escAttr(n.id) + '" title="' + escAttr(getOrgDisplayName(org)) + '">';
+    if (isCurrentUserOrg(n.id) && !isCompact) { nodesHtml += '<div class="org-chart-card-myorg-badge">YOUR ORG</div>'; }
     nodesHtml += '<div class="org-chart-card-top">';
-    nodesHtml += '<div class="org-chart-card-name">' + escHtml(trimText(getOrgDisplayName(org), 44)) + '</div>';
+    nodesHtml += '<div class="org-chart-card-name">' + escHtml(trimText(getOrgDisplayName(org), isCompact ? 32 : 44)) + '</div>';
     nodesHtml += '<div class="org-chart-card-code">' + escHtml(org.OrgCode || org.OrgID || 'ORG') + '</div>';
     nodesHtml += '</div>';
     if (primary) {
-      nodesHtml += '<div class="org-chart-card-leader' + (primary.person ? '' : ' vacant') + '">' + escHtml(trimText(leaderName, 30)) + '</div>';
+      nodesHtml += '<div class="org-chart-card-leader' + (primary.person ? '' : ' vacant') + '">' + escHtml(trimText(leaderName, isCompact ? 22 : 30)) + '</div>';
       nodesHtml += '<div class="org-chart-card-role">' + escHtml(trimText(leaderRole || (org.OrgType || 'Organization'), 36)) + '</div>';
     } else {
-      nodesHtml += '<div class="org-chart-card-leader vacant">No leadership mapped</div>';
+      nodesHtml += '<div class="org-chart-card-leader vacant">' + (isCompact ? 'Vacant' : 'No leadership mapped') + '</div>';
       nodesHtml += '<div class="org-chart-card-role">' + escHtml(trimText(org.OrgType || 'Organization', 36)) + '</div>';
     }
     nodesHtml += '<div class="org-chart-card-stats">';
@@ -4702,25 +4787,50 @@ function renderOrgChartDiagram(index, ui){
     nodesHtml += '</div>';
     if (totalKids) {
       nodesHtml += '<button type="button" class="org-chart-card-collapse" data-action="org-chart-toggle" data-id="' + escAttr(n.id) + '" title="' + (expanded ? 'Collapse branch' : 'Expand branch') + '">' + (expanded ? '−' : '+') + '</button>';
+      if (!expanded && hiddenKids > 0) {
+        nodesHtml += '<div class="org-chart-card-hidden">+' + escHtml(String(hiddenKids)) + ' ' + (hiddenKids === 1 ? 'unit' : 'units') + '</div>';
+      }
     }
     nodesHtml += '</div></foreignObject>';
+
+    var mmCls = 'org-chart-minimap-node' + (ui.selectedOrgId === n.id ? ' selected' : '') + (isCurrentUserOrg(n.id) ? ' my-org' : '');
+    minimapNodes += '<rect class="' + mmCls + '" x="' + (n.x + dims.pad) + '" y="' + (n.y + dims.pad) + '" width="' + dims.w + '" height="' + dims.h + '" rx="6"/>';
+  });
+
+  layout.edges.forEach(function(e){
+    var p = nodeById[e.parent];
+    var c = nodeById[e.child];
+    if (!p || !c) { return; }
+    var px = p.x + dims.w / 2 + dims.pad;
+    var py = p.y + dims.h + dims.pad;
+    var cx = c.x + dims.w / 2 + dims.pad;
+    var cy = c.y + dims.pad;
+    var midY = py + (cy - py) / 2;
+    minimapEdges += '<path class="org-chart-minimap-edge" d="M ' + px + ' ' + py + ' V ' + midY + ' H ' + cx + ' V ' + cy + '"/>';
   });
 
   var zoom = Number(ui.chartZoom || 1);
   var panX = Number(ui.chartPanX || 0);
   var panY = Number(ui.chartPanY || 0);
 
-  var html = '<div class="org-chart-stage" id="orgChartStage" data-canvas-w="' + canvasW + '" data-canvas-h="' + canvasH + '"' + (ui.chartFitPending ? ' data-fit-pending="1"' : '') + '>';
+  var stageCls = 'org-chart-stage';
+  if (isCompact) { stageCls += ' compact'; }
+  if (hasSelection) { stageCls += ' has-selection'; }
+  if (ui.chartMinimap) { stageCls += ' has-minimap'; }
+
+  var html = '<div class="' + stageCls + '" id="orgChartStage" data-canvas-w="' + canvasW + '" data-canvas-h="' + canvasH + '"' + (ui.chartFitPending ? ' data-fit-pending="1"' : '') + (ui.chartCenterPending ? ' data-center-id="' + escAttr(ui.chartCenterPending) + '"' : '') + '>';
   html += '<div class="org-chart-zoom-controls">';
   html += '<button class="btn subtle" data-action="org-zoom-out" title="Zoom out">−</button>';
   html += '<span class="org-chart-zoom-label" id="orgChartZoomLabel">' + Math.round(zoom * 100) + '%</span>';
   html += '<button class="btn subtle" data-action="org-zoom-in" title="Zoom in">+</button>';
   html += '<button class="btn subtle" data-action="org-zoom-fit" title="Fit to screen">Fit</button>';
   html += '<button class="btn subtle" data-action="org-zoom-reset" title="Reset to 100%">1:1</button>';
+  html += '<button class="btn subtle" data-action="org-chart-center" title="Center selected node" data-id="' + escAttr(ui.selectedOrgId || '') + '">Center</button>';
+  html += '<button class="btn subtle" data-action="org-chart-find-me" title="Jump to your organization">Find Me</button>';
   html += '</div>';
-  html += '<div class="org-chart-viewport" id="orgChartViewport">';
+  html += '<div class="org-chart-viewport" id="orgChartViewport" tabindex="0">';
   html += '<div class="org-chart-canvas" id="orgChartCanvas" style="width:' + canvasW + 'px;height:' + canvasH + 'px;transform:translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')">';
-  html += '<svg xmlns="http://www.w3.org/2000/svg" width="' + canvasW + '" height="' + canvasH + '" viewBox="0 0 ' + canvasW + ' ' + canvasH + '" class="org-chart-svg">';
+  html += '<svg xmlns="http://www.w3.org/2000/svg" width="' + canvasW + '" height="' + canvasH + '" viewBox="0 0 ' + canvasW + ' ' + canvasH + '" class="org-chart-svg" id="orgChartSvg">';
   html += '<g class="org-chart-edges">' + edgesSvg + '</g>';
   html += '<g class="org-chart-nodes">' + nodesHtml + '</g>';
   html += '</svg>';
@@ -4731,7 +4841,18 @@ function renderOrgChartDiagram(index, ui){
   html += '<span class="org-chart-legend-item"><span class="org-chart-legend-swatch" style="background:linear-gradient(180deg,#0f4e9c,#e0a400)"></span>Groups</span>';
   html += '<span class="org-chart-legend-item"><span class="org-chart-legend-swatch" style="background:linear-gradient(180deg,#17794f,#1fa862)"></span>Your Org</span>';
   html += '</div>';
-  html += '<div class="org-chart-hint">Drag to pan • Scroll to zoom • Click node to select • +/− to expand</div>';
+  if (ui.chartMinimap) {
+    html += '<div class="org-chart-minimap" id="orgChartMinimap" data-canvas-w="' + canvasW + '" data-canvas-h="' + canvasH + '">';
+    html += '<div class="org-chart-minimap-label">Overview</div>';
+    html += '<button type="button" class="org-chart-minimap-close" data-action="org-chart-toggle-minimap" title="Hide overview">×</button>';
+    html += '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + canvasW + ' ' + canvasH + '" preserveAspectRatio="xMidYMid meet">';
+    html += '<g>' + minimapEdges + '</g>';
+    html += '<g>' + minimapNodes + '</g>';
+    html += '<rect class="org-chart-minimap-viewport" id="orgChartMinimapViewport" x="0" y="0" width="' + canvasW + '" height="' + canvasH + '"/>';
+    html += '</svg>';
+    html += '</div>';
+  }
+  html += '<div class="org-chart-hint">Drag to pan • Scroll to zoom • Arrow keys navigate • +/− expand • F fit</div>';
   html += '</div>';
 
   return html;
@@ -4750,12 +4871,31 @@ function attachOrgChartInteractions(){
   var panX = Number(ui.chartPanX || 0);
   var panY = Number(ui.chartPanY || 0);
 
+  var minimap = document.getElementById('orgChartMinimap');
+  var minimapViewport = document.getElementById('orgChartMinimapViewport');
+
   function clampZoom(z){ return Math.max(0.2, Math.min(3, z)); }
   function applyTransform(){
     canvas.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')';
     if (label) { label.textContent = Math.round(zoom * 100) + '%'; }
+    updateMinimap();
   }
   function save(){ ui.chartZoom = zoom; ui.chartPanX = panX; ui.chartPanY = panY; }
+
+  function updateMinimap(){
+    if (!minimap || !minimapViewport) { return; }
+    var vw = viewport.clientWidth;
+    var vh = viewport.clientHeight;
+    if (!vw || !vh || !zoom) { return; }
+    var worldX = -panX / zoom;
+    var worldY = -panY / zoom;
+    var worldW = vw / zoom;
+    var worldH = vh / zoom;
+    minimapViewport.setAttribute('x', worldX);
+    minimapViewport.setAttribute('y', worldY);
+    minimapViewport.setAttribute('width', worldW);
+    minimapViewport.setAttribute('height', worldH);
+  }
 
   function fit(){
     var vw = viewport.clientWidth;
@@ -4779,11 +4919,30 @@ function attachOrgChartInteractions(){
     panY = cy - worldY * zoom;
     applyTransform(); save();
   }
+  function centerOnNode(orgId, opts){
+    if (orgId == null) { return false; }
+    var selector = '[data-org-node="' + String(orgId).replace(/"/g, '\\"') + '"]';
+    var card = canvas.querySelector(selector);
+    if (!card) { return false; }
+    var fo = card.parentNode;
+    var nx = Number(fo.getAttribute('x')) || 0;
+    var ny = Number(fo.getAttribute('y')) || 0;
+    var nw = Number(fo.getAttribute('width')) || 0;
+    var nh = Number(fo.getAttribute('height')) || 0;
+    var vw = viewport.clientWidth;
+    var vh = viewport.clientHeight;
+    if (opts && opts.ensureZoom && zoom < 0.7) { zoom = clampZoom(0.9); }
+    panX = vw / 2 - (nx + nw / 2) * zoom;
+    panY = vh / 2 - (ny + nh / 2) * zoom;
+    applyTransform(); save();
+    return true;
+  }
 
   viewport._fit = fit;
   viewport._reset = reset;
   viewport._zoomIn = function(){ zoomBy(1.2); };
   viewport._zoomOut = function(){ zoomBy(1/1.2); };
+  viewport._centerOn = centerOnNode;
 
   viewport.addEventListener('wheel', function(e){
     e.preventDefault();
@@ -4796,7 +4955,7 @@ function attachOrgChartInteractions(){
 
   var dragging = false, startX = 0, startY = 0, startPanX = 0, startPanY = 0, activePointerId = null;
   viewport.addEventListener('pointerdown', function(e){
-    if (e.target && e.target.closest && (e.target.closest('.org-chart-card') || e.target.closest('.org-chart-zoom-controls') || e.target.closest('.org-chart-card-collapse'))) { return; }
+    if (e.target && e.target.closest && (e.target.closest('.org-chart-card') || e.target.closest('.org-chart-zoom-controls') || e.target.closest('.org-chart-card-collapse') || e.target.closest('.org-chart-minimap'))) { return; }
     if (e.button !== 0 && e.pointerType === 'mouse') { return; }
     dragging = true;
     activePointerId = e.pointerId;
@@ -4823,11 +4982,176 @@ function attachOrgChartInteractions(){
   viewport.addEventListener('pointercancel', endDrag);
   viewport.addEventListener('pointerleave', function(){ if (dragging) { endDrag(); } });
 
+  if (minimap) {
+    var mmDragging = false;
+    function mmPanTo(clientX, clientY){
+      var rect = minimap.getBoundingClientRect();
+      var relX = (clientX - rect.left) / rect.width;
+      var relY = (clientY - rect.top) / rect.height;
+      relX = Math.max(0, Math.min(1, relX));
+      relY = Math.max(0, Math.min(1, relY));
+      var svg = minimap.querySelector('svg');
+      if (!svg) { return; }
+      var scale = Math.min(rect.width / canvasW, rect.height / canvasH);
+      var mapW = canvasW * scale;
+      var mapH = canvasH * scale;
+      var mapX = (rect.width - mapW) / 2;
+      var mapY = (rect.height - mapH) / 2;
+      var px = clientX - rect.left - mapX;
+      var py = clientY - rect.top - mapY;
+      if (px < 0 || py < 0 || px > mapW || py > mapH) { return; }
+      var worldX = px / scale;
+      var worldY = py / scale;
+      var vw = viewport.clientWidth;
+      var vh = viewport.clientHeight;
+      panX = vw / 2 - worldX * zoom;
+      panY = vh / 2 - worldY * zoom;
+      applyTransform(); save();
+    }
+    minimap.addEventListener('pointerdown', function(e){
+      if (e.target && e.target.closest && e.target.closest('.org-chart-minimap-close')) { return; }
+      e.preventDefault();
+      mmDragging = true;
+      try { minimap.setPointerCapture(e.pointerId); } catch(_e){}
+      mmPanTo(e.clientX, e.clientY);
+    });
+    minimap.addEventListener('pointermove', function(e){ if (mmDragging) { mmPanTo(e.clientX, e.clientY); } });
+    minimap.addEventListener('pointerup', function(e){ mmDragging = false; try { minimap.releasePointerCapture(e.pointerId); } catch(_e){} });
+    minimap.addEventListener('pointercancel', function(){ mmDragging = false; });
+  }
+
+  viewport.addEventListener('keydown', function(e){
+    var nav = { 'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right', '+': 'expand', '=': 'expand', '-': 'collapse', '_': 'collapse', 'Enter': 'select', 'Home': 'home', 'f': 'fit', 'F': 'fit', 'r': 'reset', 'R': 'reset' };
+    var act = nav[e.key];
+    if (!act) { return; }
+    e.preventDefault();
+    orgChartKeyNav(act);
+  });
+
   if (stage.getAttribute('data-fit-pending') === '1') {
-    setTimeout(function(){ fit(); ui.chartFitPending = false; }, 0);
+    setTimeout(function(){ fit(); ui.chartFitPending = false; updateMinimap(); }, 0);
   } else {
     applyTransform();
   }
+
+  var centerId = stage.getAttribute('data-center-id');
+  if (centerId) {
+    setTimeout(function(){ centerOnNode(Number(centerId), { ensureZoom: true }); ui.chartCenterPending = null; }, stage.getAttribute('data-fit-pending') === '1' ? 30 : 0);
+  }
+}
+
+function orgChartKeyNav(action){
+  var ui = ensureOrgChartUi();
+  var index = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []);
+  var selId = ui.selectedOrgId;
+  var selOrg = selId ? index.byId[selId] : null;
+  if (!selOrg) {
+    var roots = getOrganizationExplorerRoots(index);
+    if (roots.length) { ui.selectedOrgId = roots[0]; ui.chartCenterPending = roots[0]; renderOrganizationsView(); }
+    return;
+  }
+  if (action === 'fit') { var vp = document.getElementById('orgChartViewport'); if (vp && vp._fit) { vp._fit(); } return; }
+  if (action === 'reset') { var vp2 = document.getElementById('orgChartViewport'); if (vp2 && vp2._reset) { vp2._reset(); } return; }
+  if (action === 'home') {
+    var rootsH = getOrganizationExplorerRoots(index);
+    if (rootsH.length) { ui.selectedOrgId = rootsH[0]; ui.chartCenterPending = rootsH[0]; renderOrganizationsView(); }
+    return;
+  }
+  if (action === 'expand') {
+    if (!ui.orgChartExpanded) { ui.orgChartExpanded = {}; }
+    ui.orgChartExpanded[selId] = true;
+    renderOrganizationsView();
+    return;
+  }
+  if (action === 'collapse') {
+    if (!ui.orgChartExpanded) { ui.orgChartExpanded = {}; }
+    ui.orgChartExpanded[selId] = false;
+    renderOrganizationsView();
+    return;
+  }
+  if (action === 'select') { return; }
+  if (action === 'up') {
+    var parentId = selOrg.ParentOrgID && selOrg.ParentOrgID.Id ? selOrg.ParentOrgID.Id : null;
+    if (parentId && index.byId[parentId]) { ui.selectedOrgId = parentId; ui.chartCenterPending = parentId; renderOrganizationsView(); }
+    return;
+  }
+  if (action === 'down') {
+    if (!ui.orgChartExpanded) { ui.orgChartExpanded = {}; }
+    if (!ui.orgChartExpanded[selId]) { ui.orgChartExpanded[selId] = true; renderOrganizationsView(); return; }
+    var kids = index.childrenByParentId[selId] || [];
+    if (kids.length) { ui.selectedOrgId = kids[0]; ui.chartCenterPending = kids[0]; renderOrganizationsView(); }
+    return;
+  }
+  if (action === 'left' || action === 'right') {
+    var parentId2 = selOrg.ParentOrgID && selOrg.ParentOrgID.Id ? selOrg.ParentOrgID.Id : null;
+    if (!parentId2) { return; }
+    var siblings = index.childrenByParentId[parentId2] || [];
+    var idx = siblings.indexOf(selId);
+    if (idx < 0) { return; }
+    var nextIdx = action === 'left' ? idx - 1 : idx + 1;
+    if (nextIdx < 0 || nextIdx >= siblings.length) { return; }
+    ui.selectedOrgId = siblings[nextIdx];
+    ui.chartCenterPending = siblings[nextIdx];
+    renderOrganizationsView();
+    return;
+  }
+}
+
+function collectOrgChartStyles(){
+  var out = '';
+  var styleEl = document.getElementById('orgChartStyles');
+  if (styleEl) { out += styleEl.textContent || ''; }
+  return out;
+}
+function serializeOrgChartSvg(){
+  var svg = document.getElementById('orgChartSvg');
+  if (!svg) { return null; }
+  var clone = svg.cloneNode(true);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  var styleTag = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+  styleTag.textContent = collectOrgChartStyles() + '\n.org-chart-card{content-visibility:visible !important;contain-intrinsic-size:auto !important}';
+  clone.insertBefore(styleTag, clone.firstChild);
+  var canvasW = Number(document.getElementById('orgChartStage').getAttribute('data-canvas-w')) || clone.getAttribute('width');
+  var canvasH = Number(document.getElementById('orgChartStage').getAttribute('data-canvas-h')) || clone.getAttribute('height');
+  clone.setAttribute('width', canvasW);
+  clone.setAttribute('height', canvasH);
+  clone.setAttribute('viewBox', '0 0 ' + canvasW + ' ' + canvasH);
+  var serializer = new XMLSerializer();
+  return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + serializer.serializeToString(clone), width: canvasW, height: canvasH };
+}
+function exportOrgChartSvg(){
+  var out = serializeOrgChartSvg();
+  if (!out) { toast('Chart not ready for export.', 'danger'); return; }
+  var blob = new Blob([out.xml], { type: 'image/svg+xml;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'organization-chart-' + new Date().toISOString().slice(0,10) + '.svg';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 100);
+  toast('Chart exported as SVG.', 'ok');
+}
+function printOrgChartDiagram(){
+  var out = serializeOrgChartSvg();
+  if (!out) { toast('Chart not ready to print.', 'danger'); return; }
+  var title = 'Organization Chart';
+  var root = findRootOrganization(buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []));
+  if (root) { title = getOrgDisplayName(root) + ' — Organization Chart'; }
+  var win = window.open('', '_blank');
+  if (!win) { toast('Popup blocked — allow popups to print the chart.', 'danger'); return; }
+  var doc = win.document;
+  doc.open();
+  doc.write('<!doctype html><html><head><meta charset="utf-8"><title>' + escHtml(title) + '</title>');
+  doc.write('<style>body{margin:0;padding:16px;font-family:Segoe UI,Arial,sans-serif;color:#0a2948}h1{font-size:18px;margin:0 0 12px 0}.meta{font-size:11px;color:#52687e;margin-bottom:16px}@page{size:landscape;margin:0.4in}svg{max-width:100%;height:auto;display:block}.org-chart-card{content-visibility:visible !important;contain-intrinsic-size:auto !important}.org-chart-zoom-controls,.org-chart-minimap,.org-chart-hint,.org-chart-legend{display:none !important}@media print{.noprint{display:none}}</style>');
+  doc.write('</head><body>');
+  doc.write('<h1>' + escHtml(title) + '</h1>');
+  doc.write('<div class="meta">Printed ' + escHtml(new Date().toLocaleString()) + '</div>');
+  doc.write(out.xml.replace(/^<\?xml[^>]*\?>/, ''));
+  doc.write('<script>setTimeout(function(){window.focus();window.print();}, 250);<' + '/script>');
+  doc.write('</body></html>');
+  doc.close();
 }
 
 function renderOrganizationsView(){
@@ -4916,8 +5240,15 @@ function renderOrganizationsView(){
   toolbar += '</div>';
   toolbar += '<input id="orgSearchInput" class="input" placeholder="Search organization name, code, type, or leader" value="' + escAttr(ui.search || '') + '" />';
   if (isChartMode) {
+    toolbar += '<div class="org-view-toggle" role="group" aria-label="Chart density">';
+    toolbar += '<button type="button" class="' + (ui.chartDensity !== 'compact' ? 'active' : '') + '" data-action="org-chart-density" data-density="comfortable" title="Comfortable density">Roomy</button>';
+    toolbar += '<button type="button" class="' + (ui.chartDensity === 'compact' ? 'active' : '') + '" data-action="org-chart-density" data-density="compact" title="Compact density (fits more on screen)">Compact</button>';
+    toolbar += '</div>';
     toolbar += '<button class="btn subtle" data-action="org-chart-expand-all">Expand All</button>';
     toolbar += '<button class="btn subtle" data-action="org-chart-collapse-all">Collapse</button>';
+    toolbar += '<button class="btn subtle" data-action="org-chart-toggle-minimap" title="' + (ui.chartMinimap ? 'Hide overview map' : 'Show overview map') + '">' + (ui.chartMinimap ? 'Hide Map' : 'Show Map') + '</button>';
+    toolbar += '<button class="btn subtle" data-action="org-chart-toggle-highlight" title="' + (ui.chartHighlightPath ? 'Unhighlight path' : 'Highlight selected path') + '">' + (ui.chartHighlightPath ? 'Unhighlight' : 'Highlight Path') + '</button>';
+    toolbar += '<button class="btn subtle" data-action="org-chart-export-svg" title="Download the chart as SVG">Export SVG</button>';
   } else {
     toolbar += '<button class="btn subtle" data-action="org-expand-visible">Expand Visible</button>';
     toolbar += '<button class="btn subtle" data-action="org-collapse-tree">Reset Branch View</button>';
@@ -4925,7 +5256,7 @@ function renderOrganizationsView(){
   }
   if (ui.focusOrgId) { toolbar += '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>'; }
   if (canSeeAdmin()) { toolbar += '<button class="btn subtle" data-action="create-org">+ New Org</button>'; }
-  toolbar += '<button class="btn subtle" data-action="print-org-chart">Print</button>';
+  toolbar += '<button class="btn subtle" data-action="' + (isChartMode ? 'org-chart-print' : 'print-org-chart') + '">Print</button>';
 
   var structurePanel = isChartMode
     ? ('<div class="card org-branch-panel"><div class="card-head"><div><div class="card-title">' + escHtml(panelTitle) + '</div><div class="card-sub">' + escHtml(panelSub) + '</div></div></div><div class="card-body">' + chartHtml + '</div></div>')
@@ -14168,7 +14499,7 @@ function handleClick(e){
   if (action === 'open-diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } routeTo('diagnostics'); return; }
   if (action === 'diag-detail') { openDiagnosticDetail(el.getAttribute('data-id')); return; }
   if (action === 'org-toggle') { ensureOrgChartUi(); var orgToggleId = Number(el.getAttribute('data-id')); APP.state.orgUi.expanded[orgToggleId] = !APP.state.orgUi.expanded[orgToggleId]; renderOrganizationsView(); return; }
-  if (action === 'org-select') { ensureOrgChartUi(); APP.state.orgUi.selectedOrgId = Number(el.getAttribute('data-id')); var chain = getOrgBreadcrumb(buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []), APP.state.orgUi.selectedOrgId); if (!APP.state.orgUi.orgChartExpanded) { APP.state.orgUi.orgChartExpanded = {}; } chain.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; APP.state.orgUi.orgChartExpanded[org.Id] = true; }); renderOrganizationsView(); return; }
+  if (action === 'org-select') { ensureOrgChartUi(); APP.state.orgUi.selectedOrgId = Number(el.getAttribute('data-id')); var chain = getOrgBreadcrumb(buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []), APP.state.orgUi.selectedOrgId); if (!APP.state.orgUi.orgChartExpanded) { APP.state.orgUi.orgChartExpanded = {}; } chain.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; APP.state.orgUi.orgChartExpanded[org.Id] = true; }); if (APP.state.orgUi.viewMode === 'chart') { APP.state.orgUi.chartCenterPending = APP.state.orgUi.selectedOrgId; } renderOrganizationsView(); return; }
   if (action === 'org-focus') { ensureOrgChartUi(); var orgFocusId = Number(el.getAttribute('data-id')); APP.state.orgUi.selectedOrgId = orgFocusId; APP.state.orgUi.focusOrgId = APP.state.orgUi.focusOrgId === orgFocusId ? null : orgFocusId; APP.state.orgUi.expanded[orgFocusId] = true; renderOrganizationsView(); return; }
   if (action === 'org-clear-focus') { ensureOrgChartUi(); APP.state.orgUi.focusOrgId = null; renderOrganizationsView(); return; }
   if (action === 'org-toggle-above-root') { ensureOrgChartUi(); APP.state.orgUi.showAboveRoot = !APP.state.orgUi.showAboveRoot; renderOrganizationsView(); return; }
@@ -14191,6 +14522,13 @@ function handleClick(e){
   if (action === 'org-chart-toggle') { e.stopPropagation(); ensureOrgChartUi(); if (!APP.state.orgUi.orgChartExpanded) { APP.state.orgUi.orgChartExpanded = {}; } var ctId = Number(el.getAttribute('data-id')); APP.state.orgUi.orgChartExpanded[ctId] = !APP.state.orgUi.orgChartExpanded[ctId]; renderOrganizationsView(); return; }
   if (action === 'org-chart-expand-all') { ensureOrgChartUi(); var _idxExpand = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); APP.state.orgUi.orgChartExpanded = APP.state.orgUi.orgChartExpanded || {}; (_idxExpand.orgs || []).forEach(function(o){ APP.state.orgUi.orgChartExpanded[o.Id] = true; }); APP.state.orgUi.chartFitPending = true; renderOrganizationsView(); return; }
   if (action === 'org-chart-collapse-all') { ensureOrgChartUi(); APP.state.orgUi.orgChartExpanded = {}; var _idxColl = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); getOrganizationExplorerRoots(_idxColl).forEach(function(rootId){ APP.state.orgUi.orgChartExpanded[rootId] = true; }); APP.state.orgUi.chartFitPending = true; renderOrganizationsView(); return; }
+  if (action === 'org-chart-density') { ensureOrgChartUi(); var dMode = el.getAttribute('data-density') === 'compact' ? 'compact' : 'comfortable'; if (APP.state.orgUi.chartDensity !== dMode) { APP.state.orgUi.chartDensity = dMode; APP.state.orgUi.chartFitPending = true; } renderOrganizationsView(); return; }
+  if (action === 'org-chart-toggle-minimap') { ensureOrgChartUi(); APP.state.orgUi.chartMinimap = !APP.state.orgUi.chartMinimap; renderOrganizationsView(); return; }
+  if (action === 'org-chart-toggle-highlight') { ensureOrgChartUi(); APP.state.orgUi.chartHighlightPath = !APP.state.orgUi.chartHighlightPath; renderOrganizationsView(); return; }
+  if (action === 'org-chart-center') { ensureOrgChartUi(); var _cid = Number(el.getAttribute('data-id')) || APP.state.orgUi.selectedOrgId; var _vpC = document.getElementById('orgChartViewport'); if (_vpC && _vpC._centerOn && _cid) { _vpC._centerOn(_cid, { ensureZoom: true }); } return; }
+  if (action === 'org-chart-find-me') { ensureOrgChartUi(); var myId = getCurrentOrgId(); if (!myId) { toast('Your organization is not set.', 'danger'); return; } APP.state.orgUi.selectedOrgId = myId; var _idxMe = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); if (!APP.state.orgUi.orgChartExpanded) { APP.state.orgUi.orgChartExpanded = {}; } getOrgBreadcrumb(_idxMe, myId).forEach(function(o){ APP.state.orgUi.orgChartExpanded[o.Id] = true; APP.state.orgUi.expanded[o.Id] = true; }); APP.state.orgUi.chartCenterPending = myId; renderOrganizationsView(); return; }
+  if (action === 'org-chart-export-svg') { exportOrgChartSvg(); return; }
+  if (action === 'org-chart-print') { printOrgChartDiagram(); return; }
   if (action === 'view-person') { openPersonDetailPage(el.getAttribute('data-id')); return; }
   if (action === 'focus-person-assets') { getAssetUi(); APP.state.assetUi.personId = Number(el.getAttribute('data-id')); closeModal(); routeTo('assets'); return; }
   if (action === 'clear-person-assets') { getAssetUi(); APP.state.assetUi.personId = null; if (APP.state.route === 'assets') { renderAssets(); } closeModal(); return; }
