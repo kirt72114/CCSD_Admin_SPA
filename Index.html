@@ -588,6 +588,62 @@ tr:hover td{background:#eef5ff}
   .org-chart-toolbar .input{min-width:220px;width:100%}
 }
 
+/* ─── Traditional Org Chart (SVG stage with pan/zoom) ─── */
+.org-view-toggle{display:inline-flex;border:1px solid #c9d7e7;border-radius:10px;overflow:hidden;background:#fff}
+.org-view-toggle button{padding:7px 14px;font-size:12px;font-weight:700;color:#52687e;background:transparent;border:0;cursor:pointer;letter-spacing:.04em}
+.org-view-toggle button.active{background:linear-gradient(135deg,#0f5ab8,#1f7ae0);color:#fff;box-shadow:inset 0 -2px 0 rgba(0,0,0,.08)}
+.org-view-toggle button + button{border-left:1px solid #d8e3ee}
+.org-view-toggle button:not(.active):hover{background:#eef4fb;color:#0f5ab8}
+
+.org-branch-shell.chart-mode{grid-template-columns:1fr}
+.org-branch-shell.chart-mode .org-detail-panel{margin-top:16px}
+
+.org-chart-stage{position:relative;border:1px solid #d6e1ec;border-radius:18px;background:
+  linear-gradient(180deg,#fbfdff,#f3f8fd),
+  repeating-linear-gradient(0deg, rgba(15,90,184,.04) 0 1px, transparent 1px 28px),
+  repeating-linear-gradient(90deg, rgba(15,90,184,.04) 0 1px, transparent 1px 28px);
+  background-blend-mode:normal;box-shadow:inset 0 1px 0 #fff, 0 12px 28px rgba(15,36,61,.05);overflow:hidden}
+.org-chart-viewport{position:relative;width:100%;height:720px;overflow:hidden;cursor:grab;touch-action:none;user-select:none}
+.org-chart-viewport.panning{cursor:grabbing}
+.org-chart-canvas{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform}
+.org-chart-svg{display:block;overflow:visible}
+.org-chart-edge{fill:none;stroke:#8aa8c7;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+.org-chart-edge.to-selected{stroke:#0f5ab8;stroke-width:2.2}
+
+.org-chart-card{box-sizing:border-box;width:100%;height:100%;padding:10px 12px;border-radius:14px;border:1px solid #c7d6e7;background:linear-gradient(180deg,#ffffff 0%,#f6faff 100%);box-shadow:0 8px 18px rgba(15,36,61,.08);display:flex;flex-direction:column;gap:4px;cursor:pointer;transition:.15s border-color,.15s box-shadow,.15s transform;position:relative;overflow:hidden;font-family:inherit}
+.org-chart-card:before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#0f5ab8,#1f7ae0)}
+.org-chart-card.support:before{background:linear-gradient(180deg,#38598b,#5a7fb7)}
+.org-chart-card.group:before{background:linear-gradient(180deg,#0f4e9c,#e0a400)}
+.org-chart-card:hover{border-color:#8db5de;box-shadow:0 14px 28px rgba(15,90,184,.14);transform:translateY(-1px)}
+.org-chart-card.selected{border-color:#0f5ab8;box-shadow:0 14px 28px rgba(15,90,184,.18), inset 0 0 0 2px rgba(15,90,184,.3);background:linear-gradient(180deg,#ffffff,#eaf3ff)}
+.org-chart-card.my-org{border-color:#17794f;background:linear-gradient(180deg,#ffffff,#eefaf4)}
+.org-chart-card.my-org:before{background:linear-gradient(180deg,#17794f,#1fa862)}
+.org-chart-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding-left:4px}
+.org-chart-card-name{font-size:13px;font-weight:800;color:#0a2948;line-height:1.18;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.org-chart-card-code{font-size:9px;font-weight:900;letter-spacing:.06em;color:#20486b;background:#edf4fb;border:1px solid #d5e1ee;padding:2px 6px;border-radius:999px;text-transform:uppercase;flex-shrink:0}
+.org-chart-card-leader{font-size:11px;font-weight:700;color:#0d2f50;padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.org-chart-card-leader.vacant{color:#a4594a;font-style:italic}
+.org-chart-card-role{font-size:10px;color:#5d7488;padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.org-chart-card-stats{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-left:4px}
+.org-chart-card-stats span{font-size:9px;font-weight:700;color:#173a5d;background:#f0f6fc;border:1px solid #d8e3ee;border-radius:999px;padding:2px 6px;letter-spacing:.02em}
+.org-chart-card-myorg-badge{position:absolute;top:4px;right:6px;font-size:8px;font-weight:900;letter-spacing:.08em;color:#fff;background:linear-gradient(135deg,#17794f,#1fa862);padding:2px 6px;border-radius:8px;z-index:2}
+.org-chart-card-collapse{position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);width:22px;height:22px;border-radius:999px;border:1px solid #c7d6e7;background:#fff;color:#0f5ab8;font-size:14px;font-weight:900;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(15,36,61,.12);z-index:3;padding:0}
+.org-chart-card-collapse:hover{background:#eef4fb;border-color:#8db5de}
+
+.org-chart-zoom-controls{position:absolute;top:12px;right:12px;z-index:5;display:flex;gap:4px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border:1px solid #d6e1ec;border-radius:12px;padding:4px;box-shadow:0 6px 16px rgba(15,36,61,.08)}
+.org-chart-zoom-controls .btn{padding:5px 10px;font-size:12px;font-weight:700;min-width:auto}
+.org-chart-zoom-label{display:inline-flex;align-items:center;padding:0 8px;font-size:11px;font-weight:800;color:#173a5d;min-width:44px;justify-content:center}
+.org-chart-legend{position:absolute;bottom:12px;left:12px;z-index:5;display:flex;gap:8px;flex-wrap:wrap;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border:1px solid #d6e1ec;border-radius:10px;padding:6px 10px;font-size:10px;color:#52687e;box-shadow:0 6px 16px rgba(15,36,61,.08)}
+.org-chart-legend-item{display:inline-flex;align-items:center;gap:5px;font-weight:700}
+.org-chart-legend-swatch{width:10px;height:10px;border-radius:3px}
+.org-chart-hint{position:absolute;bottom:12px;right:12px;z-index:5;font-size:10px;color:#5d7488;background:rgba(255,255,255,.88);backdrop-filter:blur(6px);padding:5px 10px;border-radius:8px;border:1px solid #d6e1ec;font-weight:600}
+.org-chart-empty{padding:60px 24px;text-align:center;color:#5b7085}
+
+@media (max-width:900px){
+  .org-chart-viewport{height:520px}
+  .org-chart-hint{display:none}
+}
+
 /* ─── Calendar Module ─── */
 .cal-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .cal-header-left{display:flex;align-items:center;gap:8px}
@@ -3989,9 +4045,14 @@ function exportPeopleCSV(){
 }
 
 function ensureOrgChartUi(){
-  if (!APP.state.orgUi) { APP.state.orgUi = { selectedOrgId: null, expanded: {}, search: '', focusOrgId: null, showAboveRoot: false }; }
+  if (!APP.state.orgUi) { APP.state.orgUi = { selectedOrgId: null, expanded: {}, search: '', focusOrgId: null, showAboveRoot: false, viewMode: 'chart', chartZoom: 1, chartPanX: 0, chartPanY: 0, chartFitPending: true }; }
   if (!APP.state.orgUi.expanded) { APP.state.orgUi.expanded = {}; }
   if (APP.state.orgUi.showAboveRoot == null) { APP.state.orgUi.showAboveRoot = false; }
+  if (!APP.state.orgUi.viewMode) { APP.state.orgUi.viewMode = 'chart'; }
+  if (APP.state.orgUi.chartZoom == null) { APP.state.orgUi.chartZoom = 1; }
+  if (APP.state.orgUi.chartPanX == null) { APP.state.orgUi.chartPanX = 0; }
+  if (APP.state.orgUi.chartPanY == null) { APP.state.orgUi.chartPanY = 0; }
+  if (APP.state.orgUi.chartFitPending == null) { APP.state.orgUi.chartFitPending = true; }
   return APP.state.orgUi;
 }
 function getOrgDisplayName(org){
@@ -4493,6 +4554,282 @@ function openOrgContactCard(orgId){
   if (org.OrgEmail) { footer = '<a href="mailto:' + escAttr(org.OrgEmail) + '" class="btn primary" style="text-decoration:none;display:inline-block">Email Org</a> ' + footer; }
   openModal('Contact Card — ' + escHtml(getOrgDisplayName(org)), body, footer, org.OrgCode || org.OrgID || '');
 }
+/* ─── Traditional Org Chart: layout + SVG render + pan/zoom ─── */
+var ORG_CHART_NODE_W = 230;
+var ORG_CHART_NODE_H = 112;
+var ORG_CHART_H_GAP = 28;
+var ORG_CHART_V_GAP = 64;
+var ORG_CHART_PAD = 48;
+
+function computeOrgChartLayout(index, rootIds, search, matchMemo, expanded){
+  var nodes = [];
+  var edges = [];
+  var measureMemo = {};
+  var maxDepth = 0;
+
+  function visibleChildren(orgId){
+    var kids = index.childrenByParentId[orgId] || [];
+    if (search) {
+      return kids.filter(function(c){ return orgBranchMatchesSearch(index, c, search, matchMemo); });
+    }
+    if (!expanded[orgId]) { return []; }
+    return kids;
+  }
+
+  function measure(orgId){
+    if (measureMemo[orgId]) { return measureMemo[orgId]; }
+    var children = visibleChildren(orgId);
+    var childWidths = children.map(function(c){ return measure(c).w; });
+    var totalChildW = 0;
+    childWidths.forEach(function(w){ totalChildW += w; });
+    if (children.length > 1) { totalChildW += (children.length - 1) * ORG_CHART_H_GAP; }
+    var w = Math.max(ORG_CHART_NODE_W, totalChildW);
+    var m = { children: children, childWidths: childWidths, totalChildW: totalChildW, w: w };
+    measureMemo[orgId] = m;
+    return m;
+  }
+
+  function place(orgId, depth, xStart, parentId){
+    var m = measureMemo[orgId];
+    var w = m.w;
+    var nodeX = xStart + (w - ORG_CHART_NODE_W) / 2;
+    var nodeY = depth * (ORG_CHART_NODE_H + ORG_CHART_V_GAP);
+    nodes.push({ id: orgId, x: nodeX, y: nodeY, depth: depth, parentId: parentId, hasChildren: (index.childrenByParentId[orgId] || []).length > 0, visibleChildCount: m.children.length });
+    if (depth > maxDepth) { maxDepth = depth; }
+    var childX = xStart + (w - m.totalChildW) / 2;
+    m.children.forEach(function(childId, i){
+      edges.push({ parent: orgId, child: childId });
+      place(childId, depth + 1, childX, orgId);
+      childX += m.childWidths[i] + ORG_CHART_H_GAP;
+    });
+  }
+
+  var offsetX = 0;
+  (rootIds || []).forEach(function(rootId){
+    if (!index.byId[rootId]) { return; }
+    if (search && !orgBranchMatchesSearch(index, rootId, search, matchMemo)) { return; }
+    var m = measure(rootId);
+    place(rootId, 0, offsetX, null);
+    offsetX += m.w + ORG_CHART_H_GAP * 2;
+  });
+
+  var totalW = Math.max(0, offsetX - ORG_CHART_H_GAP * 2);
+  var totalH = (maxDepth + 1) * ORG_CHART_NODE_H + maxDepth * ORG_CHART_V_GAP;
+  return { nodes: nodes, edges: edges, width: totalW, height: totalH };
+}
+
+function orgChartCardClass(index, orgId, ui){
+  var depth = 0;
+  var seen = {};
+  var cur = index.byId[orgId];
+  while (cur && cur.ParentOrgID && cur.ParentOrgID.Id && !seen[cur.Id]) { seen[cur.Id] = true; depth++; cur = index.byId[cur.ParentOrgID.Id]; if (depth > 50) break; }
+  var tone = '';
+  var org = index.byId[orgId];
+  var code = normalizeOrgCode(org && (org.OrgCode || org.OrgID));
+  if (/^(HNC-SE|HNC-DO|HNC-TO|HNC-SO)$/.test(code)) { tone = 'support'; }
+  else if (/^(HNC-PS|HNC-CY|HNC-CR)$/.test(code)) { tone = 'group'; }
+  var cls = 'org-chart-card' + (tone ? ' ' + tone : '');
+  if (ui.selectedOrgId === orgId) { cls += ' selected'; }
+  if (isCurrentUserOrg(orgId)) { cls += ' my-org'; }
+  return cls;
+}
+
+function renderOrgChartDiagram(index, ui){
+  var search = String(ui.search || '').toLowerCase().trim();
+  var matchMemo = {};
+  var rootIds = getOrganizationExplorerRoots(index);
+  if (!ui.orgChartExpanded) { ui.orgChartExpanded = {}; }
+  rootIds.forEach(function(r){ if (ui.orgChartExpanded[r] == null) { ui.orgChartExpanded[r] = true; } });
+  Object.keys(ui.expanded || {}).forEach(function(k){ if (ui.expanded[k] && ui.orgChartExpanded[k] == null) { ui.orgChartExpanded[k] = true; } });
+  var layout = computeOrgChartLayout(index, rootIds, search, matchMemo, ui.orgChartExpanded);
+
+  if (!layout.nodes.length) {
+    return '<div class="org-chart-stage"><div class="org-chart-empty">No organizations match the current search or selected branch.</div></div>';
+  }
+
+  var nodeById = {};
+  layout.nodes.forEach(function(n){ nodeById[n.id] = n; });
+
+  var canvasW = layout.width + ORG_CHART_PAD * 2;
+  var canvasH = layout.height + ORG_CHART_PAD * 2;
+
+  var edgesSvg = '';
+  layout.edges.forEach(function(e){
+    var p = nodeById[e.parent];
+    var c = nodeById[e.child];
+    if (!p || !c) { return; }
+    var px = p.x + ORG_CHART_NODE_W / 2 + ORG_CHART_PAD;
+    var py = p.y + ORG_CHART_NODE_H + ORG_CHART_PAD;
+    var cx = c.x + ORG_CHART_NODE_W / 2 + ORG_CHART_PAD;
+    var cy = c.y + ORG_CHART_PAD;
+    var midY = py + (cy - py) / 2;
+    var cls = 'org-chart-edge' + ((ui.selectedOrgId === e.child || ui.selectedOrgId === e.parent) ? ' to-selected' : '');
+    edgesSvg += '<path class="' + cls + '" d="M ' + px + ' ' + py + ' V ' + midY + ' H ' + cx + ' V ' + cy + '"/>';
+  });
+
+  var nodesHtml = '';
+  layout.nodes.forEach(function(n){
+    var org = index.byId[n.id];
+    if (!org) { return; }
+    var roll = index.getRollup(n.id);
+    var leaders = getPrimaryLeadershipSummary(index, n.id);
+    var primary = leaders.primary;
+    var leaderName = primary && primary.person ? formatPerson(primary.person) : 'Vacant';
+    var leaderRole = primary && primary.position ? (primary.position.PositionTitle || primary.position.Title || '') : (primary ? 'Supervisor' : '');
+    var cls = orgChartCardClass(index, n.id, ui);
+    var totalKids = (index.childrenByParentId[n.id] || []).length;
+    var expanded = !!ui.orgChartExpanded[n.id];
+    var x = n.x + ORG_CHART_PAD;
+    var y = n.y + ORG_CHART_PAD;
+    nodesHtml += '<foreignObject x="' + x + '" y="' + y + '" width="' + ORG_CHART_NODE_W + '" height="' + ORG_CHART_NODE_H + '" style="overflow:visible">';
+    nodesHtml += '<div xmlns="http://www.w3.org/1999/xhtml" class="' + cls + '" data-action="org-select" data-id="' + escAttr(n.id) + '" title="' + escAttr(getOrgDisplayName(org)) + '">';
+    if (isCurrentUserOrg(n.id)) { nodesHtml += '<div class="org-chart-card-myorg-badge">YOUR ORG</div>'; }
+    nodesHtml += '<div class="org-chart-card-top">';
+    nodesHtml += '<div class="org-chart-card-name">' + escHtml(trimText(getOrgDisplayName(org), 44)) + '</div>';
+    nodesHtml += '<div class="org-chart-card-code">' + escHtml(org.OrgCode || org.OrgID || 'ORG') + '</div>';
+    nodesHtml += '</div>';
+    if (primary) {
+      nodesHtml += '<div class="org-chart-card-leader' + (primary.person ? '' : ' vacant') + '">' + escHtml(trimText(leaderName, 30)) + '</div>';
+      nodesHtml += '<div class="org-chart-card-role">' + escHtml(trimText(leaderRole || (org.OrgType || 'Organization'), 36)) + '</div>';
+    } else {
+      nodesHtml += '<div class="org-chart-card-leader vacant">No leadership mapped</div>';
+      nodesHtml += '<div class="org-chart-card-role">' + escHtml(trimText(org.OrgType || 'Organization', 36)) + '</div>';
+    }
+    nodesHtml += '<div class="org-chart-card-stats">';
+    nodesHtml += '<span>' + escHtml(String(roll.directPeople)) + ' Direct</span>';
+    nodesHtml += '<span>' + escHtml(String(roll.totalPeople)) + ' Branch</span>';
+    if (totalKids) { nodesHtml += '<span>' + escHtml(String(totalKids)) + ' Units</span>'; }
+    nodesHtml += '</div>';
+    if (totalKids) {
+      nodesHtml += '<button type="button" class="org-chart-card-collapse" data-action="org-chart-toggle" data-id="' + escAttr(n.id) + '" title="' + (expanded ? 'Collapse branch' : 'Expand branch') + '">' + (expanded ? '−' : '+') + '</button>';
+    }
+    nodesHtml += '</div></foreignObject>';
+  });
+
+  var zoom = Number(ui.chartZoom || 1);
+  var panX = Number(ui.chartPanX || 0);
+  var panY = Number(ui.chartPanY || 0);
+
+  var html = '<div class="org-chart-stage" id="orgChartStage" data-canvas-w="' + canvasW + '" data-canvas-h="' + canvasH + '"' + (ui.chartFitPending ? ' data-fit-pending="1"' : '') + '>';
+  html += '<div class="org-chart-zoom-controls">';
+  html += '<button class="btn subtle" data-action="org-zoom-out" title="Zoom out">−</button>';
+  html += '<span class="org-chart-zoom-label" id="orgChartZoomLabel">' + Math.round(zoom * 100) + '%</span>';
+  html += '<button class="btn subtle" data-action="org-zoom-in" title="Zoom in">+</button>';
+  html += '<button class="btn subtle" data-action="org-zoom-fit" title="Fit to screen">Fit</button>';
+  html += '<button class="btn subtle" data-action="org-zoom-reset" title="Reset to 100%">1:1</button>';
+  html += '</div>';
+  html += '<div class="org-chart-viewport" id="orgChartViewport">';
+  html += '<div class="org-chart-canvas" id="orgChartCanvas" style="width:' + canvasW + 'px;height:' + canvasH + 'px;transform:translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')">';
+  html += '<svg xmlns="http://www.w3.org/2000/svg" width="' + canvasW + '" height="' + canvasH + '" viewBox="0 0 ' + canvasW + ' ' + canvasH + '" class="org-chart-svg">';
+  html += '<g class="org-chart-edges">' + edgesSvg + '</g>';
+  html += '<g class="org-chart-nodes">' + nodesHtml + '</g>';
+  html += '</svg>';
+  html += '</div></div>';
+  html += '<div class="org-chart-legend">';
+  html += '<span class="org-chart-legend-item"><span class="org-chart-legend-swatch" style="background:linear-gradient(180deg,#0f5ab8,#1f7ae0)"></span>Headquarters / Line</span>';
+  html += '<span class="org-chart-legend-item"><span class="org-chart-legend-swatch" style="background:linear-gradient(180deg,#38598b,#5a7fb7)"></span>Support</span>';
+  html += '<span class="org-chart-legend-item"><span class="org-chart-legend-swatch" style="background:linear-gradient(180deg,#0f4e9c,#e0a400)"></span>Groups</span>';
+  html += '<span class="org-chart-legend-item"><span class="org-chart-legend-swatch" style="background:linear-gradient(180deg,#17794f,#1fa862)"></span>Your Org</span>';
+  html += '</div>';
+  html += '<div class="org-chart-hint">Drag to pan • Scroll to zoom • Click node to select • +/− to expand</div>';
+  html += '</div>';
+
+  return html;
+}
+
+function attachOrgChartInteractions(){
+  var stage = document.getElementById('orgChartStage');
+  var viewport = document.getElementById('orgChartViewport');
+  var canvas = document.getElementById('orgChartCanvas');
+  var label = document.getElementById('orgChartZoomLabel');
+  if (!stage || !viewport || !canvas) { return; }
+  var ui = ensureOrgChartUi();
+  var canvasW = Number(stage.getAttribute('data-canvas-w')) || canvas.offsetWidth;
+  var canvasH = Number(stage.getAttribute('data-canvas-h')) || canvas.offsetHeight;
+  var zoom = Number(ui.chartZoom || 1);
+  var panX = Number(ui.chartPanX || 0);
+  var panY = Number(ui.chartPanY || 0);
+
+  function clampZoom(z){ return Math.max(0.2, Math.min(3, z)); }
+  function applyTransform(){
+    canvas.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')';
+    if (label) { label.textContent = Math.round(zoom * 100) + '%'; }
+  }
+  function save(){ ui.chartZoom = zoom; ui.chartPanX = panX; ui.chartPanY = panY; }
+
+  function fit(){
+    var vw = viewport.clientWidth;
+    var vh = viewport.clientHeight;
+    if (!vw || !vh || !canvasW || !canvasH) { return; }
+    var fitZoom = Math.min(vw / canvasW, vh / canvasH);
+    zoom = clampZoom(fitZoom * 0.96);
+    panX = (vw - canvasW * zoom) / 2;
+    panY = (vh - canvasH * zoom) / 2;
+    applyTransform(); save();
+  }
+  function reset(){ zoom = 1; panX = (viewport.clientWidth - canvasW) / 2; panY = 20; applyTransform(); save(); }
+  function zoomBy(factor, cx, cy){
+    var rect = viewport.getBoundingClientRect();
+    if (cx == null) { cx = rect.width / 2; }
+    if (cy == null) { cy = rect.height / 2; }
+    var worldX = (cx - panX) / zoom;
+    var worldY = (cy - panY) / zoom;
+    zoom = clampZoom(zoom * factor);
+    panX = cx - worldX * zoom;
+    panY = cy - worldY * zoom;
+    applyTransform(); save();
+  }
+
+  viewport._fit = fit;
+  viewport._reset = reset;
+  viewport._zoomIn = function(){ zoomBy(1.2); };
+  viewport._zoomOut = function(){ zoomBy(1/1.2); };
+
+  viewport.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var rect = viewport.getBoundingClientRect();
+    var cx = e.clientX - rect.left;
+    var cy = e.clientY - rect.top;
+    var factor = Math.pow(1.0022, -e.deltaY);
+    zoomBy(factor, cx, cy);
+  }, { passive: false });
+
+  var dragging = false, startX = 0, startY = 0, startPanX = 0, startPanY = 0, activePointerId = null;
+  viewport.addEventListener('pointerdown', function(e){
+    if (e.target && e.target.closest && (e.target.closest('.org-chart-card') || e.target.closest('.org-chart-zoom-controls') || e.target.closest('.org-chart-card-collapse'))) { return; }
+    if (e.button !== 0 && e.pointerType === 'mouse') { return; }
+    dragging = true;
+    activePointerId = e.pointerId;
+    startX = e.clientX; startY = e.clientY;
+    startPanX = panX; startPanY = panY;
+    try { viewport.setPointerCapture(e.pointerId); } catch(_e){}
+    viewport.classList.add('panning');
+  });
+  viewport.addEventListener('pointermove', function(e){
+    if (!dragging) { return; }
+    panX = startPanX + (e.clientX - startX);
+    panY = startPanY + (e.clientY - startY);
+    applyTransform();
+  });
+  function endDrag(e){
+    if (!dragging) { return; }
+    dragging = false;
+    viewport.classList.remove('panning');
+    try { if (activePointerId != null) { viewport.releasePointerCapture(activePointerId); } } catch(_e){}
+    activePointerId = null;
+    save();
+  }
+  viewport.addEventListener('pointerup', endDrag);
+  viewport.addEventListener('pointercancel', endDrag);
+  viewport.addEventListener('pointerleave', function(){ if (dragging) { endDrag(); } });
+
+  if (stage.getAttribute('data-fit-pending') === '1') {
+    setTimeout(function(){ fit(); ui.chartFitPending = false; }, 0);
+  } else {
+    applyTransform();
+  }
+}
+
 function renderOrganizationsView(){
   var orgs = APP.state.data.organizations || [];
   var people = APP.state.data.people || [];
@@ -4521,6 +4858,8 @@ function renderOrganizationsView(){
     if (block) { treeHtml += '<div class="org-root-group">' + block + '</div>'; }
   });
   if (!treeHtml) { treeHtml = '<div class="org-tree-empty">No organizations match the current search or selected branch.</div>'; }
+  var isChartMode = ui.viewMode === 'chart';
+  var chartHtml = isChartMode ? renderOrgChartDiagram(index, ui) : '';
   var detailHtml = '<div class="card org-detail-panel"><div class="card-head"><div><div class="card-title">Selected Unit Detail</div><div class="card-sub">Leadership, subordinate structure, personnel, and positions for the currently selected organization.</div></div></div><div class="card-body">';
   if (selected) {
     var roll = index.getRollup(selected.Id);
@@ -4563,8 +4902,38 @@ function renderOrganizationsView(){
   html += renderOrgBand(index, 'Functional Support Offices', 'Cross-cutting offices supporting training, engineering, finance, contracting, communications, and workforce support.', functionalCodes, 'functional', 'These units provide enterprise support across the division.');
   html += renderOrgBand(index, 'Groups', 'Primary operational groups under the headquarters structure.', groupCodes, 'group', 'These are the principal operational groupings for the division.');
   html += '</div></div>';
-  html += '<div class="org-search-panel card"><div class="card-head"><div><div class="card-title">Branch Explorer</div><div class="card-sub">Use search and branch focus to drill down into branches, sections, and teams without overcrowding the headquarters layout above.</div></div><div class="org-chart-toolbar"><input id="orgSearchInput" class="input" placeholder="Search organization name, code, type, or leader" value="' + escAttr(ui.search || '') + '" /><button class="btn subtle" data-action="org-expand-visible">Expand Visible</button><button class="btn subtle" data-action="org-collapse-tree">Reset Branch View</button>' + (ui.focusOrgId ? '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>' : '') + '<span class="mini-note">Visible nodes: ' + escHtml(String(visibleIds.length)) + '</span>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="create-org">+ New Org</button>' : '') + '<button class="btn subtle" data-action="print-org-chart">Print</button></div></div><div class="card-body"><div class="org-branch-shell"><div class="card org-tree-panel org-branch-panel"><div class="card-head"><div><div class="card-title">Explorer Structure</div><div class="card-sub">Expandable structure starting from ' + escHtml(ui.showAboveRoot && rootOrg ? 'the higher-headquarters path' : 'headquarters') + ' or the currently focused branch.</div></div></div><div class="card-body"><div class="org-tree-wrap">' + treeHtml + '</div></div></div>' + detailHtml + '</div></div></div>';
+  var subTitle = isChartMode
+    ? 'Traditional top-down org chart with pan, zoom, and expandable branches. Click a node to select; scroll or use the controls to zoom.'
+    : 'Use search and branch focus to drill down into branches, sections, and teams without overcrowding the headquarters layout above.';
+  var panelTitle = isChartMode ? 'Organization Chart' : 'Explorer Structure';
+  var panelSub = isChartMode
+    ? 'Drag empty space to pan, scroll to zoom, click + to expand a branch.'
+    : ('Expandable structure starting from ' + (ui.showAboveRoot && rootOrg ? 'the higher-headquarters path' : 'headquarters') + ' or the currently focused branch.');
+  var toolbar = '';
+  toolbar += '<div class="org-view-toggle" role="tablist" aria-label="Organization view">';
+  toolbar += '<button type="button" class="' + (isChartMode ? 'active' : '') + '" data-action="org-view-mode" data-mode="chart" role="tab">Chart</button>';
+  toolbar += '<button type="button" class="' + (!isChartMode ? 'active' : '') + '" data-action="org-view-mode" data-mode="list" role="tab">List</button>';
+  toolbar += '</div>';
+  toolbar += '<input id="orgSearchInput" class="input" placeholder="Search organization name, code, type, or leader" value="' + escAttr(ui.search || '') + '" />';
+  if (isChartMode) {
+    toolbar += '<button class="btn subtle" data-action="org-chart-expand-all">Expand All</button>';
+    toolbar += '<button class="btn subtle" data-action="org-chart-collapse-all">Collapse</button>';
+  } else {
+    toolbar += '<button class="btn subtle" data-action="org-expand-visible">Expand Visible</button>';
+    toolbar += '<button class="btn subtle" data-action="org-collapse-tree">Reset Branch View</button>';
+    toolbar += '<span class="mini-note">Visible nodes: ' + escHtml(String(visibleIds.length)) + '</span>';
+  }
+  if (ui.focusOrgId) { toolbar += '<button class="btn subtle" data-action="org-clear-focus">Show Headquarters Scope</button>'; }
+  if (canSeeAdmin()) { toolbar += '<button class="btn subtle" data-action="create-org">+ New Org</button>'; }
+  toolbar += '<button class="btn subtle" data-action="print-org-chart">Print</button>';
+
+  var structurePanel = isChartMode
+    ? ('<div class="card org-branch-panel"><div class="card-head"><div><div class="card-title">' + escHtml(panelTitle) + '</div><div class="card-sub">' + escHtml(panelSub) + '</div></div></div><div class="card-body">' + chartHtml + '</div></div>')
+    : ('<div class="card org-tree-panel org-branch-panel"><div class="card-head"><div><div class="card-title">' + escHtml(panelTitle) + '</div><div class="card-sub">' + escHtml(panelSub) + '</div></div></div><div class="card-body"><div class="org-tree-wrap">' + treeHtml + '</div></div></div>');
+
+  html += '<div class="org-search-panel card"><div class="card-head"><div><div class="card-title">Branch Explorer</div><div class="card-sub">' + escHtml(subTitle) + '</div></div><div class="org-chart-toolbar">' + toolbar + '</div></div><div class="card-body"><div class="org-branch-shell' + (isChartMode ? ' chart-mode' : '') + '">' + structurePanel + detailHtml + '</div></div></div>';
   setView(html);
+  if (isChartMode) { attachOrgChartInteractions(); }
 }
 function renderOrganizations(){
   renderLoading('Loading organizational chart...');
@@ -13799,7 +14168,7 @@ function handleClick(e){
   if (action === 'open-diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } routeTo('diagnostics'); return; }
   if (action === 'diag-detail') { openDiagnosticDetail(el.getAttribute('data-id')); return; }
   if (action === 'org-toggle') { ensureOrgChartUi(); var orgToggleId = Number(el.getAttribute('data-id')); APP.state.orgUi.expanded[orgToggleId] = !APP.state.orgUi.expanded[orgToggleId]; renderOrganizationsView(); return; }
-  if (action === 'org-select') { ensureOrgChartUi(); APP.state.orgUi.selectedOrgId = Number(el.getAttribute('data-id')); var chain = getOrgBreadcrumb(buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []), APP.state.orgUi.selectedOrgId); chain.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; }); renderOrganizationsView(); return; }
+  if (action === 'org-select') { ensureOrgChartUi(); APP.state.orgUi.selectedOrgId = Number(el.getAttribute('data-id')); var chain = getOrgBreadcrumb(buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []), APP.state.orgUi.selectedOrgId); if (!APP.state.orgUi.orgChartExpanded) { APP.state.orgUi.orgChartExpanded = {}; } chain.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; APP.state.orgUi.orgChartExpanded[org.Id] = true; }); renderOrganizationsView(); return; }
   if (action === 'org-focus') { ensureOrgChartUi(); var orgFocusId = Number(el.getAttribute('data-id')); APP.state.orgUi.selectedOrgId = orgFocusId; APP.state.orgUi.focusOrgId = APP.state.orgUi.focusOrgId === orgFocusId ? null : orgFocusId; APP.state.orgUi.expanded[orgFocusId] = true; renderOrganizationsView(); return; }
   if (action === 'org-clear-focus') { ensureOrgChartUi(); APP.state.orgUi.focusOrgId = null; renderOrganizationsView(); return; }
   if (action === 'org-toggle-above-root') { ensureOrgChartUi(); APP.state.orgUi.showAboveRoot = !APP.state.orgUi.showAboveRoot; renderOrganizationsView(); return; }
@@ -13814,6 +14183,14 @@ function handleClick(e){
   if (action === 'print-org-chart') { printOrgChart(); return; }
   if (action === 'org-expand-visible') { ensureOrgChartUi(); var orgIdxExpand = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); var orgSearchExpand = String(APP.state.orgUi.search || '').toLowerCase().trim(); var orgMemoExpand = {}; var orgRootsExpand = getOrganizationExplorerRoots(orgIdxExpand); function expandOrgBranch(orgId){ if (orgSearchExpand && !orgBranchMatchesSearch(orgIdxExpand, orgId, orgSearchExpand, orgMemoExpand)) { return; } APP.state.orgUi.expanded[orgId] = true; (orgIdxExpand.childrenByParentId[orgId] || []).forEach(expandOrgBranch); } orgRootsExpand.forEach(expandOrgBranch); renderOrganizationsView(); return; }
   if (action === 'org-collapse-tree') { ensureOrgChartUi(); APP.state.orgUi.expanded = {}; var orgIdxCollapse = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); getOrganizationExplorerRoots(orgIdxCollapse).forEach(function(rootId){ APP.state.orgUi.expanded[rootId] = true; }); if (APP.state.orgUi.selectedOrgId) { var orgChainCollapse = getOrgBreadcrumb(orgIdxCollapse, APP.state.orgUi.selectedOrgId); orgChainCollapse.forEach(function(org){ APP.state.orgUi.expanded[org.Id] = true; }); } renderOrganizationsView(); return; }
+  if (action === 'org-view-mode') { ensureOrgChartUi(); var mode = el.getAttribute('data-mode') === 'list' ? 'list' : 'chart'; if (APP.state.orgUi.viewMode !== mode) { APP.state.orgUi.viewMode = mode; APP.state.orgUi.chartFitPending = true; } renderOrganizationsView(); return; }
+  if (action === 'org-zoom-in') { var _vpIn = document.getElementById('orgChartViewport'); if (_vpIn && _vpIn._zoomIn) { _vpIn._zoomIn(); } return; }
+  if (action === 'org-zoom-out') { var _vpOut = document.getElementById('orgChartViewport'); if (_vpOut && _vpOut._zoomOut) { _vpOut._zoomOut(); } return; }
+  if (action === 'org-zoom-fit') { var _vpFit = document.getElementById('orgChartViewport'); if (_vpFit && _vpFit._fit) { _vpFit._fit(); } return; }
+  if (action === 'org-zoom-reset') { var _vpReset = document.getElementById('orgChartViewport'); if (_vpReset && _vpReset._reset) { _vpReset._reset(); } return; }
+  if (action === 'org-chart-toggle') { e.stopPropagation(); ensureOrgChartUi(); if (!APP.state.orgUi.orgChartExpanded) { APP.state.orgUi.orgChartExpanded = {}; } var ctId = Number(el.getAttribute('data-id')); APP.state.orgUi.orgChartExpanded[ctId] = !APP.state.orgUi.orgChartExpanded[ctId]; renderOrganizationsView(); return; }
+  if (action === 'org-chart-expand-all') { ensureOrgChartUi(); var _idxExpand = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); APP.state.orgUi.orgChartExpanded = APP.state.orgUi.orgChartExpanded || {}; (_idxExpand.orgs || []).forEach(function(o){ APP.state.orgUi.orgChartExpanded[o.Id] = true; }); APP.state.orgUi.chartFitPending = true; renderOrganizationsView(); return; }
+  if (action === 'org-chart-collapse-all') { ensureOrgChartUi(); APP.state.orgUi.orgChartExpanded = {}; var _idxColl = buildOrgChartIndex(APP.state.data.organizations || [], APP.state.data.people || [], APP.state.data.positions || []); getOrganizationExplorerRoots(_idxColl).forEach(function(rootId){ APP.state.orgUi.orgChartExpanded[rootId] = true; }); APP.state.orgUi.chartFitPending = true; renderOrganizationsView(); return; }
   if (action === 'view-person') { openPersonDetailPage(el.getAttribute('data-id')); return; }
   if (action === 'focus-person-assets') { getAssetUi(); APP.state.assetUi.personId = Number(el.getAttribute('data-id')); closeModal(); routeTo('assets'); return; }
   if (action === 'clear-person-assets') { getAssetUi(); APP.state.assetUi.personId = null; if (APP.state.route === 'assets') { renderAssets(); } closeModal(); return; }
