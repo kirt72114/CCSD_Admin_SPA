@@ -3196,25 +3196,60 @@ function getTrainingCatalogMap(){
   (APP.state.data.trainingCatalog || []).forEach(function(t){ map[t.Id] = t; });
   return map;
 }
+function normalizeRequiredForValue(value){
+  return String(value == null ? '' : value).toLowerCase().replace(/[\s,._\/\\-]+/g, ' ').trim();
+}
+function matchesRequiredForToken(token, check){
+  if (!token || !check) { return false; }
+  if (token === check) { return true; }
+  // Only allow phrase containment when both sides have reasonable length,
+  // and require a whole-word boundary to avoid matching substrings like
+  // "it" inside "unit" or "gs-1" inside "gs-15".
+  if (token.length < 3 || check.length < 3) { return false; }
+  var boundary = '(^|[^a-z0-9])';
+  var escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var escapedCheck = check.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(boundary + escapedToken + '([^a-z0-9]|$)').test(check)) { return true; }
+  if (new RegExp(boundary + escapedCheck + '([^a-z0-9]|$)').test(token)) { return true; }
+  return false;
+}
 function trainingAppliesToPerson(training, person){
   if (!training) { return false; }
-  var required = String(training.RequiredFor || '').toLowerCase();
+  var required = normalizeRequiredForValue(training.RequiredFor);
   if (!required) { return normalizeBoolean(training.IsMandatory); }
-  if (required === 'all' || required.indexOf('everyone') >= 0) { return true; }
-  var tokens = required.split(/[;,\n]/).map(function(v){ return v.replace(/\s+/g,' ').trim(); }).filter(function(v){ return !!v; });
-  var orgTitle = person && person.OrgID && person.OrgID.Title ? String(person.OrgID.Title).toLowerCase() : '';
-  var orgId = person && person.OrgID && person.OrgID.Id ? String(person.OrgID.Id).toLowerCase() : '';
+  if (required === 'all' || required === 'everyone' || required.indexOf('everyone') >= 0) { return true; }
+  var tokens = String(training.RequiredFor || '').split(/[;,\n]/)
+    .map(normalizeRequiredForValue)
+    .filter(function(v){ return v.length >= 2; });
+  if (!tokens.length) { return normalizeBoolean(training.IsMandatory); }
+  var orgTitle = person && person.OrgID && person.OrgID.Title ? normalizeRequiredForValue(person.OrgID.Title) : '';
+  var orgId = person && person.OrgID && person.OrgID.Id ? normalizeRequiredForValue(person.OrgID.Id) : '';
   var checks = [
-    String(person && person.Category || '').toLowerCase(),
-    String(person && person.Component || '').toLowerCase(),
-    String(person && person.Rank || '').toLowerCase(),
-    String(person && person.Grade || '').toLowerCase(),
+    normalizeRequiredForValue(person && person.Category),
+    normalizeRequiredForValue(person && person.Component),
+    normalizeRequiredForValue(person && person.Rank),
+    normalizeRequiredForValue(person && person.Grade),
     orgTitle,
     orgId,
     normalizeBoolean(person && person.IsSupervisor) ? 'supervisors' : '',
     normalizeBoolean(person && person.IsSupervisor) ? 'supervisor' : ''
-  ].concat((APP.state.roleNames || []).map(function(r){ return String(r).toLowerCase(); }));
-  return tokens.some(function(token){ return checks.some(function(c){ return c && (c === token || c.indexOf(token) >= 0 || token.indexOf(c) >= 0); }); });
+  ].concat((APP.state.roleNames || []).map(normalizeRequiredForValue))
+   .filter(function(v){ return !!v; });
+  return tokens.some(function(token){
+    return checks.some(function(c){ return matchesRequiredForToken(token, c); });
+  });
+}
+function getEffectiveTrainingExpiration(record, training){
+  if (!record) { return null; }
+  var exp = parseDate(record.ExpirationDate);
+  if (exp) { return exp; }
+  var months = training && training.FrequencyMonths != null ? Number(training.FrequencyMonths) : NaN;
+  if (!isFinite(months) || months <= 0) { return null; }
+  var completed = parseDate(record.CompletionDate);
+  if (!completed) { return null; }
+  var derived = new Date(completed.getTime());
+  derived.setMonth(derived.getMonth() + months);
+  return isNaN(derived.getTime()) ? null : derived;
 }
 function getTrainingLatestRecordByTrainingId(){
   var map = {};
@@ -3258,7 +3293,7 @@ function getMyTrainingModel(){
     else if (applicable) {
       if (!latest) { status = 'Missing'; }
       else {
-        var exp = parseDate(latest.ExpirationDate);
+        var exp = getEffectiveTrainingExpiration(latest, t);
         var d = daysUntil(exp);
         if (!exp) { status = 'Current'; }
         else if (d < 0) { status = 'Expired'; }
@@ -5628,15 +5663,20 @@ function reviewSubmission(id, approve){
   var status = approve ? 'Approved' : 'Rejected';
   updateListItem(APP.lists.TrainingSubmissions, row.Id, { Status: status, Reviewer: APP.state.currentUser ? APP.state.currentUser.id : null, ReviewedOn: new Date().toISOString() }, { entityType: 'Training Submission', before: row, reason: 'Training review decision' }).then(function(){
     if (approve) {
-      return createListItem(APP.lists.TrainingRecords, {
+      var trainingId = row.TrainingID && row.TrainingID.Id ? row.TrainingID.Id : null;
+      var training = trainingId ? findTrainingById(trainingId) : null;
+      var derivedExp = getEffectiveTrainingExpiration({ CompletionDate: row.CompletionDate, ExpirationDate: null }, training);
+      var recordValues = {
         Title: (row.TrainingID && row.TrainingID.Title ? row.TrainingID.Title : 'Training Record') + ' - ' + (row.PersonID && row.PersonID.Title ? row.PersonID.Title : ''),
         PersonID: row.PersonID && row.PersonID.Id ? row.PersonID.Id : null,
-        TrainingID: row.TrainingID && row.TrainingID.Id ? row.TrainingID.Id : null,
+        TrainingID: trainingId,
         CompletionDate: row.CompletionDate,
         Status: 'Current',
         EnteredOn: new Date().toISOString(),
         Notes: 'Created automatically from approved submission #' + row.Id
-      }, { entityType: 'Training Record', reason: 'Approved training submission' }).catch(function(){ return null; });
+      };
+      if (derivedExp) { recordValues.ExpirationDate = derivedExp.toISOString(); }
+      return createListItem(APP.lists.TrainingRecords, recordValues, { entityType: 'Training Record', reason: 'Approved training submission' }).catch(function(){ return null; });
     }
     return null;
   }).then(function(){
@@ -10768,24 +10808,33 @@ function getTeamTrainingModel(){
     if (currentOrgId && p.OrgID && p.OrgID.Id === currentOrgId) { return true; }
     return false;
   });
-  var catalog = APP.state.data.trainingCatalog || [];
+  var catalog = (APP.state.data.trainingCatalog || []).filter(function(t){
+    return t.IsActive == null || normalizeBoolean(t.IsActive);
+  });
   var records = APP.state.data.trainingRecords || [];
   return team.map(function(p){
-    var applicable = catalog.filter(function(t){ return normalizeBoolean(t.Required); });
+    var applicable = catalog.filter(function(t){ return trainingAppliesToPerson(t, p); });
     var personRecords = records.filter(function(r){ return r.PersonID && r.PersonID.Id === p.Id; });
-    var current = 0; var expired = 0; var missing = 0;
+    var current = 0; var expired = 0; var missing = 0; var dueSoon = 0;
     applicable.forEach(function(t){
       var rec = null;
-      personRecords.some(function(r){ if (r.TrainingID && r.TrainingID.Id === t.Id) { rec = r; return true; } return false; });
+      personRecords.forEach(function(r){
+        if (!r.TrainingID || r.TrainingID.Id !== t.Id) { return; }
+        var recDate = parseDate(r.CompletionDate);
+        var bestDate = rec ? parseDate(rec.CompletionDate) : null;
+        if (!rec || (recDate && (!bestDate || recDate.getTime() > bestDate.getTime()))) { rec = r; }
+      });
       if (!rec) { missing++; return; }
-      var s = String(rec.Status || '').toLowerCase();
-      if (s.indexOf('current') >= 0) { current++; }
-      else if (s.indexOf('expired') >= 0) { expired++; }
+      var exp = getEffectiveTrainingExpiration(rec, t);
+      var d = daysUntil(exp);
+      if (!exp) { current++; }
+      else if (d < 0) { expired++; }
+      else if (d <= 30) { dueSoon++; current++; }
       else { current++; }
     });
     var total = applicable.length;
     var pct = total ? Math.round((current / total) * 100) : 100;
-    return { person: p, total: total, current: current, expired: expired, missing: missing, pct: pct };
+    return { person: p, total: total, current: current, expired: expired, missing: missing, dueSoon: dueSoon, pct: pct };
   });
 }
 function renderTeamTraining(){
@@ -10797,7 +10846,7 @@ function renderTeamTraining(){
   html += '<div class="team-grid">';
   model.forEach(function(m){
     var riskClass = m.pct >= 90 ? 'ok' : (m.pct >= 70 ? 'warn' : 'danger');
-    html += '<div class="team-card"><div class="name">' + escHtml(formatPerson(m.person)) + '</div><div class="role">' + escHtml((m.person.OrgID && m.person.OrgID.Title) || '') + ' • ' + escHtml((m.person.PositionID && m.person.PositionID.Title) || '') + '</div><div class="training-bar" style="margin-top:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="badge ' + riskClass + '">' + m.pct + '% Compliant</span><span class="mini muted">' + m.current + '/' + m.total + '</span></div><div class="progress"><span style="width:' + m.pct + '%"></span></div></div><div class="mini muted" style="margin-top:6px">' + (m.expired ? '<span class="badge danger">Expired: ' + m.expired + '</span> ' : '') + (m.missing ? '<span class="badge warn">Missing: ' + m.missing + '</span>' : '') + (!m.expired && !m.missing ? '<span class="badge ok">All Current</span>' : '') + '</div><div style="margin-top:8px"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(m.person.Id) + '">View</button></div></div>';
+    html += '<div class="team-card"><div class="name">' + escHtml(formatPerson(m.person)) + '</div><div class="role">' + escHtml((m.person.OrgID && m.person.OrgID.Title) || '') + ' • ' + escHtml((m.person.PositionID && m.person.PositionID.Title) || '') + '</div><div class="training-bar" style="margin-top:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="badge ' + riskClass + '">' + m.pct + '% Compliant</span><span class="mini muted">' + m.current + '/' + m.total + '</span></div><div class="progress"><span style="width:' + m.pct + '%"></span></div></div><div class="mini muted" style="margin-top:6px">' + (m.expired ? '<span class="badge danger">Expired: ' + m.expired + '</span> ' : '') + (m.missing ? '<span class="badge warn">Missing: ' + m.missing + '</span> ' : '') + (m.dueSoon ? '<span class="badge warn">Due Soon: ' + m.dueSoon + '</span>' : '') + (!m.expired && !m.missing && !m.dueSoon ? '<span class="badge ok">All Current</span>' : '') + '</div><div style="margin-top:8px"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(m.person.Id) + '">View</button></div></div>';
   });
   html += '</div>';
   return html;
