@@ -38,6 +38,9 @@ body:after{width:420px;height:420px;right:-120px;top:120px;background:linear-gra
 .brand-mark{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent-2),var(--accent),var(--accent-3));box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 20px rgba(101,213,255,.22);position:relative;overflow:hidden}
 .brand-mark:after{content:'';position:absolute;inset:1px;border-radius:7px;background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.02))}
 .brand-title{font-size:15px;font-weight:700;letter-spacing:.2px}
+.build-tag{font-size:8px;font-weight:400;color:rgba(255,255,255,.35);letter-spacing:.5px;margin-left:6px;vertical-align:super;font-family:ui-monospace,Menlo,Consolas,monospace}
+.build-tag:hover{color:rgba(255,255,255,.7)}
+.fullscreen-popout .build-tag,.embedded .build-tag{display:none}
 .brand-sub{margin-top:1px;color:var(--muted);font-size:10px;max-width:500px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .header-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .btn{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.06));color:var(--text);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;transition:.2s transform,.2s border-color,.2s box-shadow}
@@ -896,7 +899,7 @@ body.light-theme .skeleton{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,
       <div class="brand-wrap">
         <div class="brand-mark"></div>
         <div>
-          <div class="brand-title">CCSD All-Things Administrative</div>
+          <div class="brand-title">CCSD All-Things Administrative<span class="build-tag" title="Deployed build tag">build 2026.04.22a</span></div>
           <div class="brand-sub">Administrative operating platform for personnel, organizations, training, SF182, requests, facilities, assets, workflow, diagnostics, and reporting.</div>
         </div>
       </div>
@@ -934,7 +937,7 @@ body.light-theme .skeleton{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,
 'use strict';
 
 var APP = {
-  version: '2026.04.03.4',
+  version: '2026.04.22a',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
