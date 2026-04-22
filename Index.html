@@ -954,6 +954,7 @@ var APP = {
   rootUrl: '',
   nav: [
     { key: 'home', label: 'Home' },
+    { key: 'mystatus', label: 'My Status' },
     { key: 'people', label: 'People' },
     { key: 'organizations', label: 'Organizations' },
     { key: 'training', label: 'Training' },
@@ -967,7 +968,8 @@ var APP = {
     { key: 'reporting', label: 'Reports' },
     { key: 'supervisor', label: 'Supervisor Hub' },
     { key: 'admin', label: 'Admin' },
-    { key: 'diagnostics', label: 'Diagnostics' }
+    { key: 'diagnostics', label: 'Diagnostics' },
+    { key: 'help', label: 'Help' }
   ],
   lists: {
     Organizations: 'CCSD_Organizations',
@@ -1094,6 +1096,7 @@ var APP = {
     renderToken: 0,
     pendingTelemetry: [],
     pendingAudit: [],
+    inoutUi: { queueFilter: 'all', queueOwner: 'all' },
     data: {
       people: null,
       organizations: null,
@@ -2914,16 +2917,58 @@ function openTrainingModal(id){
   openModal('Training Detail', body, footer, t.TrainingCode || '');
 }
 
-function hasRole(role){ return APP.state.roleNames.indexOf(role) >= 0; }
-function hasAnyRole(roles){ return roles.some(function(r){ return hasRole(r); }); }
-function canEditPeople(){ return hasAnyRole(['HR','Admin','App Admin']); }
-function canReviewTraining(){ return hasAnyRole(['Training','HR','Supervisor','Admin','App Admin']); }
-function canSeeAllRequests(){ return hasAnyRole(['Admin','App Admin','HR','Training','Security','IT','Facilities']); }
-function canManageInOut(){ return hasAnyRole(['HR','Admin','App Admin','Supervisor']); }
-function canSeeAdmin(){ return hasAnyRole(['App Admin']); }
-function canManageSecurity(){ return hasAnyRole(['Security','App Admin']); }
+/* Single source of truth for roles and the capabilities they unlock.
+   Edit here (or via the Role Admin UI for assignments) — do not scatter
+   new hasAnyRole([...]) checks elsewhere. */
+APP.roles = {
+  registry: [
+    { id: 'AppAdmin',   name: 'App Admin',  summary: 'Platform owner. Full configuration, diagnostics, role administration.', implies: ['Admin'] },
+    { id: 'Admin',      name: 'Admin',      summary: 'Broad administrative access across personnel, requests, and in/out processing.', implies: [] },
+    { id: 'HR',         name: 'HR',         summary: 'Human-resources lead. Can edit personnel records and drive in/out processing.', implies: [] },
+    { id: 'Supervisor', name: 'Supervisor', summary: 'Front-line supervisor. Sees the Supervisor Hub and manages in/out for their team.', implies: [], note: 'Auto-granted when Personnel.IsSupervisor is true.' },
+    { id: 'Training',   name: 'Training',   summary: 'Training office. Reviews training submissions and sees training-related requests.', implies: [] },
+    { id: 'Security',   name: 'Security',   summary: 'Security office. Creates and manages security incidents.', implies: [] },
+    { id: 'IT',         name: 'IT',         summary: 'IT office. Visibility into IT-related requests across the enterprise.', implies: [] },
+    { id: 'Facilities', name: 'Facilities', summary: 'Facilities office. Visibility into facilities-related requests across the enterprise.', implies: [] }
+  ],
+  /* Capability → allowed role names. Helpers below read from this map. */
+  capability: {
+    editPeople:       ['HR','Admin','App Admin'],
+    reviewTraining:   ['Training','HR','Supervisor','Admin','App Admin'],
+    seeAllRequests:   ['Admin','App Admin','HR','Training','Security','IT','Facilities'],
+    manageInOut:      ['HR','Admin','App Admin','Supervisor'],
+    seeAdmin:         ['App Admin'],
+    manageSecurity:   ['Security','App Admin'],
+    seeSupervisorHub: ['Supervisor','App Admin'],
+    manageRoles:      ['App Admin']
+  },
+  /* Narrative text surfaced in the in-app Help panel. */
+  capabilityDocs: {
+    editPeople:       'Create, edit, depart, transfer, and bulk-export personnel records.',
+    reviewTraining:   'Approve or reject training submissions and view team training status.',
+    seeAllRequests:   'See every request in the queue, not just the ones you filed or own.',
+    manageInOut:      'Open, assign, and close In/Out processing cases and step-queue items.',
+    seeAdmin:         'Access the Admin tab, Diagnostics, and run self-tests / flush telemetry.',
+    manageSecurity:   'Create and edit security incidents and incident actions.',
+    seeSupervisorHub: 'Access the Supervisor Hub with team roll-ups.',
+    manageRoles:      'Grant, edit, or deactivate role assignments in CCSD_AppRoles.'
+  }
+};
+function hasRole(role){ return (APP.state.roleNames || []).indexOf(role) >= 0; }
+function hasAnyRole(roles){ return (roles || []).some(function(r){ return hasRole(r); }); }
+function can(capability){
+  var allowed = APP.roles && APP.roles.capability && APP.roles.capability[capability];
+  return Array.isArray(allowed) ? hasAnyRole(allowed) : false;
+}
+function canEditPeople(){ return can('editPeople'); }
+function canReviewTraining(){ return can('reviewTraining'); }
+function canSeeAllRequests(){ return can('seeAllRequests'); }
+function canManageInOut(){ return can('manageInOut'); }
+function canSeeAdmin(){ return can('seeAdmin'); }
+function canManageSecurity(){ return can('manageSecurity'); }
 function canViewOwnSecurity(){ return APP.state.currentPersonnel && APP.state.currentPersonnel.Id; }
-function canSeeSupervisorHub(){ return hasAnyRole(['Supervisor','App Admin']); }
+function canSeeSupervisorHub(){ return can('seeSupervisorHub'); }
+function canManageRoles(){ return can('manageRoles'); }
 function getCurrentOrgId(){
   var p = APP.state.currentPersonnel;
   return p && p.OrgID && p.OrgID.Id ? p.OrgID.Id : null;
@@ -3020,6 +3065,17 @@ function ensureRolesLoaded(){
   });
 }
 function ensureMyRolesLoaded(){ return ensureRolesLoaded(); }
+function ensureAllRolesLoaded(force){
+  if (!force && APP.state.allRoles) { return Promise.resolve(APP.state.allRoles); }
+  return queryList(APP.lists.AppRoles, ['Id','Title','Role','IsActive','PrincipalType','Principal','ScopeType','ScopeOrgID/Id','ScopeOrgID/Title','ScopeFacilityID/Title','ScopeSystemID/Title','EffectiveFrom','EffectiveTo','Notes','Member/Id','Member/Title','Member/EMail'], { top: 5000, orderby: 'Role asc' }, 'ensureAllRolesLoaded').then(function(rows){
+    APP.state.allRoles = rows || [];
+    return APP.state.allRoles;
+  }).catch(function(err){
+    addDiagnostic('error', 'ensureAllRolesLoaded', 'Failed to load CCSD_AppRoles.', { detail: err.text || err });
+    APP.state.allRoles = [];
+    return [];
+  });
+}
 function ensureCurrentPersonnelLoaded(){
   if (APP.state.currentPersonnel) { return Promise.resolve(APP.state.currentPersonnel); }
   return ensureCurrentUser().then(function(user){
@@ -3883,23 +3939,27 @@ function savePersonEdit(){
 
 /* ─── Personnel Onboarding Wizard ─── */
 function openOnboardingWizard(){
-  APP.modalState.onboarding = { step: 1, personId: null, personName: '' };
+  APP.modalState.onboarding = { step: 1, personId: null, personName: '', seatLabel: '', assetNames: [], arrivalDate: '' };
   renderOnboardingStep();
 }
 function renderOnboardingStep(){
   var st = APP.modalState.onboarding;
   if (!st) return;
   var step = st.step;
-  var totalSteps = 4;
+  var stepLabels = ['Person','Seat','Assets','In-Processing','Review'];
+  var totalSteps = stepLabels.length;
   var progressHtml = '<div style="display:flex;gap:4px;margin-bottom:14px">';
   for (var i = 1; i <= totalSteps; i++) {
     var bg = i < step ? '#2e7d32' : i === step ? 'var(--primary)' : 'var(--border)';
     var col = i <= step ? '#fff' : 'var(--text-muted)';
-    progressHtml += '<div style="flex:1;text-align:center;padding:4px;background:' + bg + ';color:' + col + ';border-radius:4px;font-size:12px;font-weight:600">' + i + '. ' + ['Person','Seat','Assets','In-Processing'][i-1] + '</div>';
+    progressHtml += '<div style="flex:1;text-align:center;padding:4px;background:' + bg + ';color:' + col + ';border-radius:4px;font-size:12px;font-weight:600">' + i + '. ' + stepLabels[i-1] + '</div>';
   }
   progressHtml += '</div>';
+  if (step > 1 && st.personName) {
+    progressHtml += '<div class="small-note" style="margin-bottom:10px">Working on <strong>' + escHtml(st.personName) + '</strong>' + (st.arrivalDate ? ' — arriving ' + escHtml(st.arrivalDate) : '') + '.</div>';
+  }
   var body = progressHtml;
-  var footer = '<div></div><div>';
+  var footer = '<div>' + (step > 1 && step < totalSteps + 1 ? '<button class="btn subtle" data-action="onboarding-back">&larr; Back</button>' : '') + '</div><div>';
 
   if (step === 1) {
     var orgOptions = (APP.state.data.organizations || []).map(function(o){ return '<option value="' + escAttr(o.Id) + '">' + escHtml(o.OrgName || o.Title || '') + '</option>'; }).join('');
@@ -3949,12 +4009,24 @@ function renderOnboardingStep(){
     footer += '<button class="btn" data-action="onboarding-skip">Skip</button> <button class="btn primary" data-action="onboarding-next">Assign &amp; Continue</button>';
   } else if (step === 4) {
     body += '<div style="margin-bottom:10px">Create an in-processing case for <strong>' + escHtml(st.personName) + '</strong>?</div>';
-    body += '<label style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="ob-create-inproc" checked><span>Create In-Processing Case</span></label>';
+    body += '<label style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="ob-create-inproc"' + (st.createInProc === false ? '' : ' checked') + '><span>Create In-Processing Case</span></label>';
     body += '<div class="form-grid">'
-      + formField('Sponsor (optional)', '<select id="ob-sponsor" class="select"><option value="">-- None --</option>' + (APP.state.data.people || []).filter(function(p){ return (p.Status || '').toLowerCase() !== 'departed'; }).map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('') + '</select>')
-      + formField('Notes', '<input id="ob-inproc-notes" class="input" placeholder="Optional notes">')
+      + formField('Sponsor (optional)', '<select id="ob-sponsor" class="select"><option value="">-- None --</option>' + (APP.state.data.people || []).filter(function(p){ return (p.Status || '').toLowerCase() !== 'departed'; }).map(function(p){ return '<option value="' + escAttr(p.Id) + '"' + (st.sponsorId && String(st.sponsorId) === String(p.Id) ? ' selected' : '') + '>' + escHtml(formatPerson(p)) + '</option>'; }).join('') + '</select>')
+      + formField('Notes', '<input id="ob-inproc-notes" class="input" placeholder="Optional notes" value="' + escAttr(st.inprocNotes || '') + '">')
       + '</div>';
-    footer += '<button class="btn" data-action="onboarding-skip">Skip &amp; Finish</button> <button class="btn primary" data-action="onboarding-finish">Create &amp; Finish</button>';
+    footer += '<button class="btn primary" data-action="onboarding-next">Review &amp; Finish &rarr;</button>';
+  } else if (step === 5) {
+    body += '<div style="margin-bottom:8px;font-weight:600">Review before finish</div>';
+    body += '<div class="kv" style="margin-bottom:10px">'
+      + '<div class="k">Person</div><div class="v">' + escHtml(st.personName || '') + '</div>'
+      + '<div class="k">Arrival</div><div class="v">' + escHtml(st.arrivalDate || '—') + '</div>'
+      + '<div class="k">Seat</div><div class="v">' + escHtml(st.seatLabel || '— (skipped)') + '</div>'
+      + '<div class="k">Assets</div><div class="v">' + escHtml((st.assetNames && st.assetNames.length) ? st.assetNames.join(', ') : '— (skipped)') + '</div>'
+      + '<div class="k">In-Processing Case</div><div class="v">' + (st.createInProc === false ? 'No case will be created.' : 'Case will be created' + (st.sponsorName ? ' — sponsor ' + escHtml(st.sponsorName) : '') + '.') + '</div>'
+      + (st.inprocNotes ? '<div class="k">Case Notes</div><div class="v">' + escHtml(st.inprocNotes) + '</div>' : '')
+      + '</div>';
+    body += '<div class="small-note">Click Finish to create the in-processing case (if selected) and complete onboarding. Seat and asset assignments are already saved.</div>';
+    footer += '<button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="onboarding-finish">Finish Onboarding</button>';
   }
   footer += '</div>';
   openModal('Onboarding Wizard — Step ' + step + ' of ' + totalSteps, body, footer);
@@ -3968,7 +4040,8 @@ function onboardingNext(){
     var last = (document.getElementById('ob-last').value || '').trim();
     var email = (document.getElementById('ob-email').value || '').trim();
     if (!first || !last) { toast('First and last name are required.', 'danger'); return; }
-    if (email && !email.match(/@/)) { toast('Invalid email.', 'danger'); return; }
+    if (!email) { toast('Email is required.', 'danger'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Enter a valid email address.', 'danger'); return; }
     var values = {
       Title: last + ', ' + first,
       FirstName: first, LastName: last, Email: email,
@@ -3997,19 +4070,27 @@ function onboardingNext(){
       renderOnboardingStep();
     }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to create person.', 'danger'); });
   } else if (st.step === 2) {
-    var seatVal = document.getElementById('ob-seat') ? document.getElementById('ob-seat').value : '';
+    var seatSel = document.getElementById('ob-seat');
+    var seatVal = seatSel ? seatSel.value : '';
     if (seatVal) {
+      st.seatLabel = seatSel.options[seatSel.selectedIndex] ? seatSel.options[seatSel.selectedIndex].text : '';
       updateListItem(APP.lists.Seats, Number(seatVal), { CurrentPersonID: st.personId }, { entityType: 'Seat', reason: 'Onboarding wizard seat assignment' }).then(function(){
         updateListItem(APP.lists.Personnel, st.personId, { SeatID: Number(seatVal) }, { entityType: 'Personnel', reason: 'Onboarding wizard seat link' }).catch(function(){});
         st.step = 3;
         renderOnboardingStep();
       }).catch(function(){ toast('Failed to assign seat.', 'danger'); });
     } else {
+      st.seatLabel = '';
       st.step = 3;
       renderOnboardingStep();
     }
   } else if (st.step === 3) {
     var checkboxes = document.querySelectorAll('.ob-asset-cb:checked');
+    st.assetNames = [];
+    checkboxes.forEach(function(cb){
+      var lbl = cb.parentElement ? cb.parentElement.textContent.trim() : '';
+      if (lbl) st.assetNames.push(lbl);
+    });
     if (checkboxes.length > 0) {
       var promises = [];
       checkboxes.forEach(function(cb){
@@ -4023,25 +4104,32 @@ function onboardingNext(){
       st.step = 4;
       renderOnboardingStep();
     }
+  } else if (st.step === 4) {
+    var createCb = document.getElementById('ob-create-inproc');
+    st.createInProc = createCb ? createCb.checked : false;
+    var sponsorSel = document.getElementById('ob-sponsor');
+    st.sponsorId = sponsorSel ? sponsorSel.value : '';
+    st.sponsorName = sponsorSel && sponsorSel.options[sponsorSel.selectedIndex] && sponsorSel.value ? sponsorSel.options[sponsorSel.selectedIndex].text : '';
+    var notesInput = document.getElementById('ob-inproc-notes');
+    st.inprocNotes = notesInput ? notesInput.value.trim() : '';
+    st.step = 5;
+    renderOnboardingStep();
   }
 }
 
 function onboardingFinish(){
   var st = APP.modalState.onboarding;
   if (!st) return;
-  var createInProc = document.getElementById('ob-create-inproc') ? document.getElementById('ob-create-inproc').checked : false;
-  if (!createInProc) { onboardingComplete(); return; }
-  var sponsorVal = document.getElementById('ob-sponsor') ? document.getElementById('ob-sponsor').value : '';
-  var notes = document.getElementById('ob-inproc-notes') ? document.getElementById('ob-inproc-notes').value.trim() : '';
+  if (!st.createInProc) { onboardingComplete(); return; }
   var inprocValues = {
     Title: 'In-Processing: ' + st.personName,
     PersonID: st.personId,
     ProcessType: 'In-Processing',
     Status: 'Open',
     StartDate: st.arrivalDate || new Date().toISOString().split('T')[0],
-    Notes: notes
+    Notes: st.inprocNotes || ''
   };
-  if (sponsorVal) { inprocValues.SponsorID = Number(sponsorVal); }
+  if (st.sponsorId) { inprocValues.SponsorID = Number(st.sponsorId); }
   createListItem(APP.lists.InOut, inprocValues, { entityType: 'InOutProcessing', reason: 'Onboarding wizard' }).then(function(){
     onboardingComplete();
   }).catch(function(err){ toast(extractSpErrorMessage(err) || 'In-processing case creation failed.', 'danger'); onboardingComplete(); });
@@ -6401,27 +6489,82 @@ function renderInOut(){
   renderLoading('Loading in/out processing...');
   return Promise.all([ensureInOutLoaded(), ensureInOutStepsLoaded(), ensureCurrentPersonnelLoaded()]).then(function(){
     var summary = getInOutSummary();
+    var ui = APP.state.inoutUi || (APP.state.inoutUi = { queueFilter: 'all', queueOwner: 'all' });
     var html = '<div class="grid cols-2">';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">My In/Out Cases</div><div class="card-sub">Member-facing status with current step and progress.</div></div><button class="btn subtle" data-action="open-inout-create">New Case</button></div><div class="card-body">' + renderInOutTable(summary.mine) + '</div></div>';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Office Step Queue</div><div class="card-sub">Open checklist items routed to this office or assigned user.</div></div></div><div class="card-body">' + renderStepQueue(summary.queue) + '</div></div>';
+    var queueCounts = classifyStepQueue(summary.queue);
+    var userId = APP.state.currentUser ? APP.state.currentUser.id : null;
+    var minePct = summary.queue.filter(function(s){ return s.AssignedTo && s.AssignedTo.Id === userId; }).length;
+    var chip = function(key, label, count){
+      var active = ui.queueFilter === key;
+      return '<button class="btn ' + (active ? 'primary' : 'subtle') + '" data-action="inout-queue-filter" data-filter="' + escAttr(key) + '" style="font-size:12px">' + escHtml(label) + ' (' + count + ')</button>';
+    };
+    var chips = '<div class="quick-actions" style="margin-bottom:10px">'
+      + chip('all', 'All', summary.queue.length)
+      + chip('mine', 'Assigned to me', minePct)
+      + chip('dueToday', 'Due today', queueCounts.dueToday)
+      + chip('overdue', 'Overdue', queueCounts.overdue)
+      + chip('blocked', 'Blocked', queueCounts.blocked)
+      + '</div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Office Step Queue</div><div class="card-sub">Open checklist items routed to this office or assigned user.</div></div></div><div class="card-body">' + chips + renderStepQueue(filterStepQueue(summary.queue, ui.queueFilter, userId)) + '</div></div>';
     html += '</div>';
     setView(html);
   }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">In/Out failed to load.</div></div></div>'); });
 }
+function inoutCaseProgress(caseId){
+  var steps = (APP.state.data.inoutSteps || []).filter(function(s){ return s.InOutID && String(s.InOutID.Id) === String(caseId); });
+  var total = steps.length;
+  var done = steps.filter(function(s){ return String(s.Status || '').toLowerCase().indexOf('complete') >= 0; }).length;
+  return { total: total, done: done, pct: total ? Math.round((done / total) * 100) : 0 };
+}
+function classifyStepQueue(rows){
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  var todayEnd = new Date(todayStart.getTime() + 24 * 3600 * 1000);
+  var c = { dueToday: 0, overdue: 0, blocked: 0 };
+  (rows || []).forEach(function(s){
+    var status = String(s.Status || '').toLowerCase();
+    if (status.indexOf('block') >= 0 || status.indexOf('hold') >= 0) { c.blocked++; }
+    var due = parseDate(s.DueDate);
+    if (!due) { return; }
+    if (due.getTime() < todayStart.getTime()) { c.overdue++; }
+    else if (due.getTime() < todayEnd.getTime()) { c.dueToday++; }
+  });
+  return c;
+}
+function filterStepQueue(rows, filter, userId){
+  if (!rows || filter === 'all' || !filter) { return rows || []; }
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  var todayEnd = new Date(todayStart.getTime() + 24 * 3600 * 1000);
+  return rows.filter(function(s){
+    if (filter === 'mine') { return s.AssignedTo && s.AssignedTo.Id === userId; }
+    if (filter === 'blocked') { var st = String(s.Status || '').toLowerCase(); return st.indexOf('block') >= 0 || st.indexOf('hold') >= 0; }
+    var due = parseDate(s.DueDate);
+    if (!due) { return false; }
+    if (filter === 'overdue') { return due.getTime() < todayStart.getTime(); }
+    if (filter === 'dueToday') { return due.getTime() >= todayStart.getTime() && due.getTime() < todayEnd.getTime(); }
+    return true;
+  });
+}
 function renderInOutTable(rows){
   if (!rows || !rows.length) { return '<div class="empty">No in/out cases found.</div>'; }
-  var html = '<div class="table-wrap"><table><thead><tr><th data-sort="case">Case</th><th data-sort="type">Type</th><th data-sort="status">Status</th><th data-sort="step">Current Step</th><th data-sort="opened">Opened</th><th data-sort="priority">Priority</th><th>Actions</th></tr></thead><tbody>';
+  var html = '<div class="table-wrap"><table><thead><tr><th data-sort="case">Case</th><th data-sort="type">Type</th><th data-sort="status">Status</th><th data-sort="step">Current Step</th><th data-sort="progress">Progress</th><th data-sort="opened">Opened</th><th data-sort="priority">Priority</th><th>Actions</th></tr></thead><tbody>';
   rows.forEach(function(r){
-    html += '<tr><td><strong>' + escHtml(r.InOutID || r.Title || '') + '</strong><div class="mini muted">' + escHtml((r.PersonID && r.PersonID.Title) || '') + '</div></td><td>' + escHtml(r.ProcessType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(r.CurrentStep || '') + '</td><td>' + escHtml(formatDate(r.OpenedOn)) + '</td><td>' + escHtml(r.Priority || '') + '</td><td><button class="btn subtle" data-action="view-inout-detail" data-id="' + escAttr(r.Id) + '">View</button></td></tr>';
+    var prog = inoutCaseProgress(r.Id);
+    var progCell = prog.total ? ('<div style="min-width:110px"><div class="mini muted" style="margin-bottom:2px">' + prog.done + ' / ' + prog.total + ' (' + prog.pct + '%)</div><div class="progress"><span style="width:' + prog.pct + '%"></span></div></div>') : '<span class="muted mini">No steps</span>';
+    html += '<tr><td><strong>' + escHtml(r.InOutID || r.Title || '') + '</strong><div class="mini muted">' + escHtml((r.PersonID && r.PersonID.Title) || '') + '</div></td><td>' + escHtml(r.ProcessType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(r.CurrentStep || '') + '</td><td>' + progCell + '</td><td>' + escHtml(formatDate(r.OpenedOn)) + '</td><td>' + escHtml(r.Priority || '') + '</td><td><button class="btn subtle" data-action="view-inout-detail" data-id="' + escAttr(r.Id) + '">View</button></td></tr>';
   });
   html += '</tbody></table></div>';
   return html;
 }
 function renderStepQueue(rows){
-  if (!rows || !rows.length) { return '<div class="empty">No office steps found.</div>'; }
+  if (!rows || !rows.length) { return '<div class="empty">No office steps match this filter.</div>'; }
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
   var html = '<div class="table-wrap"><table><thead><tr><th data-sort="case">Case</th><th data-sort="step">Step</th><th data-sort="status">Status</th><th data-sort="due">Due</th><th data-sort="assigned">Assigned</th><th>Action</th></tr></thead><tbody>';
   rows.forEach(function(r){
-    html += '<tr><td>' + escHtml((r.InOutID && r.InOutID.Title) || '') + '</td><td>' + escHtml((r.StepNumber || '') + (r.Title ? ' - ' + r.Title : '')) + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(formatDate(r.DueDate)) + '</td><td>' + escHtml((r.AssignedTo && r.AssignedTo.Title) || (r.OwningOrgID && r.OwningOrgID.Title) || '') + '</td><td><button class="btn subtle" data-action="complete-step" data-id="' + escAttr(r.Id) + '">Complete</button></td></tr>';
+    var due = parseDate(r.DueDate);
+    var dueCell = escHtml(formatDate(r.DueDate));
+    if (due && due.getTime() < todayStart.getTime()) { dueCell += ' <span class="badge danger">Overdue</span>'; }
+    html += '<tr><td>' + escHtml((r.InOutID && r.InOutID.Title) || '') + '</td><td>' + escHtml((r.StepNumber || '') + (r.Title ? ' - ' + r.Title : '')) + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + dueCell + '</td><td>' + escHtml((r.AssignedTo && r.AssignedTo.Title) || (r.OwningOrgID && r.OwningOrgID.Title) || '') + '</td><td><button class="btn subtle" data-action="complete-step" data-id="' + escAttr(r.Id) + '">Complete</button></td></tr>';
   });
   html += '</tbody></table></div>';
   return html;
@@ -10688,7 +10831,7 @@ function renderSimpleAssetTable(title, rows){
 }
 function renderAdmin(){
   renderLoading('Loading admin...');
-  return Promise.all([ensureWorkflowsLoaded(), ensureHowToLoaded(), ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureRequestsLoaded(), ensureTrainingCatalogLoaded()]).then(function(){
+  return Promise.all([ensureWorkflowsLoaded(), ensureHowToLoaded(), ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureRequestsLoaded(), ensureTrainingCatalogLoaded(), ensureAllRolesLoaded()]).then(function(){
     var people = APP.state.data.people || [];
     var orgs = APP.state.data.organizations || [];
     var reqs = APP.state.data.requests || [];
@@ -10744,8 +10887,131 @@ function renderAdmin(){
     }
     html += '</div></div>';
     html += '</div>';
+    html += renderRoleAdminCard();
     setView(html);
   }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">Admin failed to load.</div></div></div>'); });
+}
+function renderRoleAdminCard(){
+  if (!canManageRoles()) { return ''; }
+  var rows = APP.state.allRoles || [];
+  var active = rows.filter(function(r){ return roleRowActive(r); });
+  var inactive = rows.filter(function(r){ return !roleRowActive(r); });
+  var byRole = {};
+  active.forEach(function(r){
+    (normalizeRoleValues(r.Role) || []).forEach(function(name){
+      if (!byRole[name]) { byRole[name] = 0; }
+      byRole[name]++;
+    });
+  });
+  var chips = (APP.roles.registry || []).map(function(role){
+    var count = byRole[role.name] || 0;
+    return '<div class="badge" style="padding:6px 10px;margin:2px;background:rgba(255,255,255,.05)"><strong>' + escHtml(role.name) + '</strong> <span class="muted mini">(' + count + ')</span></div>';
+  }).join('');
+  var html = '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Role Administration</div><div class="card-sub">Manage CCSD_AppRoles assignments. Edits write directly to SharePoint.</div></div><div class="quick-actions"><button class="btn primary" data-action="open-role-assign">+ New Role Assignment</button></div></div><div class="card-body">';
+  html += '<div style="display:flex;flex-wrap:wrap;margin-bottom:10px">' + chips + '</div>';
+  if (!rows.length) { html += '<div class="empty">No role assignments found in CCSD_AppRoles.</div>'; }
+  else {
+    html += '<div class="table-wrap"><table><thead><tr><th>Role</th><th>Principal</th><th>Type</th><th>Scope</th><th>Effective</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var activeFlag = roleRowActive(r);
+      var principal = (r.Member && (r.Member.Title || r.Member.EMail)) || r.Principal || '';
+      var scope = r.ScopeType || '';
+      if (r.ScopeOrgID && r.ScopeOrgID.Title) { scope += ' ' + r.ScopeOrgID.Title; }
+      if (r.ScopeFacilityID && r.ScopeFacilityID.Title) { scope += ' ' + r.ScopeFacilityID.Title; }
+      if (r.ScopeSystemID && r.ScopeSystemID.Title) { scope += ' ' + r.ScopeSystemID.Title; }
+      var eff = (r.EffectiveFrom ? formatDate(r.EffectiveFrom) : '—') + ' → ' + (r.EffectiveTo ? formatDate(r.EffectiveTo) : '—');
+      html += '<tr>'
+        + '<td><strong>' + escHtml((normalizeRoleValues(r.Role) || []).join(', ')) + '</strong></td>'
+        + '<td>' + escHtml(principal) + '</td>'
+        + '<td>' + escHtml(normalizeChoiceValue(r.PrincipalType) || '') + '</td>'
+        + '<td>' + escHtml(scope || '—') + '</td>'
+        + '<td class="mini">' + escHtml(eff) + '</td>'
+        + '<td>' + (activeFlag ? '<span class="badge ok">Active</span>' : '<span class="badge">Inactive</span>') + '</td>'
+        + '<td>'
+        + '<button class="btn subtle" data-action="open-role-edit" data-id="' + escAttr(r.Id) + '">Edit</button> '
+        + (activeFlag ? '<button class="btn subtle" data-action="toggle-role-active" data-id="' + escAttr(r.Id) + '" data-active="0">Deactivate</button>' : '<button class="btn subtle" data-action="toggle-role-active" data-id="' + escAttr(r.Id) + '" data-active="1">Reactivate</button>')
+        + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<div class="small-note" style="margin-top:8px">' + active.length + ' active, ' + inactive.length + ' inactive. Role resolution uses the active set only.</div>';
+  }
+  html += '</div></div>';
+  return html;
+}
+function openRoleAssignModal(roleId){
+  if (!canManageRoles()) { toast('Role administration is restricted to App Admin.', 'danger'); return; }
+  var editing = null;
+  if (roleId) {
+    (APP.state.allRoles || []).some(function(r){ if (String(r.Id) === String(roleId)) { editing = r; return true; } return false; });
+    if (!editing) { toast('Role assignment not found.', 'danger'); return; }
+  }
+  APP.modalState.roleEdit = { id: editing ? editing.Id : null };
+  var roleOptions = (APP.roles.registry || []).map(function(role){
+    var sel = editing && normalizeRoleValues(editing.Role).indexOf(role.name) >= 0 ? ' selected' : '';
+    return '<option value="' + escAttr(role.name) + '"' + sel + '>' + escHtml(role.name) + '</option>';
+  }).join('');
+  var principalTypes = ['User','SharePointGroup','M365Group'];
+  var ptypeCur = editing ? normalizeChoiceValue(editing.PrincipalType || '') : '';
+  var ptypeOptions = principalTypes.map(function(t){ return '<option value="' + escAttr(t) + '"' + (ptypeCur === t ? ' selected' : '') + '>' + escHtml(t) + '</option>'; }).join('');
+  var principalVal = editing ? (editing.Principal || (editing.Member && (editing.Member.EMail || editing.Member.Title)) || '') : '';
+  var title = editing ? (editing.Title || '') : '';
+  var notes = editing ? (editing.Notes || '') : '';
+  var effFrom = editing && editing.EffectiveFrom ? String(editing.EffectiveFrom).slice(0,10) : '';
+  var effTo = editing && editing.EffectiveTo ? String(editing.EffectiveTo).slice(0,10) : '';
+  var active = editing ? (editing.IsActive == null ? true : normalizeBoolean(editing.IsActive)) : true;
+  var body = '<div class="form-grid">'
+    + formField('Title / Label', '<input id="ra-title" class="input" placeholder="e.g. HR Admins — Wing Staff" value="' + escAttr(title) + '">')
+    + formField('Role *', '<select id="ra-role" class="select">' + roleOptions + '</select>')
+    + formField('Principal Type *', '<select id="ra-ptype" class="select">' + ptypeOptions + '</select>')
+    + formField('Principal (email, group title, or login) *', '<input id="ra-principal" class="input" placeholder="jane.doe@example.mil OR CCSD HR Group" value="' + escAttr(principalVal) + '">')
+    + formField('Effective From', '<input id="ra-from" class="input" type="date" value="' + escAttr(effFrom) + '">')
+    + formField('Effective To', '<input id="ra-to" class="input" type="date" value="' + escAttr(effTo) + '">')
+    + '<div class="full">' + formField('Notes', '<textarea id="ra-notes" class="textarea" placeholder="Context for this assignment">' + escHtml(notes) + '</textarea>') + '</div>'
+    + '<div class="full"><label style="display:flex;gap:6px;align-items:center"><input id="ra-active" type="checkbox"' + (active ? ' checked' : '') + '><span>Active</span></label></div>'
+    + '</div>';
+  body += '<div class="small-note" style="margin-top:8px">Advanced scope fields (org, facility, system) can be edited directly in the CCSD_AppRoles list.</div>';
+  var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="save-role-assign">' + (editing ? 'Save Changes' : 'Create Assignment') + '</button></div>';
+  openModal(editing ? 'Edit Role Assignment' : 'New Role Assignment', body, footer);
+}
+function saveRoleAssign(){
+  if (!canManageRoles()) { toast('Role administration is restricted to App Admin.', 'danger'); return; }
+  var st = APP.modalState.roleEdit || {};
+  var role = document.getElementById('ra-role').value;
+  var ptype = document.getElementById('ra-ptype').value;
+  var principal = (document.getElementById('ra-principal').value || '').trim();
+  if (!role || !ptype || !principal) { toast('Role, Principal Type, and Principal are required.', 'danger'); return; }
+  var payload = {
+    Title: (document.getElementById('ra-title').value || '').trim() || (role + ' — ' + principal),
+    Role: role,
+    PrincipalType: ptype,
+    Principal: principal,
+    IsActive: document.getElementById('ra-active').checked,
+    Notes: (document.getElementById('ra-notes').value || '').trim()
+  };
+  var fromVal = document.getElementById('ra-from').value;
+  var toVal = document.getElementById('ra-to').value;
+  if (fromVal) { payload.EffectiveFrom = fromVal; }
+  if (toVal) { payload.EffectiveTo = toVal; }
+  var op = st.id
+    ? updateListItem(APP.lists.AppRoles, Number(st.id), payload, { entityType: 'AppRoles', reason: 'Role admin UI edit' })
+    : createListItem(APP.lists.AppRoles, payload, { entityType: 'AppRoles', reason: 'Role admin UI create' });
+  op.then(function(){
+    toast('Role assignment saved.', 'ok');
+    closeModal();
+    return ensureAllRolesLoaded(true);
+  }).then(function(){
+    if (APP.state.route === 'admin') { renderAdmin(); }
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Role save failed.', 'danger'); });
+}
+function toggleRoleActive(roleId, makeActive){
+  if (!canManageRoles()) { toast('Role administration is restricted to App Admin.', 'danger'); return; }
+  updateListItem(APP.lists.AppRoles, Number(roleId), { IsActive: !!makeActive }, { entityType: 'AppRoles', reason: 'Role admin UI toggle active' }).then(function(){
+    toast(makeActive ? 'Role reactivated.' : 'Role deactivated.', 'ok');
+    return ensureAllRolesLoaded(true);
+  }).then(function(){
+    if (APP.state.route === 'admin') { renderAdmin(); }
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Role update failed.', 'danger'); });
 }
 function ensureListReachable(listTitle){
   return spGetJson("/web/lists/GetByTitle('" + escOData(listTitle) + "')?$select=Title,ItemCount", 'ensureListReachable').then(function(data){
@@ -10838,6 +11104,220 @@ function renderDiagnostics(){
     html += '</div></div>';
     setView(html);
   });
+}
+
+function renderHelp(){
+  renderLoading('Loading help...');
+  return Promise.all([ensureHowToLoaded(), ensureMyRolesLoaded(), ensureCurrentPersonnelLoaded()]).then(function(){
+    var myRoles = APP.state.roleNames || [];
+    var registry = (APP.roles && APP.roles.registry) || [];
+    var capability = (APP.roles && APP.roles.capability) || {};
+    var capDocs = (APP.roles && APP.roles.capabilityDocs) || {};
+    var howto = APP.state.data.howto || [];
+    var html = '';
+    html += '<div class="exec-strip"><div class="title">Help &amp; About</div>'
+      + '<div class="item"><span class="swatch"></span>App version ' + escHtml(APP.version || '—') + '</div>'
+      + '<div class="item"><span class="swatch"></span>Environment ' + escHtml(APP.environment || '—') + '</div>'
+      + '<div class="item"><span class="swatch"></span>Your roles: ' + escHtml(myRoles.length ? myRoles.join(', ') : 'None assigned') + '</div>'
+      + '</div>';
+
+    /* Roles & Access */
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Roles &amp; Access</div><div class="card-sub">Every role defined in the platform and the capabilities it unlocks. Driven by APP.roles.</div></div></div><div class="card-body">';
+    html += '<div class="table-wrap" style="margin-bottom:12px"><table><thead><tr><th>Role</th><th>Summary</th><th>Implies</th><th>Notes</th><th>You?</th></tr></thead><tbody>';
+    registry.forEach(function(role){
+      var mine = myRoles.indexOf(role.name) >= 0;
+      html += '<tr>'
+        + '<td><strong>' + escHtml(role.name) + '</strong></td>'
+        + '<td>' + escHtml(role.summary || '') + '</td>'
+        + '<td>' + escHtml((role.implies || []).join(', ') || '—') + '</td>'
+        + '<td class="mini muted">' + escHtml(role.note || '') + '</td>'
+        + '<td>' + (mine ? '<span class="badge ok">Yes</span>' : '<span class="muted mini">—</span>') + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    html += '<div class="card-sub" style="margin:10px 0 6px">Capabilities</div>';
+    html += '<div class="table-wrap"><table><thead><tr><th>Capability</th><th>What it unlocks</th><th>Allowed roles</th><th>Your access</th></tr></thead><tbody>';
+    Object.keys(capability).forEach(function(cap){
+      var allowed = capability[cap] || [];
+      var have = allowed.some(function(r){ return myRoles.indexOf(r) >= 0; });
+      html += '<tr>'
+        + '<td><code>' + escHtml(cap) + '</code></td>'
+        + '<td>' + escHtml(capDocs[cap] || '') + '</td>'
+        + '<td>' + escHtml(allowed.join(', ')) + '</td>'
+        + '<td>' + (have ? '<span class="badge ok">Allowed</span>' : '<span class="badge">Denied</span>') + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<div class="small-note" style="margin-top:10px">Role assignments live in <code>CCSD_AppRoles</code>. App Admins can edit them from the Admin tab.</div>';
+    html += '</div></div>';
+
+    /* How-To */
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">How-To</div><div class="card-sub">Module-level guidance from CCSD_HowTo.</div></div></div><div class="card-body">';
+    var active = howto.filter(function(h){ return h.IsActive == null || normalizeBoolean(h.IsActive); });
+    if (!active.length) {
+      html += '<div class="empty">No how-to entries have been published yet. Add rows to the <code>CCSD_HowTo</code> list and they will appear here automatically.</div>';
+    } else {
+      var byModule = {};
+      active.forEach(function(h){ var m = h.Module || 'General'; if (!byModule[m]) { byModule[m] = []; } byModule[m].push(h); });
+      Object.keys(byModule).sort().forEach(function(mod){
+        html += '<div style="margin-bottom:14px"><div style="font-weight:700;font-size:14px;margin-bottom:6px">' + escHtml(mod) + '</div>';
+        byModule[mod].forEach(function(h){
+          html += '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-weight:600">' + escHtml(h.Title || '') + '</div>';
+          if (h.Audience) { html += '<div class="small-note" style="margin:4px 0">Audience: ' + escHtml(h.Audience) + '</div>'; }
+          if (h.Summary) { html += '<div style="font-size:13px;margin-top:4px">' + escHtml(h.Summary) + '</div>'; }
+          if (h.Steps) { html += '<div style="font-size:13px;margin-top:6px;white-space:pre-wrap">' + escHtml(h.Steps) + '</div>'; }
+          if (h.Links) { html += '<div class="small-note" style="margin-top:6px">Links: ' + escHtml(h.Links) + '</div>'; }
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+    }
+    html += '</div></div>';
+
+    /* About */
+    var listsKeys = Object.keys(APP.lists || {});
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">About</div><div class="card-sub">Deployment metadata and environment details.</div></div></div><div class="card-body"><div class="kv">'
+      + '<div class="k">Version</div><div class="v">' + escHtml(APP.version || '—') + '</div>'
+      + '<div class="k">Environment</div><div class="v">' + escHtml(APP.environment || '—') + '</div>'
+      + '<div class="k">Site</div><div class="v">' + escHtml(APP.siteLabel || '—') + '</div>'
+      + '<div class="k">Root URL</div><div class="v mini">' + escHtml(APP.rootUrl || window.location.origin) + '</div>'
+      + '<div class="k">Signed in as</div><div class="v">' + escHtml(APP.state.currentUser ? APP.state.currentUser.title : '—') + '</div>'
+      + '<div class="k">Email</div><div class="v">' + escHtml(APP.state.currentUser ? APP.state.currentUser.email : '—') + '</div>'
+      + '<div class="k">Personnel record</div><div class="v">' + escHtml(APP.state.currentPersonnel ? formatPerson(APP.state.currentPersonnel) : 'Not linked') + '</div>'
+      + '<div class="k">Lists referenced</div><div class="v mini">' + escHtml(String(listsKeys.length)) + '</div>'
+      + '</div>'
+      + '<div class="small-note" style="margin-top:10px">Report issues at <a href="https://github.com/anthropics/claude-code/issues" target="_blank" rel="noopener">github.com/anthropics/claude-code/issues</a>.</div>'
+      + '</div></div>';
+
+    setView(html);
+  }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">Help failed to load.</div></div></div>'); });
+}
+
+function renderMyStatus(){
+  renderLoading('Loading my status...');
+  return Promise.all([
+    ensureCurrentPersonnelLoaded(),
+    ensureInOutLoaded(),
+    ensureInOutStepsLoaded(),
+    ensureTrainingCatalogLoaded().catch(function(){ return []; }),
+    ensureTrainingRecordsLoaded().catch(function(){ return []; }),
+    ensureRequestsLoaded().catch(function(){ return []; })
+  ]).then(function(){
+    var person = APP.state.currentPersonnel;
+    var userId = APP.state.currentUser ? APP.state.currentUser.id : null;
+    var html = '';
+    if (!person) {
+      html += '<div class="card"><div class="card-body"><div class="empty">We could not match your account to a Personnel record, so individual status is not available. Ask your HR office to link your record.</div></div></div>';
+      setView(html);
+      return;
+    }
+    html += '<div class="exec-strip"><div class="title">My Status &mdash; ' + escHtml(formatPerson(person)) + '</div>'
+      + '<div class="item"><span class="swatch"></span>' + escHtml((person.OrgID && person.OrgID.Title) || 'No org') + '</div>'
+      + '<div class="item"><span class="swatch"></span>' + escHtml((person.PositionID && person.PositionID.Title) || 'No position') + '</div>'
+      + '<div class="item"><span class="swatch"></span>Status ' + escHtml(person.Status || 'Unknown') + '</div>'
+      + '</div>';
+
+    /* My In/Out cases */
+    var allCases = APP.state.data.inout || [];
+    var myCases = allCases.filter(function(c){ return c.PersonID && c.PersonID.Id === person.Id; });
+    var openCases = myCases.filter(function(c){ return String(c.Status || '').toLowerCase().indexOf('complete') < 0 && String(c.Status || '').toLowerCase().indexOf('closed') < 0; });
+    var closedCases = myCases.filter(function(c){ return String(c.Status || '').toLowerCase().indexOf('complete') >= 0 || String(c.Status || '').toLowerCase().indexOf('closed') >= 0; });
+
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Open In/Out Case' + (openCases.length === 1 ? '' : 's') + '</div><div class="card-sub">Live progress, current step, and the checklist items assigned to you.</div></div></div><div class="card-body">';
+    if (!openCases.length) {
+      html += '<div class="empty">You have no open in/out cases. If you are newly arriving or departing, contact your HR office.</div>';
+    } else {
+      openCases.forEach(function(c){
+        var prog = inoutCaseProgress(c.Id);
+        var daysOpen = c.OpenedOn ? Math.max(0, Math.floor((Date.now() - new Date(c.OpenedOn).getTime()) / (24*3600*1000))) : null;
+        var mySteps = (APP.state.data.inoutSteps || []).filter(function(s){
+          if (!s.InOutID || s.InOutID.Id !== c.Id) { return false; }
+          if (String(s.Status || '').toLowerCase().indexOf('complete') >= 0) { return false; }
+          return true;
+        });
+        mySteps.sort(function(a,b){ return (Number(a.StepNumber) || 0) - (Number(b.StepNumber) || 0); });
+        var nextStep = mySteps[0];
+        html += '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'
+          + '<div><div style="font-weight:700">' + escHtml(c.InOutID || c.Title || '') + ' <span class="muted mini">&middot; ' + escHtml(c.ProcessType || '') + '</span></div>'
+          + '<div class="small-note">Opened ' + escHtml(formatDate(c.OpenedOn)) + (daysOpen != null ? ' (' + daysOpen + ' day' + (daysOpen === 1 ? '' : 's') + ' ago)' : '') + ' &middot; Current step: <strong>' + escHtml(c.CurrentStep || '—') + '</strong></div>'
+          + '</div>'
+          + '<button class="btn subtle" data-action="view-inout-detail" data-id="' + escAttr(c.Id) + '">Open Case</button>'
+          + '</div>'
+          + '<div style="margin-top:10px"><div class="mini muted" style="margin-bottom:2px">' + prog.done + ' of ' + prog.total + ' steps complete (' + prog.pct + '%)</div><div class="progress"><span style="width:' + prog.pct + '%"></span></div></div>';
+        if (nextStep) {
+          html += '<div class="small-note" style="margin-top:8px">Next up: <strong>' + escHtml(nextStep.Title || ('Step ' + nextStep.StepNumber)) + '</strong>'
+            + (nextStep.DueDate ? ' &middot; due ' + escHtml(formatDate(nextStep.DueDate)) : '')
+            + (nextStep.OwningOrgID && nextStep.OwningOrgID.Title ? ' &middot; ' + escHtml(nextStep.OwningOrgID.Title) : '')
+            + '</div>';
+        }
+        var openCount = mySteps.length;
+        if (openCount > 1) {
+          html += '<div class="small-note" style="margin-top:4px">' + openCount + ' step' + (openCount === 1 ? '' : 's') + ' remaining.</div>';
+        }
+        html += '</div>';
+      });
+    }
+    html += '</div></div>';
+
+    /* My training status */
+    var training = (typeof getMyTrainingModel === 'function') ? getMyTrainingModel() : [];
+    var applicable = training.filter(function(t){ return t && t.applicable; });
+    var missing = applicable.filter(function(t){ return t.status === 'Missing'; });
+    var expired = applicable.filter(function(t){ return t.status === 'Expired'; });
+    var dueSoon = applicable.filter(function(t){ return t.status === 'Due Soon'; });
+    var pending = applicable.filter(function(t){ return t.status === 'Pending Review'; });
+
+    html += '<div class="grid cols-2" style="margin-top:16px">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">My Training</div><div class="card-sub">Applicable training items and their current status.</div></div><button class="btn subtle" data-action="nav" data-route="training">Open Training</button></div><div class="card-body">';
+    if (!applicable.length) {
+      html += '<div class="empty">No applicable training items for your record.</div>';
+    } else {
+      html += '<div class="list-inline" style="margin-bottom:10px">' + statusBadge('Missing: ' + missing.length) + statusBadge('Expired: ' + expired.length) + statusBadge('Due Soon: ' + dueSoon.length) + statusBadge('Pending Review: ' + pending.length) + '</div>';
+      var priority = missing.concat(expired).concat(dueSoon).slice(0, 8);
+      if (priority.length) {
+        html += '<div class="table-wrap"><table><thead><tr><th>Training</th><th>Status</th><th>Expires</th></tr></thead><tbody>';
+        priority.forEach(function(t){
+          html += '<tr><td>' + escHtml(t.name || '') + '</td><td>' + statusBadge(t.status) + '</td><td>' + escHtml(t.latest && t.latest.ExpirationDate ? formatDate(t.latest.ExpirationDate) : '—') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      } else {
+        html += '<div class="small-note">All current. Nice work.</div>';
+      }
+    }
+    html += '</div></div>';
+
+    /* My requests */
+    var allReq = APP.state.data.requests || [];
+    var myReq = allReq.filter(function(r){ return (r.Requester && r.Requester.Id === userId) || (r.PersonID && r.PersonID.Id === person.Id); });
+    var openReq = myReq.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('complete') < 0 && s.indexOf('closed') < 0; });
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">My Requests</div><div class="card-sub">Requests you filed or that name you as the subject.</div></div><button class="btn subtle" data-action="nav" data-route="requests">Open Requests</button></div><div class="card-body">';
+    if (!myReq.length) {
+      html += '<div class="empty">You have no requests.</div>';
+    } else {
+      html += '<div class="small-note" style="margin-bottom:8px">' + openReq.length + ' open &middot; ' + (myReq.length - openReq.length) + ' closed</div>';
+      html += '<div class="table-wrap"><table><thead><tr><th>Request</th><th>Type</th><th>Status</th><th>Opened</th></tr></thead><tbody>';
+      myReq.slice(0, 10).forEach(function(r){
+        html += '<tr><td><button class="btn subtle" data-action="view-request" data-id="' + escAttr(r.Id) + '">' + escHtml(r.Title || r.RequestID || ('Request ' + r.Id)) + '</button></td><td>' + escHtml(r.RequestType || '') + '</td><td>' + statusBadge(r.Status || 'Open') + '</td><td>' + escHtml(formatDate(r.OpenedOn || r.Created)) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</div></div>';
+    html += '</div>';
+
+    /* Closed history */
+    if (closedCases.length) {
+      html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Closed In/Out History</div><div class="card-sub">Prior in/out cases you were the subject of.</div></div></div><div class="card-body">';
+      html += '<div class="table-wrap"><table><thead><tr><th>Case</th><th>Type</th><th>Status</th><th>Opened</th><th>Closed</th></tr></thead><tbody>';
+      closedCases.slice(0, 25).forEach(function(c){
+        html += '<tr><td><button class="btn subtle" data-action="view-inout-detail" data-id="' + escAttr(c.Id) + '">' + escHtml(c.InOutID || c.Title || '') + '</button></td><td>' + escHtml(c.ProcessType || '') + '</td><td>' + statusBadge(c.Status || '') + '</td><td>' + escHtml(formatDate(c.OpenedOn)) + '</td><td>' + escHtml(formatDate(c.ClosedOn)) + '</td></tr>';
+      });
+      html += '</tbody></table></div></div></div>';
+    }
+
+    setView(html);
+  }).catch(function(){ setView('<div class="card"><div class="card-body"><div class="empty">My Status failed to load.</div></div></div>'); });
 }
 
 function refreshAll(){
@@ -11019,9 +11499,13 @@ function openInOutDetail(caseId){
   cases.some(function(c){ if (String(c.Id) === String(caseId)) { row = c; return true; } return false; });
   if (!row) { toast('Case not found.', 'danger'); return; }
   var steps = (APP.state.data.inoutSteps || []).filter(function(s){ return s.InOutID && String(s.InOutID.Id) === String(caseId); });
+  steps.sort(function(a,b){ return (Number(a.StepNumber) || 0) - (Number(b.StepNumber) || 0); });
   var totalSteps = steps.length;
   var doneSteps = steps.filter(function(s){ return String(s.Status || '').toLowerCase().indexOf('complete') >= 0; }).length;
   var pct = totalSteps ? Math.round((doneSteps / totalSteps) * 100) : 0;
+  var personId = row.PersonID && row.PersonID.Id;
+  var isSubject = !!(APP.state.currentPersonnel && personId && APP.state.currentPersonnel.Id === personId);
+  var canOffice = canManageInOut();
   var body = '<div class="kv">'
     + '<div class="k">Case ID</div><div class="v">' + escHtml(row.InOutID || row.Title || '') + '</div>'
     + '<div class="k">Person</div><div class="v">' + escHtml((row.PersonID && row.PersonID.Title) || '') + '</div>'
@@ -11033,14 +11517,62 @@ function openInOutDetail(caseId){
     + '</div>';
   body += '<div style="margin-top:10px" class="progress"><span style="width:' + pct + '%"></span></div>';
   if (steps.length) {
-    body += '<div style="margin-top:14px"><div class="table-wrap"><table><thead><tr><th data-sort="step">#</th><th data-sort="name">Step</th><th data-sort="status">Status</th><th data-sort="assigned">Assigned</th><th data-sort="due">Due</th><th>Action</th></tr></thead><tbody>';
+    body += '<div style="margin-top:14px"><div class="table-wrap"><table><thead><tr><th data-sort="step">#</th><th data-sort="name">Step</th><th data-sort="status">Status</th><th data-sort="assigned">Assigned</th><th data-sort="due">Due</th><th>Notes</th><th>Action</th></tr></thead><tbody>';
     steps.forEach(function(s){
       var isDone = String(s.Status || '').toLowerCase().indexOf('complete') >= 0;
-      body += '<tr><td>' + escHtml(String(s.StepNumber || '')) + '</td><td>' + escHtml(s.Title || '') + '</td><td>' + statusBadge(s.Status || 'Open') + '</td><td>' + escHtml((s.AssignedTo && s.AssignedTo.Title) || (s.OwningOrgID && s.OwningOrgID.Title) || '') + '</td><td>' + escHtml(formatDate(s.DueDate)) + '</td><td>' + (!isDone ? '<button class="btn subtle" data-action="complete-step" data-id="' + escAttr(s.Id) + '">Complete</button>' : '<span class="badge ok">Done</span>') + '</td></tr>';
+      var memberNote = s.MemberNotes || '';
+      var officeNote = s.OfficeNotes || '';
+      var noteCell = '';
+      if (memberNote) { noteCell += '<div class="mini"><strong>Member:</strong> ' + escHtml(memberNote) + '</div>'; }
+      if (officeNote) { noteCell += '<div class="mini"><strong>Office:</strong> ' + escHtml(officeNote) + '</div>'; }
+      if (!noteCell) { noteCell = '<span class="muted mini">—</span>'; }
+      var actions = isDone ? '<span class="badge ok">Done</span>' : '<button class="btn subtle" data-action="complete-step" data-id="' + escAttr(s.Id) + '">Complete</button>';
+      if (isSubject && !isDone) { actions += ' <button class="btn subtle" data-action="save-inout-member-note" data-id="' + escAttr(s.Id) + '" data-field="inoutMemberNote-' + escAttr(s.Id) + '">Add Member Note</button>'; }
+      if (canOffice) { actions += ' <button class="btn subtle" data-action="save-inout-office-note" data-id="' + escAttr(s.Id) + '" data-field="inoutOfficeNote-' + escAttr(s.Id) + '">Add Office Note</button>'; }
+      if (isSubject && !isDone) { noteCell += '<div style="margin-top:4px"><input class="input" id="inoutMemberNote-' + escAttr(s.Id) + '" placeholder="Add a member note..." style="font-size:12px;padding:4px"></div>'; }
+      if (canOffice) { noteCell += '<div style="margin-top:4px"><input class="input" id="inoutOfficeNote-' + escAttr(s.Id) + '" placeholder="Add an office note..." style="font-size:12px;padding:4px"></div>'; }
+      body += '<tr><td>' + escHtml(String(s.StepNumber || '')) + '</td><td>' + escHtml(s.Title || '') + '</td><td>' + statusBadge(s.Status || 'Open') + '</td><td>' + escHtml((s.AssignedTo && s.AssignedTo.Title) || (s.OwningOrgID && s.OwningOrgID.Title) || '') + '</td><td>' + escHtml(formatDate(s.DueDate)) + '</td><td>' + noteCell + '</td><td>' + actions + '</td></tr>';
     });
     body += '</tbody></table></div></div>';
   }
+  if (row.Notes) {
+    body += '<div style="margin-top:14px"><div class="small-note" style="font-weight:600;margin-bottom:4px">Case Notes</div><div style="white-space:pre-wrap;font-size:13px">' + escHtml(row.Notes) + '</div></div>';
+  }
   openModal('In/Out Case Detail', body, '<div></div><button class="btn" data-action="close-modal">Close</button>', row.ProcessType || '');
+}
+function saveInOutMemberNote(stepId){
+  var input = document.getElementById('inoutMemberNote-' + stepId);
+  if (!input) { return; }
+  var val = (input.value || '').trim();
+  if (!val) { toast('Enter a note first.', 'danger'); return; }
+  var existing = (APP.state.data.inoutSteps || []).filter(function(s){ return String(s.Id) === String(stepId); })[0];
+  var prior = existing && existing.MemberNotes ? existing.MemberNotes + '\n' : '';
+  var stamped = prior + '[' + new Date().toISOString().slice(0,10) + '] ' + val;
+  updateListItem(APP.lists.InOutSteps, Number(stepId), { MemberNotes: stamped }, { entityType: 'InOutStep', reason: 'Member added note' }).then(function(){
+    return ensureInOutStepsLoaded(true);
+  }).then(function(){
+    toast('Note added.', 'ok');
+    closeModal();
+    openInOutDetail(existing.InOutID && existing.InOutID.Id);
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to save note.', 'danger'); });
+}
+function saveInOutOfficeNote(stepId){
+  if (!canManageInOut()) { toast('Only In/Out office can add office notes.', 'danger'); return; }
+  var input = document.getElementById('inoutOfficeNote-' + stepId);
+  if (!input) { return; }
+  var val = (input.value || '').trim();
+  if (!val) { toast('Enter a note first.', 'danger'); return; }
+  var existing = (APP.state.data.inoutSteps || []).filter(function(s){ return String(s.Id) === String(stepId); })[0];
+  var prior = existing && existing.OfficeNotes ? existing.OfficeNotes + '\n' : '';
+  var who = APP.state.currentUser && APP.state.currentUser.title ? ' — ' + APP.state.currentUser.title : '';
+  var stamped = prior + '[' + new Date().toISOString().slice(0,10) + who + '] ' + val;
+  updateListItem(APP.lists.InOutSteps, Number(stepId), { OfficeNotes: stamped }, { entityType: 'InOutStep', reason: 'Office added note' }).then(function(){
+    return ensureInOutStepsLoaded(true);
+  }).then(function(){
+    toast('Note added.', 'ok');
+    closeModal();
+    openInOutDetail(existing.InOutID && existing.InOutID.Id);
+  }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Failed to save note.', 'danger'); });
 }
 
 /* ─── Supervisor Team Training Dashboard ─── */
@@ -14367,6 +14899,8 @@ function renderRoute(){
   if (route === 'supervisor') { if (!canSeeSupervisorHub()) { toast('Access restricted to supervisors.', 'danger'); return renderHome(); } return renderSupervisorHub(); }
   if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
   if (route === 'diagnostics') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderDiagnostics(); }
+  if (route === 'mystatus') { return renderMyStatus(); }
+  if (route === 'help') { return renderHelp(); }
   return renderHome();
 }
 
@@ -14834,19 +15368,26 @@ function handleClick(e){
   if (action === 'focus-seat-assets') { routeTo('facilities'); toast('Seat-focused map support will plug into Facilities next.', 'ok'); return; }
   if (action === 'edit-person') { openPersonModal(el.getAttribute('data-id'), true); return; }
   if (action === 'save-person') { savePersonEdit(); return; }
-  if (action === 'open-onboarding-wizard') { openOnboardingWizard(); return; }
-  if (action === 'onboarding-next') { onboardingNext(); return; }
+  if (action === 'open-onboarding-wizard') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } openOnboardingWizard(); return; }
+  if (action === 'onboarding-next') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } onboardingNext(); return; }
   if (action === 'onboarding-skip') {
+    if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; }
     var obSt = APP.modalState.onboarding;
-    if (obSt) { if (obSt.step < 4) { obSt.step++; renderOnboardingStep(); } else { onboardingComplete(); } }
+    /* Skip is only exposed on steps 2 and 3 (optional seat / asset assignment). Advance to the next step. */
+    if (obSt && obSt.step >= 2 && obSt.step <= 3) { obSt.step++; renderOnboardingStep(); }
     return;
   }
-  if (action === 'onboarding-finish') { onboardingFinish(); return; }
-  if (action === 'depart-person') { openDepartureModal(el.getAttribute('data-id')); return; }
-  if (action === 'confirm-departure') { confirmDeparture(); return; }
-  if (action === 'transfer-person') { openTransferPersonModal(el.getAttribute('data-id')); return; }
-  if (action === 'confirm-transfer-person') { confirmTransferPerson(); return; }
-  if (action === 'export-people-csv') { exportPeopleCSV(); return; }
+  if (action === 'onboarding-back') {
+    var obBackSt = APP.modalState.onboarding;
+    if (obBackSt && obBackSt.step > 1) { obBackSt.step--; renderOnboardingStep(); }
+    return;
+  }
+  if (action === 'onboarding-finish') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } onboardingFinish(); return; }
+  if (action === 'depart-person') { if (!canEditPeople()) { toast('Departure processing is restricted to HR or Admin roles.', 'danger'); return; } openDepartureModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-departure') { if (!canEditPeople()) { toast('Departure processing is restricted to HR or Admin roles.', 'danger'); return; } confirmDeparture(); return; }
+  if (action === 'transfer-person') { if (!canEditPeople()) { toast('Transfer is restricted to HR or Admin roles.', 'danger'); return; } openTransferPersonModal(el.getAttribute('data-id')); return; }
+  if (action === 'confirm-transfer-person') { if (!canEditPeople()) { toast('Transfer is restricted to HR or Admin roles.', 'danger'); return; } confirmTransferPerson(); return; }
+  if (action === 'export-people-csv') { if (!canEditPeople()) { toast('People export is restricted to HR or Admin roles.', 'danger'); return; } exportPeopleCSV(); return; }
   if (action === 'view-training') { openTrainingModal(el.getAttribute('data-id')); return; }
   if (action === 'submit-training' || action === 'open-training-submit') { openTrainingSubmissionModal(el.getAttribute('data-id')); return; }
   if (action === 'save-training-submission') { saveTrainingSubmission(); return; }
@@ -14872,6 +15413,18 @@ function handleClick(e){
   if (action === 'save-template-request') { saveTemplateRequest(); return; }
   if (action === 'open-inout-create') { openCreateInOutModal(); return; }
   if (action === 'save-inout') { saveInOut(); return; }
+  if (action === 'inout-queue-filter') {
+    var ui = APP.state.inoutUi || (APP.state.inoutUi = { queueFilter: 'all', queueOwner: 'all' });
+    ui.queueFilter = el.getAttribute('data-filter') || 'all';
+    renderInOut();
+    return;
+  }
+  if (action === 'save-inout-member-note') { saveInOutMemberNote(el.getAttribute('data-id')); return; }
+  if (action === 'save-inout-office-note') { saveInOutOfficeNote(el.getAttribute('data-id')); return; }
+  if (action === 'open-role-assign') { openRoleAssignModal(null); return; }
+  if (action === 'open-role-edit') { openRoleAssignModal(el.getAttribute('data-id')); return; }
+  if (action === 'save-role-assign') { saveRoleAssign(); return; }
+  if (action === 'toggle-role-active') { toggleRoleActive(el.getAttribute('data-id'), el.getAttribute('data-active') === '1'); return; }
   if (action === 'run-self-test') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } runSelfTest().then(function(){ if (APP.state.route === 'diagnostics' || APP.state.route === 'admin') { renderRoute(); } }); return; }
   if (action === 'flush-telemetry') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } flushTelemetryQueue(); return; }
   if (action === 'refresh-all') { refreshAll(); return; }
