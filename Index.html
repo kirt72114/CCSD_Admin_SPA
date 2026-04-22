@@ -15122,6 +15122,7 @@ function bootstrap(){
         if (e.key === 'ArrowRight') { e.preventDefault(); calNavigate('next'); return; }
         if (e.key === 'Home') { e.preventDefault(); calToday(); return; }
       }
+    }
     var tag = (e.target && e.target.tagName || '').toLowerCase();
     var inField = tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable);
     if (e.key === 'Escape') {
