@@ -9971,9 +9971,17 @@ function openCalEntryDetail(entryId){
 
 /* ─── Add / Delete Time Off Entries ─── */
 function openAddTimeOffModal(){
-  return ensurePeopleLoaded().then(function(){
+  return Promise.all([ensurePeopleLoaded(), ensureCurrentPersonnelLoaded()]).then(function(){
     var people = APP.state.data.people || [];
-    var personOpts = people.filter(function(p){ return p.Status === 'Active'; }).map(function(p){
+    var me = APP.state.currentPersonnel;
+    var myId = me && me.Id ? me.Id : null;
+    var myOrgId = (me && me.OrgID && me.OrgID.Id) ? me.OrgID.Id : null;
+    var personOpts = people.filter(function(p){
+      if (p.Status !== 'Active') return false;
+      if (myId && String(p.Id) === String(myId)) return true;
+      if (myOrgId && p.OrgID && String(p.OrgID.Id) === String(myOrgId)) return true;
+      return false;
+    }).map(function(p){
       return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
     }).join('');
     var typeOpts = Object.keys(CAL_TYPES).filter(function(k){ return k !== 'Holiday'; }).map(function(k){
