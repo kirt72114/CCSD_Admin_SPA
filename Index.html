@@ -2772,9 +2772,11 @@ function mapNotificationModuleRoute(sourceModule){
 }
 
 /* NF-11: Notification panel with mark-as-read/dismiss actions */
-function renderNotificationCenter(){
+function renderNotificationCenter(options){
+  options = options || {};
   var items = getNotifications();
   if (!items.length) { return '<div class="empty">No notifications right now. All clear.</div>'; }
+  var closeAttr = options.closeModalOnNav ? ' data-close-modal="1"' : '';
   var html = '<div class="spotlight-list">';
   items.forEach(function(n){
     var actions = '';
@@ -2785,13 +2787,22 @@ function renderNotificationCenter(){
       }
     }
     var badge = statusBadge(n.type === 'danger' ? 'Overdue' : (n.type === 'warn' ? 'Due Soon' : 'Info'));
-    html += '<div class="spotlight-item" style="cursor:pointer" data-action="nav" data-route="' + escAttr(n.route || 'home') + '">'
+    html += '<div class="spotlight-item" style="cursor:pointer" data-action="nav" data-route="' + escAttr(n.route || 'home') + '"' + closeAttr + '>'
       + '<div><div class="l1">' + escHtml(n.title) + '</div><div class="l2">' + escHtml(n.detail) + '</div></div>'
       + '<div>' + badge + (actions ? ' ' + actions : '') + '</div>'
       + '</div>';
   });
   html += '</div>';
   return html;
+}
+
+function openNotificationsPanel(){
+  var items = getNotifications();
+  var header = items.length
+    ? '<div class="small-note" style="margin-bottom:8px">' + items.length + ' active notification' + (items.length === 1 ? '' : 's') + '. Click any item to jump to that section.</div>'
+    : '';
+  var body = header + renderNotificationCenter({ closeModalOnNav: true });
+  openModal('Notifications', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
 }
 
 function getUnreadNotificationCount(){
@@ -15197,7 +15208,7 @@ function handleClick(e){
   var action = el.getAttribute('data-action');
   if (!action) { return; }
   if (action === 'close-modal') { closeModal(); return; }
-  if (action === 'nav') { routeTo(el.getAttribute('data-route')); return; }
+  if (action === 'nav') { if (el.getAttribute('data-close-modal') === '1') { closeModal(); } routeTo(el.getAttribute('data-route')); return; }
   if (action === 'refresh-route') { renderRoute(); return; }
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
   if (action === 'sec-admin-tab') { APP.state.securityAdminTab = el.getAttribute('data-tab') || 'incidents'; renderSecurityAdmin(); return; }
@@ -15314,18 +15325,24 @@ function handleClick(e){
   if (action === 'mark-notification-read') {
     e.stopPropagation();
     var nrId = el.getAttribute('data-id');
+    var notifModalOpen = document.getElementById('modalMask') && document.getElementById('modalMask').style.display === 'flex' && /Notifications/.test(document.getElementById('modalTitle') ? document.getElementById('modalTitle').textContent : '');
     markNotificationRead(nrId).then(function(){
       toast('Marked as read.', 'ok');
-      if (APP.state.route === 'home') { renderRoute(); }
+      renderNav();
+      if (notifModalOpen) { openNotificationsPanel(); }
+      else if (APP.state.route === 'home') { renderRoute(); }
     }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Could not mark as read.', 'danger'); });
     return;
   }
   if (action === 'dismiss-notification') {
     e.stopPropagation();
     var ndId = el.getAttribute('data-id');
+    var notifModalOpen2 = document.getElementById('modalMask') && document.getElementById('modalMask').style.display === 'flex' && /Notifications/.test(document.getElementById('modalTitle') ? document.getElementById('modalTitle').textContent : '');
     dismissNotification(ndId).then(function(){
       toast('Notification dismissed.', 'ok');
-      if (APP.state.route === 'home') { renderRoute(); }
+      renderNav();
+      if (notifModalOpen2) { openNotificationsPanel(); }
+      else if (APP.state.route === 'home') { renderRoute(); }
     }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Could not dismiss.', 'danger'); });
     return;
   }
@@ -15500,7 +15517,7 @@ function handleClick(e){
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
   if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
   if (action === 'print-view') { printView(); return; }
-  if (action === 'toggle-notifications') { var panel = document.getElementById('notificationPanel'); if (panel) { panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; } return; }
+  if (action === 'toggle-notifications') { openNotificationsPanel(); return; }
   if (action === 'edit-request') { openRequestEditModal(el.getAttribute('data-id')); return; }
   if (action === 'save-request-edit') { saveRequestEdit(); return; }
   if (action === 'close-request') { closeRequest(el.getAttribute('data-id')); return; }
