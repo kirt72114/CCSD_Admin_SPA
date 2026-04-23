@@ -965,6 +965,7 @@ var APP = {
     { key: 'calendar', label: 'Calendar' },
     { key: 'assets', label: 'Assets' },
     { key: 'security', label: 'Security' },
+    { key: 'duties', label: 'Duties' },
     { key: 'reporting', label: 'Reports' },
     { key: 'supervisor', label: 'Supervisor Hub' },
     { key: 'admin', label: 'Admin' },
@@ -2957,7 +2958,8 @@ APP.roles = {
     seeAdmin:         ['App Admin'],
     manageSecurity:   ['Security','App Admin'],
     seeSupervisorHub: ['Supervisor','App Admin'],
-    manageRoles:      ['App Admin']
+    manageRoles:      ['App Admin'],
+    manageDuties:     ['Admin','App Admin','HR']
   },
   /* Narrative text surfaced in the in-app Help panel. */
   capabilityDocs: {
@@ -2968,7 +2970,8 @@ APP.roles = {
     seeAdmin:         'Access the Admin tab, Diagnostics, and run self-tests / flush telemetry.',
     manageSecurity:   'Create and edit security incidents and incident actions.',
     seeSupervisorHub: 'Access the Supervisor Hub with team roll-ups.',
-    manageRoles:      'Grant, edit, or deactivate role assignments in CCSD_AppRoles.'
+    manageRoles:      'Grant, edit, or deactivate role assignments in CCSD_AppRoles.',
+    manageDuties:     'Assign, edit, end, and reappoint additional duties; generate appointment / revocation letters.'
   }
 };
 function hasRole(role){ return (APP.state.roleNames || []).indexOf(role) >= 0; }
@@ -2986,6 +2989,7 @@ function canManageSecurity(){ return can('manageSecurity'); }
 function canViewOwnSecurity(){ return APP.state.currentPersonnel && APP.state.currentPersonnel.Id; }
 function canSeeSupervisorHub(){ return can('seeSupervisorHub'); }
 function canManageRoles(){ return can('manageRoles'); }
+function canManageDuties(){ return can('manageDuties'); }
 function getCurrentOrgId(){
   var p = APP.state.currentPersonnel;
   return p && p.OrgID && p.OrgID.Id ? p.OrgID.Id : null;
@@ -10298,6 +10302,365 @@ function deleteTimeOffEntry(entryId){
   }).catch(function(){ toast('Delete failed.', 'danger'); });
 }
 
+/* ============================================================================
+ * ADDITIONAL DUTIES — UI (renderDuties, modals, CRUD)
+ * ========================================================================== */
+function dutiesScopeFor(){
+  /* Scope options available to current user:
+   *   'mine'  : duties where PersonID = me  (always available)
+   *   'org'   : duties in my org + descendants (supervisor/admin)
+   *   'all'   : all duties (manageDuties or App Admin)                       */
+  var modes = ['mine'];
+  if (canSeeSupervisorHub() || canManageDuties() || hasRole('App Admin')) { modes.push('org'); }
+  if (canManageDuties() || hasRole('App Admin')) { modes.push('all'); }
+  return modes;
+}
+function dutyStatusBadge(status){
+  var s = String(status || '');
+  var kind = 'mute';
+  if (s === 'Active') { kind = 'ok'; }
+  else if (s === 'Pending') { kind = 'warn'; }
+  else if (s === 'Vacant') { kind = 'danger'; }
+  else if (s === 'Suspended') { kind = 'warn'; }
+  else if (s === 'Closed') { kind = 'mute'; }
+  return '<span class="role-chip ' + kind + '" style="padding:2px 8px;font-size:11px">' + escHtml(s || 'Unknown') + '</span>';
+}
+function dutyFmtDate(v){ if (!v) { return '—'; } var d = parseSpDate(v); return d ? d.toISOString().slice(0, 10) : '—'; }
+function renderDuties(){
+  renderLoading('Loading duties...');
+  var loaders = [
+    ensureCurrentPersonnelLoaded(),
+    ensurePeopleLoaded().catch(function(){ return []; }),
+    ensureOrganizationsLoaded().catch(function(){ return []; }),
+    ensureDutyTypesLoaded(),
+    ensureAdditionalDutiesLoaded(),
+    ensureDutyVacancyLogLoaded().catch(function(){ return []; })
+  ];
+  Promise.all(loaders).then(function(){
+    var me = APP.state.currentPersonnel;
+    var myOrgId = me && me.OrgID && me.OrgID.Id ? me.OrgID.Id : null;
+    var duties = APP.state.data.additionalDuties || [];
+    var types = APP.state.data.dutyTypes || [];
+    var ui = APP.state.dutiesUi = APP.state.dutiesUi || { scope: dutiesScopeFor()[0], status: 'Active', typeId: '' };
+    var modes = dutiesScopeFor();
+    if (modes.indexOf(ui.scope) < 0) { ui.scope = modes[0]; }
+    /* Apply scope */
+    var rows = duties.slice();
+    if (ui.scope === 'mine' && me && me.Id) {
+      rows = rows.filter(function(d){ return d.PersonID && String(d.PersonID.Id) === String(me.Id); });
+    } else if (ui.scope === 'org' && myOrgId) {
+      var scopeIds = (typeof getOrgAndDescendants === 'function' ? getOrgAndDescendants(myOrgId) : [{ Id: myOrgId }])
+        .map(function(o){ return String(o.Id || o); });
+      rows = rows.filter(function(d){ return d.OrgID && scopeIds.indexOf(String(d.OrgID.Id)) >= 0; });
+    }
+    /* Apply status + type filters */
+    if (ui.status && ui.status !== 'all') { rows = rows.filter(function(d){ return String(d.Status) === ui.status; }); }
+    if (ui.typeId) { rows = rows.filter(function(d){ return d.DutyTypeID && String(d.DutyTypeID.Id) === String(ui.typeId); }); }
+    /* Metrics across current scope (before status/type filter) */
+    var scoped = duties.slice();
+    if (ui.scope === 'mine' && me && me.Id) {
+      scoped = scoped.filter(function(d){ return d.PersonID && String(d.PersonID.Id) === String(me.Id); });
+    } else if (ui.scope === 'org' && myOrgId) {
+      var sids = (typeof getOrgAndDescendants === 'function' ? getOrgAndDescendants(myOrgId) : [{ Id: myOrgId }])
+        .map(function(o){ return String(o.Id || o); });
+      scoped = scoped.filter(function(d){ return d.OrgID && sids.indexOf(String(d.OrgID.Id)) >= 0; });
+    }
+    var activeCount = scoped.filter(function(d){ return isDutyActive(d); }).length;
+    var vacantCount = scoped.filter(function(d){ return String(d.Status) === 'Vacant'; }).length;
+    var expiringCount = scoped.filter(function(d){ return isDutyExpiring(d, 30); }).length;
+    var pendingCount = scoped.filter(function(d){ return String(d.Status) === 'Pending'; }).length;
+    var html = '';
+    html += '<div class="exec-strip"><div class="title">Additional Duties</div>'
+      + '<div class="item"><span class="swatch"></span>Active ' + activeCount + '</div>'
+      + '<div class="item"><span class="swatch"></span>Pending ' + pendingCount + '</div>'
+      + '<div class="item"><span class="swatch"></span>Vacant ' + vacantCount + '</div>'
+      + '<div class="item"><span class="swatch"></span>Expiring &lt;30d ' + expiringCount + '</div>'
+      + '</div>';
+    /* Filters + actions */
+    var scopeLabels = { mine: 'My Duties', org: 'My Org', all: 'All Duties' };
+    var scopeOpts = modes.map(function(m){ return '<option value="' + m + '"' + (ui.scope === m ? ' selected' : '') + '>' + scopeLabels[m] + '</option>'; }).join('');
+    var statusOpts = ['all','Active','Pending','Vacant','Suspended','Closed'].map(function(s){
+      return '<option value="' + s + '"' + (ui.status === s ? ' selected' : '') + '>' + (s === 'all' ? 'All statuses' : s) + '</option>';
+    }).join('');
+    var typeOpts = '<option value="">All types</option>' + types.filter(function(t){ return normalizeBoolean(t.IsActive); }).map(function(t){
+      return '<option value="' + escAttr(t.Id) + '"' + (String(ui.typeId) === String(t.Id) ? ' selected' : '') + '>' + escHtml(t.Title) + '</option>';
+    }).join('');
+    html += '<div class="card" style="margin-top:14px"><div class="card-head"><div><div class="card-title">Duty Roster</div><div class="card-sub">' + escHtml(scopeLabels[ui.scope]) + ' · ' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + '</div></div>'
+      + '<div class="quick-actions">'
+      +   (canManageDuties() ? '<button class="btn primary" data-action="duty-open-assign">Assign Duty</button>' : '')
+      + '</div></div>';
+    html += '<div class="card-body">'
+      + '<div class="form-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));gap:10px;margin-bottom:12px">'
+      +   formField('Scope', '<select id="dutyScope" class="select" data-action="duty-filter-change" data-field="scope">' + scopeOpts + '</select>')
+      +   formField('Status', '<select id="dutyStatus" class="select" data-action="duty-filter-change" data-field="status">' + statusOpts + '</select>')
+      +   formField('Duty Type', '<select id="dutyType" class="select" data-action="duty-filter-change" data-field="typeId">' + typeOpts + '</select>')
+      + '</div>';
+    if (!rows.length) {
+      html += '<div class="empty">No duty assignments match the current filters.</div>';
+    } else {
+      html += '<div class="table-wrap"><table class="table"><thead><tr>'
+        + '<th>Duty Type</th><th>Person</th><th>Organization</th><th>Status</th><th>Start</th><th>End</th><th style="text-align:right">Actions</th>'
+        + '</tr></thead><tbody>';
+      rows.sort(function(a, b){
+        var aS = String(a.Status), bS = String(b.Status);
+        if (aS === bS) {
+          var aE = parseSpDate(a.AppointmentEndDate);
+          var bE = parseSpDate(b.AppointmentEndDate);
+          return (aE ? aE.getTime() : 0) - (bE ? bE.getTime() : 0);
+        }
+        var order = { Vacant: 0, Pending: 1, Active: 2, Suspended: 3, Closed: 4 };
+        return (order[aS] != null ? order[aS] : 9) - (order[bS] != null ? order[bS] : 9);
+      });
+      rows.forEach(function(d){
+        var canEdit = canManageDuties() && (hasRole('App Admin') || (d.OrgID && d.OrgID.Id && canAdminOrg(d.OrgID.Id)) || (!d.OrgID || !d.OrgID.Id));
+        var expiring = isDutyExpiring(d, 30);
+        html += '<tr' + (expiring ? ' style="background:var(--warn-bg,rgba(255,180,0,.06))"' : '') + '>'
+          + '<td>' + escHtml((d.DutyTypeID && d.DutyTypeID.Title) || d.Title || 'Duty') + '</td>'
+          + '<td>' + escHtml((d.PersonID && d.PersonID.Title) || '— Vacant —') + '</td>'
+          + '<td>' + escHtml((d.OrgID && d.OrgID.Title) || '—') + '</td>'
+          + '<td>' + dutyStatusBadge(d.Status) + (expiring ? ' <span class="small-note" style="color:var(--warn)">expiring soon</span>' : '') + '</td>'
+          + '<td>' + dutyFmtDate(d.AppointmentStartDate) + '</td>'
+          + '<td>' + dutyFmtDate(d.AppointmentEndDate) + '</td>'
+          + '<td style="text-align:right">'
+          +   (canEdit ? '<button class="btn subtle" data-action="duty-open-edit" data-id="' + escAttr(d.Id) + '">Edit</button> ' : '')
+          +   (canEdit && String(d.Status) === 'Active' ? '<button class="btn subtle" data-action="duty-open-end" data-id="' + escAttr(d.Id) + '">End</button> ' : '')
+          +   (canEdit && (String(d.Status) === 'Closed' || String(d.Status) === 'Vacant') ? '<button class="btn subtle" data-action="duty-open-reappoint" data-id="' + escAttr(d.Id) + '">Reappoint</button>' : '')
+          + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</div></div>';
+    setView(html);
+  }).catch(function(err){
+    addDiagnostic('error', 'renderDuties', 'Failed to render duties page.', { detail: err && (err.text || err.message || err) });
+    setView('<div class="card"><div class="card-body"><div class="empty">Could not load duties. Check diagnostics for details.</div></div></div>');
+  });
+}
+
+function dutiesFilterChange(el){
+  var field = el.getAttribute('data-field');
+  var val = el.value;
+  APP.state.dutiesUi = APP.state.dutiesUi || {};
+  APP.state.dutiesUi[field] = val;
+  renderDuties();
+}
+
+function dutyBuildForm(mode, duty){
+  /* mode: 'assign' | 'edit' | 'reappoint' */
+  var types = (APP.state.data.dutyTypes || []).filter(function(t){ return normalizeBoolean(t.IsActive); });
+  var orgs = APP.state.data.organizations || [];
+  var people = (APP.state.data.people || []).filter(function(p){ return p.Status === 'Active'; });
+  var selectedTypeId = duty && duty.DutyTypeID ? duty.DutyTypeID.Id : '';
+  var selectedOrgId = duty && duty.OrgID ? duty.OrgID.Id : (APP.state.currentPersonnel && APP.state.currentPersonnel.OrgID && APP.state.currentPersonnel.OrgID.Id);
+  var selectedPersonId = duty && duty.PersonID ? duty.PersonID.Id : '';
+  var today = new Date().toISOString().slice(0, 10);
+  var start = duty && duty.AppointmentStartDate ? String(duty.AppointmentStartDate).slice(0, 10) : today;
+  var end = duty && duty.AppointmentEndDate ? String(duty.AppointmentEndDate).slice(0, 10) : '';
+  if (mode === 'reappoint') { start = today; end = ''; }
+  var typeOpts = '<option value="">-- Select duty type --</option>' + types.map(function(t){
+    return '<option value="' + escAttr(t.Id) + '"' + (String(selectedTypeId) === String(t.Id) ? ' selected' : '') + '>' + escHtml(t.Title) + (normalizeBoolean(t.GrantsAdminRole) ? ' (grants Admin)' : '') + '</option>';
+  }).join('');
+  var orgOpts = '<option value="">-- Select org --</option>' + orgs.map(function(o){
+    return '<option value="' + escAttr(o.Id) + '"' + (String(selectedOrgId) === String(o.Id) ? ' selected' : '') + '>' + escHtml(o.Title || o.OrgName) + '</option>';
+  }).join('');
+  var personOpts = '<option value="">-- Select person --</option>' + people.map(function(p){
+    return '<option value="' + escAttr(p.Id) + '"' + (String(selectedPersonId) === String(p.Id) ? ' selected' : '') + '>' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var statusOpts = ['Active','Pending','Suspended'].map(function(s){
+    var sel = duty && String(duty.Status) === s ? ' selected' : (!duty && s === 'Active' ? ' selected' : '');
+    return '<option value="' + s + '"' + sel + '>' + s + '</option>';
+  }).join('');
+  return '<div class="form-grid">'
+    + formField('Duty Type', '<select id="dutyFormType" class="select">' + typeOpts + '</select>')
+    + formField('Person', '<select id="dutyFormPerson" class="select">' + personOpts + '</select>')
+    + formField('Organization', '<select id="dutyFormOrg" class="select">' + orgOpts + '</select>')
+    + formField('Status', '<select id="dutyFormStatus" class="select">' + statusOpts + '</select>')
+    + formField('Appointment Start', '<input id="dutyFormStart" class="input" type="date" value="' + escAttr(start) + '" />')
+    + formField('Appointment End', '<input id="dutyFormEnd" class="input" type="date" value="' + escAttr(end) + '" />')
+    + '<div class="full">' + formField('Notes', '<textarea id="dutyFormNotes" class="textarea" style="min-height:60px" placeholder="Appointment notes, delegation scope, etc.">' + escHtml((duty && duty.Notes) || '') + '</textarea>') + '</div>'
+    + '</div>';
+}
+
+function openAssignDutyModal(){
+  if (!canManageDuties()) { toast('You do not have permission to assign duties.', 'danger'); return; }
+  return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
+    APP.modalState = { dutyMode: 'assign', dutyId: null };
+    var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="duty-save-assign">Create</button></div>';
+    openModal('Assign Additional Duty', dutyBuildForm('assign', null), footer, 'Create a new duty appointment');
+  });
+}
+function openEditDutyModal(dutyId){
+  var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
+  if (!duty) { toast('Duty not found.', 'danger'); return; }
+  if (!canManageDuties() || (duty.OrgID && duty.OrgID.Id && !canAdminOrg(duty.OrgID.Id) && !hasRole('App Admin'))) {
+    toast('You do not have permission to edit this duty.', 'danger'); return;
+  }
+  return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
+    APP.modalState = { dutyMode: 'edit', dutyId: duty.Id, before: duty };
+    var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="duty-save-edit">Save</button></div>';
+    openModal('Edit Duty', dutyBuildForm('edit', duty), footer, dutyDisplayName(duty));
+  });
+}
+function openEndDutyModal(dutyId){
+  var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
+  if (!duty) { toast('Duty not found.', 'danger'); return; }
+  if (!canManageDuties() || (duty.OrgID && duty.OrgID.Id && !canAdminOrg(duty.OrgID.Id) && !hasRole('App Admin'))) {
+    toast('You do not have permission to end this duty.', 'danger'); return;
+  }
+  APP.modalState = { dutyMode: 'end', dutyId: duty.Id, before: duty };
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + '<div class="full"><div class="kv"><div class="k">Duty</div><div class="v">' + escHtml(dutyDisplayName(duty)) + '</div>'
+    + '<div class="k">Organization</div><div class="v">' + escHtml((duty.OrgID && duty.OrgID.Title) || '—') + '</div>'
+    + '<div class="k">Status</div><div class="v">' + dutyStatusBadge(duty.Status) + '</div></div></div>'
+    + formField('End Date', '<input id="dutyEndDate" class="input" type="date" value="' + escAttr(today) + '" />')
+    + formField('New Status', '<select id="dutyEndStatus" class="select"><option value="Closed" selected>Closed (person reassigned)</option><option value="Vacant">Vacant (role unfilled)</option></select>')
+    + '<div class="full">' + formField('Reason / notes', '<textarea id="dutyEndNotes" class="textarea" style="min-height:60px" placeholder="Why is this duty ending?"></textarea>') + '</div>'
+    + '</div>';
+  var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn danger" data-action="duty-confirm-end">End Duty</button></div>';
+  openModal('End Duty', body, footer, 'Record end-of-duty and log vacancy');
+}
+function openReappointDutyModal(dutyId){
+  var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
+  if (!duty) { toast('Duty not found.', 'danger'); return; }
+  if (!canManageDuties() || (duty.OrgID && duty.OrgID.Id && !canAdminOrg(duty.OrgID.Id) && !hasRole('App Admin'))) {
+    toast('You do not have permission to reappoint this duty.', 'danger'); return;
+  }
+  return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
+    APP.modalState = { dutyMode: 'reappoint', dutyId: null, clonedFrom: duty.Id };
+    var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="duty-save-assign">Create Reappointment</button></div>';
+    openModal('Reappoint Duty', dutyBuildForm('reappoint', duty), footer, 'Creates a new assignment; original row is left as-is.');
+  });
+}
+
+function dutyReadForm(){
+  var typeId = document.getElementById('dutyFormType').value;
+  var personId = document.getElementById('dutyFormPerson').value;
+  var orgId = document.getElementById('dutyFormOrg').value;
+  var status = document.getElementById('dutyFormStatus').value;
+  var start = document.getElementById('dutyFormStart').value;
+  var end = document.getElementById('dutyFormEnd').value;
+  var notes = document.getElementById('dutyFormNotes').value;
+  return { typeId: typeId, personId: personId, orgId: orgId, status: status, start: start, end: end, notes: notes };
+}
+
+function saveDutyAssignment(){
+  var f = dutyReadForm();
+  var errors = runValidation([
+    function(){ return validateRequired(f.typeId, 'Duty Type'); },
+    function(){ return validateRequired(f.personId, 'Person'); },
+    function(){ return validateRequired(f.orgId, 'Organization'); },
+    function(){ return validateRequired(f.start, 'Start Date'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var type = dutyTypeById(f.typeId);
+  var typeTitle = type && type.Title ? type.Title : 'Duty';
+  var personRow = (APP.state.data.people || []).filter(function(p){ return String(p.Id) === String(f.personId); })[0];
+  var personName = personRow ? formatPerson(personRow) : 'Person';
+  var values = {
+    Title: typeTitle + ' — ' + personName,
+    PersonIDId: parseInt(f.personId, 10),
+    DutyTypeIDId: parseInt(f.typeId, 10),
+    OrgIDId: parseInt(f.orgId, 10),
+    AppointmentStartDate: f.start,
+    Status: f.status || 'Active',
+    Notes: f.notes || ''
+  };
+  if (f.end) { values.AppointmentEndDate = f.end; }
+  if (type && type.DefaultNotificationPOC && type.DefaultNotificationPOC.Id) {
+    values.NotificationPOCId = type.DefaultNotificationPOC.Id;
+  }
+  createListItem(APP.lists.AdditionalDuties, values, { entityType: 'AdditionalDuty', reason: 'Assign duty via UI' }).then(function(){
+    toast('Duty assigned.', 'ok');
+    closeModal();
+    APP.state.data.additionalDuties = null;
+    renderDuties();
+    /* Refresh derived Admin scopes since a new duty may grant admin. */
+    APP.state.rolesRaw = null; APP.state.roleNames = []; APP.state.derivedRoleScopes = [];
+    ensureRolesLoaded().then(function(){ renderContextBar(); });
+  }).catch(function(err){
+    addDiagnostic('error', 'saveDutyAssignment', 'Create failed.', { detail: err && (err.text || err.message || err) });
+    toast('Failed to create duty.', 'danger');
+  });
+}
+
+function saveDutyEdit(){
+  var ms = APP.modalState || {};
+  if (!ms.dutyId) { return; }
+  var f = dutyReadForm();
+  var errors = runValidation([
+    function(){ return validateRequired(f.typeId, 'Duty Type'); },
+    function(){ return validateRequired(f.personId, 'Person'); },
+    function(){ return validateRequired(f.orgId, 'Organization'); },
+    function(){ return validateRequired(f.start, 'Start Date'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var type = dutyTypeById(f.typeId);
+  var typeTitle = type && type.Title ? type.Title : 'Duty';
+  var personRow = (APP.state.data.people || []).filter(function(p){ return String(p.Id) === String(f.personId); })[0];
+  var personName = personRow ? formatPerson(personRow) : 'Person';
+  var values = {
+    Title: typeTitle + ' — ' + personName,
+    PersonIDId: parseInt(f.personId, 10),
+    DutyTypeIDId: parseInt(f.typeId, 10),
+    OrgIDId: parseInt(f.orgId, 10),
+    AppointmentStartDate: f.start,
+    Status: f.status,
+    Notes: f.notes || ''
+  };
+  values.AppointmentEndDate = f.end || null;
+  updateListItem(APP.lists.AdditionalDuties, ms.dutyId, values, { entityType: 'AdditionalDuty', before: ms.before, reason: 'Edit duty via UI' }).then(function(){
+    toast('Duty updated.', 'ok');
+    closeModal();
+    APP.state.data.additionalDuties = null;
+    renderDuties();
+    APP.state.rolesRaw = null; APP.state.roleNames = []; APP.state.derivedRoleScopes = [];
+    ensureRolesLoaded().then(function(){ renderContextBar(); });
+  }).catch(function(err){
+    addDiagnostic('error', 'saveDutyEdit', 'Update failed.', { detail: err && (err.text || err.message || err) });
+    toast('Failed to update duty.', 'danger');
+  });
+}
+
+function confirmEndDuty(){
+  var ms = APP.modalState || {};
+  if (!ms.dutyId) { return; }
+  var duty = ms.before;
+  var endDate = document.getElementById('dutyEndDate').value || new Date().toISOString().slice(0, 10);
+  var newStatus = document.getElementById('dutyEndStatus').value || 'Closed';
+  var endNotes = document.getElementById('dutyEndNotes').value || '';
+  var updates = {
+    Status: newStatus,
+    AppointmentEndDate: endDate
+  };
+  if (endNotes) {
+    var priorNotes = duty && duty.Notes ? (duty.Notes + '\n\n') : '';
+    updates.Notes = priorNotes + '[Ended ' + endDate + '] ' + endNotes;
+  }
+  updateListItem(APP.lists.AdditionalDuties, ms.dutyId, updates, { entityType: 'AdditionalDuty', before: duty, reason: 'End duty via UI' }).then(function(){
+    /* Write vacancy log */
+    var logValues = {
+      Title: dutyDisplayName(duty) + ' — ended ' + endDate,
+      DutyIDId: ms.dutyId,
+      DateVacant: endDate,
+      Notes: endNotes
+    };
+    if (duty.PersonID && duty.PersonID.Id) { logValues.PreviousPersonIDId = duty.PersonID.Id; }
+    return createListItem(APP.lists.DutyVacancyLog, logValues, { entityType: 'DutyVacancyLog', reason: 'End duty' }).catch(function(){ return null; });
+  }).then(function(){
+    toast('Duty ended.', 'ok');
+    closeModal();
+    APP.state.data.additionalDuties = null;
+    APP.state.data.dutyVacancyLog = null;
+    renderDuties();
+    APP.state.rolesRaw = null; APP.state.roleNames = []; APP.state.derivedRoleScopes = [];
+    ensureRolesLoaded().then(function(){ renderContextBar(); });
+  }).catch(function(err){
+    addDiagnostic('error', 'confirmEndDuty', 'End duty failed.', { detail: err && (err.text || err.message || err) });
+    toast('Failed to end duty.', 'danger');
+  });
+}
+
 /* ─── Calendar: Export to CSV ─── */
 function exportCalendarCSV(){
   var ui = ensureCalendarUi();
@@ -14936,6 +15299,7 @@ function renderRoute(){
   if (route === 'calendar') { return renderCalendar(); }
   if (route === 'assets') { return renderAssets(); }
   if (route === 'security') { return renderSecurity(); }
+  if (route === 'duties') { return renderDuties(); }
   if (route === 'reporting') { return renderReporting(); }
   if (route === 'supervisor') { if (!canSeeSupervisorHub()) { toast('Access restricted to supervisors.', 'danger'); return renderHome(); } return renderSupervisorHub(); }
   if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
@@ -15223,6 +15587,7 @@ function handleInput(e){
   if (id === 'calOrgScope') { var ui = ensureCalendarUi(); ui.scopeOrgId = e.target.value ? Number(e.target.value) : null; renderCalendar(); return; }
   if (id === 'calTypeFilter') { ensureCalendarUi().typeFilter = e.target.value; renderCalendar(); return; }
   if (id === 'calSearchInput') { debouncedCalendarSearch(e.target.value); return; }
+  if (id === 'dutyScope' || id === 'dutyStatus' || id === 'dutyType') { dutiesFilterChange(e.target); return; }
 }
 function findActionEl(start){
   var el = start;
@@ -15240,6 +15605,13 @@ function handleClick(e){
   if (action === 'close-modal') { closeModal(); return; }
   if (action === 'nav') { if (el.getAttribute('data-close-modal') === '1') { closeModal(); } routeTo(el.getAttribute('data-route')); return; }
   if (action === 'refresh-route') { renderRoute(); return; }
+  if (action === 'duty-open-assign') { openAssignDutyModal(); return; }
+  if (action === 'duty-open-edit') { openEditDutyModal(el.getAttribute('data-id')); return; }
+  if (action === 'duty-open-end') { openEndDutyModal(el.getAttribute('data-id')); return; }
+  if (action === 'duty-open-reappoint') { openReappointDutyModal(el.getAttribute('data-id')); return; }
+  if (action === 'duty-save-assign') { saveDutyAssignment(); return; }
+  if (action === 'duty-save-edit') { saveDutyEdit(); return; }
+  if (action === 'duty-confirm-end') { confirmEndDuty(); return; }
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
   if (action === 'sec-admin-tab') { APP.state.securityAdminTab = el.getAttribute('data-tab') || 'incidents'; renderSecurityAdmin(); return; }
   if (action === 'edit-sec-record') { openEditSecRecordModal(el.getAttribute('data-person-id')); return; }
