@@ -2772,9 +2772,11 @@ function mapNotificationModuleRoute(sourceModule){
 }
 
 /* NF-11: Notification panel with mark-as-read/dismiss actions */
-function renderNotificationCenter(){
+function renderNotificationCenter(options){
+  options = options || {};
   var items = getNotifications();
   if (!items.length) { return '<div class="empty">No notifications right now. All clear.</div>'; }
+  var closeAttr = options.closeModalOnNav ? ' data-close-modal="1"' : '';
   var html = '<div class="spotlight-list">';
   items.forEach(function(n){
     var actions = '';
@@ -2785,13 +2787,22 @@ function renderNotificationCenter(){
       }
     }
     var badge = statusBadge(n.type === 'danger' ? 'Overdue' : (n.type === 'warn' ? 'Due Soon' : 'Info'));
-    html += '<div class="spotlight-item" style="cursor:pointer" data-action="nav" data-route="' + escAttr(n.route || 'home') + '">'
+    html += '<div class="spotlight-item" style="cursor:pointer" data-action="nav" data-route="' + escAttr(n.route || 'home') + '"' + closeAttr + '>'
       + '<div><div class="l1">' + escHtml(n.title) + '</div><div class="l2">' + escHtml(n.detail) + '</div></div>'
       + '<div>' + badge + (actions ? ' ' + actions : '') + '</div>'
       + '</div>';
   });
   html += '</div>';
   return html;
+}
+
+function openNotificationsPanel(){
+  var items = getNotifications();
+  var header = items.length
+    ? '<div class="small-note" style="margin-bottom:8px">' + items.length + ' active notification' + (items.length === 1 ? '' : 's') + '. Click any item to jump to that section.</div>'
+    : '';
+  var body = header + renderNotificationCenter({ closeModalOnNav: true });
+  openModal('Notifications', body, '<div></div><button class="btn" data-action="close-modal">Close</button>');
 }
 
 function getUnreadNotificationCount(){
@@ -3509,42 +3520,30 @@ function getNextActionItems(trainingRows, req, inout){
   getTopTrainingRisks(trainingRows, 3).forEach(function(r){
     var title = r.training && (r.training.TrainingName || r.training.Title || r.training.TrainingCode) ? (r.training.TrainingName || r.training.Title || r.training.TrainingCode) : 'Training item';
     var detail = r.status === 'Due Soon' && r.latest && r.latest.ExpirationDate ? ('Expires ' + formatDate(r.latest.ExpirationDate)) : (r.status === 'Pending Review' ? 'Submission is awaiting review.' : 'No current completion covering this requirement.');
-    out.push({ label: title, sub: detail, badge: r.status });
+    var priority = r.status === 'Expired' || r.status === 'Missing' ? 'urgent' : 'warn';
+    out.push({ label: title, detail: detail, sub: detail, badge: r.status, priority: priority, route: 'training' });
   });
   (req.queue || []).slice(0, 2).forEach(function(r){
-    out.push({ label: r.Title || r.RequestID || 'Request', sub: (r.RequestType || 'Request') + (r.DueDate ? ' • Due ' + formatDate(r.DueDate) : ''), badge: r.Status || 'Open' });
+    var due = daysUntil(r.DueDate);
+    var priority = (due != null && due < 0) ? 'urgent' : (due != null && due <= 3 ? 'warn' : 'info');
+    var detail = (r.RequestType || 'Request') + (r.DueDate ? ' • Due ' + formatDate(r.DueDate) : '');
+    out.push({ label: r.Title || r.RequestID || 'Request', detail: detail, sub: detail, badge: r.Status || 'Open', priority: priority, route: 'requests' });
   });
   (inout.queue || []).slice(0, 2).forEach(function(s){
-    out.push({ label: s.Title || s.ChecklistID && s.ChecklistID.Title || 'In/Out Step', sub: (s.OwningOrgID && s.OwningOrgID.Title ? s.OwningOrgID.Title + ' • ' : '') + (s.DueDate ? 'Due ' + formatDate(s.DueDate) : 'Office action pending'), badge: s.Status || 'Open' });
+    var due = daysUntil(s.DueDate);
+    var priority = (due != null && due < 0) ? 'urgent' : (due != null && due <= 3 ? 'warn' : 'info');
+    var detail = (s.OwningOrgID && s.OwningOrgID.Title ? s.OwningOrgID.Title + ' • ' : '') + (s.DueDate ? 'Due ' + formatDate(s.DueDate) : 'Office action pending');
+    out.push({ label: s.Title || (s.ChecklistID && s.ChecklistID.Title) || 'In/Out Step', detail: detail, sub: detail, badge: s.Status || 'Open', priority: priority, route: 'inout' });
   });
-  return out.slice(0, 6);
-}
-function renderMiniTrainingRiskList(rows){
-  if (!rows || !rows.length) { return '<div class="empty">No elevated training risks right now.</div>'; }
-  var html = '<div class="spotlight-list">';
-  rows.forEach(function(r){
-    var t = r.training || {};
-    var title = t.TrainingName || t.Title || t.TrainingCode || 'Training';
-    var sub = '';
-    if (r.latest && r.latest.ExpirationDate) { sub = 'Expiration: ' + formatDate(r.latest.ExpirationDate); }
-    else if (r.latest && r.latest.CompletionDate) { sub = 'Completed: ' + formatDate(r.latest.CompletionDate); }
-    else { sub = 'No completion currently on file.'; }
-    html += '<div class="spotlight-item"><div><div class="l1">' + escHtml(title) + '</div><div class="l2">' + escHtml(sub) + '</div></div><div>' + statusBadge(r.status) + '</div></div>';
-  });
-  html += '</div>';
-  return html;
-}
-function renderActionSpotlight(items){
-  if (!items || !items.length) { return '<div class="empty">No urgent actions surfaced from training, requests, or in/out.</div>'; }
-  var html = '<div class="spotlight-list">';
-  items.forEach(function(it){
-    html += '<div class="spotlight-item"><div><div class="l1">' + escHtml(it.label || 'Action') + '</div><div class="l2">' + escHtml(it.sub || '') + '</div></div><div>' + statusBadge(it.badge || 'Open') + '</div></div>';
-  });
-  html += '</div>';
-  return html;
+  return out.slice(0, 8);
 }
 function renderHome(){
   renderLoading('Loading dashboard...');
+  /* Home is the action center. Personal-domain detail (my training, my
+     requests, my in/out) lives on My Status; team and organizational data
+     lives on their respective tabs. Home renders only what cannot be
+     reached one click away: announcements, priority actions, team
+     availability today, and the user's own upcoming time off. */
   return Promise.all([
     ensureCurrentPersonnelLoaded(),
     ensureRolesLoaded(),
@@ -3554,12 +3553,9 @@ function renderHome(){
     ensureRequestsLoaded(),
     ensureInOutLoaded(),
     ensureInOutStepsLoaded(),
-    ensureHowToLoaded(),
     ensureTimeOffLoaded().catch(function(){ return []; }),
     ensurePeopleLoaded().catch(function(){ return []; }),
-    ensureOrganizationsLoaded().catch(function(){ return []; }),
     ensureMyNotificationReceiptsLoaded().catch(function(){ return []; }),
-    ensureAssetsLoaded().catch(function(){ return []; }),
     ensureAnnouncementsLoaded().catch(function(){ return []; })
   ]).then(function(){
     /* NF-13: fire threshold-based notification checks once per session,
@@ -3569,24 +3565,13 @@ function renderHome(){
     var training = getMyTrainingModel();
     var req = getRequestSummary();
     var inout = getInOutSummary();
-    var current = training.filter(function(t){ return t.status === 'Current'; }).length;
-    var dueSoon = training.filter(function(t){ return t.status === 'Due Soon'; }).length;
-    var expired = training.filter(function(t){ return t.status === 'Expired'; }).length;
-    var missing = training.filter(function(t){ return t.status === 'Missing'; }).length;
     var applicableCount = training.filter(function(t){ return t.applicable; }).length;
+    var current = training.filter(function(t){ return t.status === 'Current'; }).length;
     var currentPct = applicableCount ? Math.round((current / applicableCount) * 100) : 0;
-    var myOpenRequests = req.mine.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('complete') < 0 && s.indexOf('closed') < 0; });
-    var myOpenInOut = inout.mine.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('complete') < 0; });
-    var riskRows = getTopTrainingRisks(training, 5);
     var actionItems = getNextActionItems(training, req, inout);
-    var notifications = getNotifications();
-    var health = getDashboardHealthSummary();
     var person = APP.state.currentPersonnel;
     var personName = person ? (person.FirstName || '') : (APP.state.currentUser ? APP.state.currentUser.title : '');
-    var fullName = person ? formatPerson(person) : personName;
     var orgName = person && person.OrgID ? person.OrgID.Title : '';
-    var posName = person && person.PositionID ? person.PositionID.Title : '';
-    var roles = (APP.state.roleNames || []);
 
     /* Team availability: who's out today in my section */
     var today = new Date(); today.setHours(0,0,0,0);
@@ -3614,23 +3599,26 @@ function renderHome(){
         if (pOrgId && orgIds[pOrgId]) { teamOut.push({ person: p, entry: e }); }
       });
     }
+    var myUpcoming = getUpcomingTimeOff(14);
 
     var html = '';
 
-    /* ─ Welcome banner ─ */
+    /* ─ Welcome banner: who you are + primary actions ─
+       Personal role / org context is in the Context Bar above, so this
+       banner carries a short-at-a-glance summary and the top CTAs only. */
     html += '<div class="dash-welcome">';
     html += '<div class="dw-left">';
     html += '<div class="dw-name">Welcome back, ' + escHtml(personName || 'User') + '</div>';
     html += '<div class="dw-meta">';
     if (orgName) { html += '<span>' + escHtml(orgName) + '</span>'; }
-    if (posName) { html += '<span>' + escHtml(posName) + '</span>'; }
-    if (roles.length) { html += '<span>' + escHtml(roles.join(', ')) + '</span>'; }
+    html += '<span>Training compliance: <strong>' + currentPct + '%</strong></span>';
+    html += '<span>' + actionItems.length + ' priority item' + (actionItems.length === 1 ? '' : 's') + '</span>';
     html += '</div>';
     html += '</div>';
     html += '<div class="dw-actions">';
-    html += '<button class="btn primary" data-action="open-create-request">New Request</button>';
-    html += '<button class="btn" data-action="nav" data-route="calendar">Calendar</button>';
-    html += '<button class="btn subtle" data-action="keyboard-shortcuts">Shortcuts</button>';
+    html += '<button class="btn primary" data-action="open-create-request">+ New Request</button>';
+    html += '<button class="btn" data-action="nav" data-route="mystatus">My Status</button>';
+    if (canManageInOut()) { html += '<button class="btn subtle" data-action="open-inout-create">New In/Out Case</button>'; }
     html += '</div></div>';
 
     /* ─ Announcements banner ─ */
@@ -3643,159 +3631,77 @@ function renderHome(){
         html += '<div style="padding:10px 14px;margin-bottom:6px;border-left:4px solid ' + borderColor + ';background:var(--bg-card);border-radius:4px;display:flex;align-items:flex-start;gap:8px">';
         html += '<span style="flex-shrink:0">' + icon + '</span>';
         html += '<div style="flex:1;min-width:0"><strong style="font-size:12px">' + escHtml(a.Title) + '</strong>';
-        if (a.Body) html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + escHtml(trimText(a.Body, 200)) + '</div>';
+        if (a.Body) { html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + escHtml(trimText(a.Body, 200)) + '</div>'; }
         html += '</div></div>';
       });
       html += '</div>';
     }
 
-    /* ─ Quick links ─ */
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px">';
-    var quickLinks = [
-      { label: 'New Request', action: 'open-create-request', icon: '📝' },
-      { label: 'Calendar', route: 'calendar', icon: '📅' },
-      { label: 'Training', route: 'training', icon: '📋' },
-      { label: 'My Assets', route: 'assets', icon: '💻' },
-      { label: 'Facilities', route: 'facilities', icon: '🏢' }
-    ];
-    if (canSeeSupervisorHub()) quickLinks.push({ label: 'Supervisor Hub', route: 'supervisor', icon: '👥' });
-    quickLinks.forEach(function(lnk){
-      if (lnk.route) {
-        html += '<button class="btn subtle" data-action="nav" data-route="' + lnk.route + '" style="padding:4px 10px;font-size:11px">' + lnk.icon + ' ' + lnk.label + '</button>';
-      } else {
-        html += '<button class="btn subtle" data-action="' + lnk.action + '" style="padding:4px 10px;font-size:11px">' + lnk.icon + ' ' + lnk.label + '</button>';
-      }
-    });
-    html += '</div>';
-
-    /* ─ KPI strip ─ */
-    html += '<div class="dash-kpis">';
-    html += '<div class="dash-kpi"><div class="kpi-value">' + currentPct + '%</div><div class="kpi-label">Training Compliance</div><div class="kpi-bar green" style="width:' + currentPct + '%"></div></div>';
-    html += '<div class="dash-kpi"><div class="kpi-value">' + myOpenRequests.length + '</div><div class="kpi-label">Open Requests</div><div class="kpi-bar blue" style="width:' + Math.min(100, myOpenRequests.length * 20) + '%"></div></div>';
-    html += '<div class="dash-kpi"><div class="kpi-value">' + myOpenInOut.length + '</div><div class="kpi-label">In/Out Cases</div><div class="kpi-bar purple" style="width:' + Math.min(100, myOpenInOut.length * 25) + '%"></div></div>';
-    html += '<div class="dash-kpi"><div class="kpi-value">' + (expired + missing) + '</div><div class="kpi-label">Training Gaps</div><div class="kpi-bar ' + ((expired + missing) > 0 ? 'red' : 'green') + '" style="width:' + Math.min(100, (expired + missing) * 15) + '%"></div></div>';
-    html += '<div class="dash-kpi"><div class="kpi-value">' + notifications.length + '</div><div class="kpi-label">Notifications</div><div class="kpi-bar ' + (notifications.length > 3 ? 'orange' : 'blue') + '" style="width:' + Math.min(100, notifications.length * 12) + '%"></div></div>';
-    html += '</div>';
-
-    /* ─ Row 1: Priority Actions + Team Availability ─ */
-    html += '<div class="dash-grid">';
-    /* Priority actions */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Priority Actions</div><div class="dc-sub">Items needing your attention</div></div><div class="health-pill">' + actionItems.length + ' items</div></div><div class="dc-body">';
-    if (!actionItems.length) { html += '<div class="dc-empty">No outstanding items. You\'re all caught up.</div>'; }
-    else {
-      actionItems.slice(0, 6).forEach(function(item){
-        var icon = '!'; var cls = 'info';
+    /* ─ Main grid: Priority Actions (primary) + Team availability sidebar ─ */
+    html += '<div class="dash-grid-3">';
+    /* Priority Actions spans two columns — this is the page's main content. */
+    html += '<div class="dash-card" style="grid-column:span 2"><div class="dc-head"><div><div class="dc-title">Priority Actions</div><div class="dc-sub">The few things that need your attention. Click any item to jump to it.</div></div><div class="health-pill">' + actionItems.length + ' items</div></div><div class="dc-body">';
+    if (!actionItems.length) {
+      html += '<div class="dc-empty">Nothing urgent. You\'re all caught up.</div>';
+    } else {
+      actionItems.forEach(function(item){
+        var icon = '•'; var cls = 'info';
         if (item.priority === 'urgent' || item.priority === 'danger') { icon = '!!'; cls = 'urgent'; }
         else if (item.priority === 'warn') { icon = '!'; cls = 'warn'; }
         else if (item.priority === 'ok') { icon = '&#10003;'; cls = 'ok'; }
-        html += '<div class="dash-action-item"><div class="dai-icon ' + cls + '">' + icon + '</div><div class="dai-content"><div class="dai-title">' + escHtml(item.label) + '</div><div class="dai-meta">' + escHtml(item.detail || '') + '</div></div></div>';
+        var routeAttrs = item.route ? ' data-action="nav" data-route="' + escAttr(item.route) + '" style="cursor:pointer"' : '';
+        html += '<div class="dash-action-item"' + routeAttrs + '><div class="dai-icon ' + cls + '">' + icon + '</div><div class="dai-content"><div class="dai-title">' + escHtml(item.label) + '</div><div class="dai-meta">' + escHtml(item.detail || item.sub || '') + '</div></div>' + (item.badge ? '<div>' + statusBadge(item.badge) + '</div>' : '') + '</div>';
       });
     }
     html += '</div></div>';
-    /* Team availability */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Team Availability — Today</div><div class="dc-sub">' + escHtml(orgName || 'Your Section') + '</div></div>';
-    if (todayHoliday) { html += '<div class="health-pill" style="background:rgba(255,111,142,.1);color:var(--danger);border-color:rgba(255,111,142,.2)">' + escHtml(todayHoliday) + '</div>'; }
+    /* Team availability (right sidebar) */
+    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Out Today</div><div class="dc-sub">' + escHtml(orgName || 'Your section') + '</div></div>';
+    if (todayHoliday) { html += '<div class="health-pill" style="background:rgba(255,111,142,.1);color:var(--danger);border-color:rgba(255,111,142,.2)">Holiday</div>'; }
     html += '</div><div class="dc-body">';
     if (todayHoliday) { html += '<div style="padding:6px 0;font-size:12px;color:var(--danger);font-weight:700">Federal Holiday — ' + escHtml(todayHoliday) + '</div>'; }
     if (!teamOut.length) { html += '<div class="dc-empty">' + (todayHoliday ? 'Office closed for holiday.' : 'Everyone in your section is in today.') + '</div>'; }
     else {
-      teamOut.slice(0, 8).forEach(function(item){
+      teamOut.slice(0, 10).forEach(function(item){
         var t = getCalType(item.entry.TimeOffType);
         html += '<div class="dash-team-row"><div class="dot" style="background:' + t.color + '"></div><div class="name">' + escHtml(formatPerson(item.person)) + '</div><div class="status" style="color:' + t.color + '">' + escHtml(item.entry.TimeOffType || 'Out') + '</div></div>';
       });
-      if (teamOut.length > 8) { html += '<div style="font-size:10px;color:var(--muted);padding-top:4px">+' + (teamOut.length - 8) + ' more</div>'; }
-    }
-    html += '</div></div></div>';
-
-    /* ─ Row 2: Training + Requests + In/Out ─ */
-    html += '<div class="dash-grid-3">';
-    /* Training */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Training</div></div><button class="btn subtle" data-action="nav" data-route="training" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + statusBadge('Current: ' + current) + statusBadge('Due Soon: ' + dueSoon) + statusBadge('Expired: ' + expired) + statusBadge('Missing: ' + missing) + '</div>';
-    html += '<div class="progress" style="height:6px"><span style="width:' + currentPct + '%;background:linear-gradient(90deg,var(--accent-3),var(--accent))"></span></div>';
-    if (riskRows.length) {
-      html += '<div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Highest Risk</div>';
-      riskRows.slice(0, 3).forEach(function(r){
-        var color = r.status === 'Expired' ? 'var(--danger)' : (r.status === 'Missing' ? 'var(--warn)' : 'var(--muted)');
-        html += '<div style="display:flex;justify-content:space-between;gap:6px;padding:4px 0;font-size:11px;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(r.name || '') + '</span><span style="color:' + color + ';font-weight:700;font-size:10px;white-space:nowrap">' + escHtml(r.status) + '</span></div>';
-      });
+      if (teamOut.length > 10) { html += '<div style="font-size:10px;color:var(--muted);padding-top:4px">+' + (teamOut.length - 10) + ' more</div>'; }
     }
     html += '</div></div>';
-    /* Requests */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Requests</div></div><button class="btn subtle" data-action="nav" data-route="requests" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
-    if (!myOpenRequests.length) { html += '<div class="dc-empty">No open requests.</div>'; }
-    else {
-      myOpenRequests.slice(0, 5).forEach(function(r){
-        html += '<div class="dash-req-row" data-action="view-request" data-id="' + escAttr(r.Id) + '" style="cursor:pointer"><div class="drr-title">' + escHtml(r.Title || r.RequestID || 'Request') + '</div>' + statusBadge(r.Status || 'Open') + '</div>';
-      });
-    }
-    html += '</div></div>';
-    /* In/Out */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">In/Out Cases</div></div><button class="btn subtle" data-action="nav" data-route="inout" style="padding:4px 8px;font-size:10px">View All</button></div><div class="dc-body">';
-    if (!myOpenInOut.length) { html += '<div class="dc-empty">No active cases.</div>'; }
-    else {
-      myOpenInOut.slice(0, 5).forEach(function(r){
-        html += '<div class="dash-req-row"><div class="drr-title">' + escHtml((r.ProcessType || 'Case') + ' — ' + ((r.PersonID && r.PersonID.Title) || '')) + '</div>' + statusBadge(r.Status || 'Open') + '</div>';
-      });
-    }
-    html += '</div></div></div>';
+    html += '</div>';
 
-    /* ─ Row 2.5: Upcoming Time Off + Quick Links ─ */
-    var myUpcoming = getUpcomingTimeOff(14);
-    var certAlerts = getCertExpirationAlerts(60);
-    html += '<div class="dash-grid">';
-    /* Upcoming time off */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">My Upcoming Time Off</div><div class="dc-sub">Next 14 days</div></div><button class="btn subtle" data-action="nav" data-route="calendar" style="padding:4px 8px;font-size:10px">Calendar</button></div><div class="dc-body">';
-    if (!myUpcoming.length) { html += '<div class="dc-empty">No upcoming time off scheduled.</div>'; }
-    else {
-      myUpcoming.slice(0, 5).forEach(function(e){
+    /* ─ My upcoming time off (only when there's something to show) ─ */
+    if (myUpcoming.length) {
+      html += '<div class="dash-card" style="margin-top:12px"><div class="dc-head"><div><div class="dc-title">My Upcoming Time Off</div><div class="dc-sub">Next 14 days</div></div><button class="btn subtle" data-action="nav" data-route="calendar" style="padding:4px 8px;font-size:10px">Calendar</button></div><div class="dc-body">';
+      myUpcoming.slice(0, 6).forEach(function(e){
         var t = getCalType(e.TimeOffType);
         html += '<div class="dash-team-row"><div class="dot" style="background:' + t.color + '"></div><div class="name">' + escHtml((e.StartDate || '').slice(0,10)) + (e.EndDate && e.EndDate !== e.StartDate ? ' to ' + escHtml((e.EndDate || '').slice(0,10)) : '') + '</div><div class="status" style="color:' + t.color + '">' + escHtml(e.TimeOffType || '') + '</div></div>';
       });
+      html += '</div></div>';
     }
-    html += '</div></div>';
-    /* Cert expiration alerts */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Expiring Certifications</div><div class="dc-sub">Within 60 days</div></div></div><div class="dc-body">';
-    if (!certAlerts.length) { html += '<div class="dc-empty">No certifications expiring soon.</div>'; }
-    else {
-      certAlerts.slice(0, 5).forEach(function(a){
-        var color = a.daysLeft <= 14 ? 'var(--danger)' : a.daysLeft <= 30 ? 'var(--warn)' : 'var(--muted)';
-        html += '<div class="dash-action-item"><div class="dai-icon warn">!</div><div class="dai-content"><div class="dai-title">' + escHtml(a.training ? (a.training.TrainingName || a.training.Title || '') : 'Certification') + '</div><div class="dai-meta" style="color:' + color + '">' + a.daysLeft + ' days left — expires ' + escHtml(formatDate(a.expirationDate)) + '</div></div></div>';
-      });
-    }
-    html += '</div></div></div>';
 
-    /* ─ Row 3: Notifications + Quick Nav ─ */
-    html += '<div class="dash-grid">';
-    /* Notifications */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Notifications</div></div><div class="health-pill">' + notifications.length + ' active</div></div><div class="dc-body">' + renderNotificationCenter() + '</div></div>';
-    /* Quick nav */
-    html += '<div class="dash-card"><div class="dc-head"><div><div class="dc-title">Quick Navigation</div></div></div><div class="dc-body"><div class="dash-nav-grid">';
-    var navIcons = { home: 'H', people: 'P', organizations: 'O', training: 'T', sf182: 'S', requests: 'R', inout: 'I', facilities: 'F', calendar: 'C', assets: 'A', admin: 'X', diagnostics: 'D' };
-    var adminOnlyNav = { admin: true, diagnostics: true };
-    APP.nav.forEach(function(item){
-      if (adminOnlyNav[item.key] && !canSeeAdmin()) { return; }
-      html += '<div class="dash-nav-tile" data-action="nav" data-route="' + escAttr(item.key) + '">' + escHtml(item.label) + '</div>';
-    });
-    html += '</div>';
-    /* Admin health summary (compact) */
+    /* ─ Admin-only system-health strip ─ */
     if (canSeeAdmin()) {
-      html += '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line);font-size:11px">';
-      html += '<div style="font-weight:800;margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">System Health</div>';
-      html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
-      html += '<span>Errors: <strong style="color:' + (health.recentErrors > 0 ? 'var(--danger)' : 'var(--ok)') + '">' + health.recentErrors + '</strong></span>';
-      html += '<span>Telemetry Queue: <strong>' + health.telemetryQueued + '</strong></span>';
-      html += '<span>Audit Queue: <strong>' + health.auditQueued + '</strong></span>';
-      html += '<span>Version: <strong>' + escHtml(APP.version) + '</strong></span>';
+      var health = getDashboardHealthSummary();
+      var dqSummary = '';
       try {
         var dqIssues = runDataQualityChecks();
         var dqDanger = dqIssues.filter(function(i){ return i.severity === 'danger'; }).length;
         var dqColor = dqDanger > 0 ? 'var(--danger)' : dqIssues.length > 0 ? 'var(--warn,#e67e22)' : 'var(--ok)';
-        html += '<span style="cursor:pointer" data-action="nav" data-route="admin" title="Click to open Admin module">Data Quality: <strong style="color:' + dqColor + '">' + dqIssues.length + ' issue(s)' + (dqDanger ? ' (' + dqDanger + ' critical)' : '') + '</strong></span>';
+        dqSummary = '<span style="cursor:pointer" data-action="nav" data-route="admin" title="Click to open Admin">Data Quality: <strong style="color:' + dqColor + '">' + dqIssues.length + ' issue(s)' + (dqDanger ? ' (' + dqDanger + ' critical)' : '') + '</strong></span>';
       } catch(e){}
-      html += '</div></div>';
+      html += '<div style="margin-top:16px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line);font-size:11px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">';
+      html += '<span style="font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">System Health · Admin</span>';
+      html += '<span>Errors: <strong style="color:' + (health.recentErrors > 0 ? 'var(--danger)' : 'var(--ok)') + '">' + health.recentErrors + '</strong></span>';
+      html += '<span>Telemetry Queue: <strong>' + health.telemetryQueued + '</strong></span>';
+      html += '<span>Audit Queue: <strong>' + health.auditQueued + '</strong></span>';
+      html += '<span>Version: <strong>' + escHtml(APP.version) + '</strong></span>';
+      if (dqSummary) { html += dqSummary; }
+      html += '<span style="flex:1"></span>';
+      html += '<button class="btn subtle" data-action="nav" data-route="admin" style="padding:4px 10px;font-size:10px">Open Admin</button>';
+      html += '<button class="btn subtle" data-action="nav" data-route="diagnostics" style="padding:4px 10px;font-size:10px">Diagnostics</button>';
+      html += '</div>';
     }
-    html += '</div></div></div>';
 
     setView(html);
   }).catch(function(err){
@@ -3804,24 +3710,6 @@ function renderHome(){
 }
 function metricCard(title, value, sub, pct){
   return '<div class="card glow"><div class="card-body"><div class="metric"><div><div class="label">' + escHtml(title) + '</div><div class="big">' + escHtml(String(value)) + '</div><div class="muted mini">' + escHtml(sub) + '</div></div><div class="spark"><span style="width:' + (pct || 0) + '%"></span></div></div></div></div>';
-}
-function renderMiniRequestList(rows){
-  if (!rows || !rows.length) { return '<div class="empty">No requests found.</div>'; }
-  var html = '<div class="tile-grid">';
-  rows.forEach(function(r){
-    html += '<div class="tile" data-action="view-request" data-id="' + escAttr(r.Id) + '"><div class="tile-title">' + escHtml(r.Title || r.RequestID || 'Request') + '</div><div class="tile-sub">' + escHtml(r.RequestType || 'Administrative Request') + '</div><div style="margin-top:8px">' + statusBadge(r.Status || 'Unknown') + '</div><div class="small-note" style="margin-top:10px">' + escHtml(r.DueDate ? 'Due ' + formatDate(r.DueDate) : (r.AssignedTo && r.AssignedTo.Title ? 'Assigned to ' + r.AssignedTo.Title : 'No due date on file')) + '</div></div>';
-  });
-  html += '</div>';
-  return html;
-}
-function renderMiniInOutList(rows){
-  if (!rows || !rows.length) { return '<div class="empty">No in/out cases found.</div>'; }
-  var html = '<div class="tile-grid">';
-  rows.forEach(function(r){
-    html += '<div class="tile"><div class="tile-title">' + escHtml(r.ProcessType || 'Case') + '</div><div class="tile-sub">' + escHtml((r.PersonID && r.PersonID.Title) || '') + '</div><div style="margin-top:8px">' + statusBadge(r.Status || 'Open') + '</div><div class="small-note" style="margin-top:10px">' + escHtml((r.CurrentStep || 'Awaiting next step') + (r.OpenedOn ? ' • Opened ' + formatDate(r.OpenedOn) : '')) + '</div></div>';
-  });
-  html += '</div>';
-  return html;
 }
 function renderPeople(){
   renderLoading('Loading people...');
@@ -6159,27 +6047,6 @@ function saveBulkTraining(){
 }
 
 /* ─── Certification Expiration Alerts ─── */
-function getCertExpirationAlerts(daysAhead){
-  daysAhead = daysAhead || 90;
-  var now = new Date(); now.setHours(0,0,0,0);
-  var cutoff = new Date(now.getTime() + daysAhead * 86400000);
-  var records = APP.state.data.trainingRecords || [];
-  var catalog = APP.state.data.trainingCatalog || [];
-  var catalogMap = {};
-  catalog.forEach(function(t){ catalogMap[t.Id] = t; });
-  var alerts = [];
-  records.forEach(function(r){
-    if (!r.ExpirationDate) { return; }
-    var exp = new Date(r.ExpirationDate);
-    if (exp < now || exp > cutoff) { return; }
-    var daysLeft = Math.round((exp - now) / 86400000);
-    var t = r.TrainingID ? catalogMap[r.TrainingID.Id || r.TrainingID] : null;
-    alerts.push({ record: r, training: t, daysLeft: daysLeft, expirationDate: exp });
-  });
-  alerts.sort(function(a, b){ return a.daysLeft - b.daysLeft; });
-  return alerts;
-}
-
 function wSla(days){
   var n = parseInt(days, 10);
   if (!n || isNaN(n)) { return ''; }
@@ -15197,7 +15064,7 @@ function handleClick(e){
   var action = el.getAttribute('data-action');
   if (!action) { return; }
   if (action === 'close-modal') { closeModal(); return; }
-  if (action === 'nav') { routeTo(el.getAttribute('data-route')); return; }
+  if (action === 'nav') { if (el.getAttribute('data-close-modal') === '1') { closeModal(); } routeTo(el.getAttribute('data-route')); return; }
   if (action === 'refresh-route') { renderRoute(); return; }
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
   if (action === 'sec-admin-tab') { APP.state.securityAdminTab = el.getAttribute('data-tab') || 'incidents'; renderSecurityAdmin(); return; }
@@ -15314,18 +15181,24 @@ function handleClick(e){
   if (action === 'mark-notification-read') {
     e.stopPropagation();
     var nrId = el.getAttribute('data-id');
+    var notifModalOpen = document.getElementById('modalMask') && document.getElementById('modalMask').style.display === 'flex' && /Notifications/.test(document.getElementById('modalTitle') ? document.getElementById('modalTitle').textContent : '');
     markNotificationRead(nrId).then(function(){
       toast('Marked as read.', 'ok');
-      if (APP.state.route === 'home') { renderRoute(); }
+      renderNav();
+      if (notifModalOpen) { openNotificationsPanel(); }
+      else if (APP.state.route === 'home') { renderRoute(); }
     }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Could not mark as read.', 'danger'); });
     return;
   }
   if (action === 'dismiss-notification') {
     e.stopPropagation();
     var ndId = el.getAttribute('data-id');
+    var notifModalOpen2 = document.getElementById('modalMask') && document.getElementById('modalMask').style.display === 'flex' && /Notifications/.test(document.getElementById('modalTitle') ? document.getElementById('modalTitle').textContent : '');
     dismissNotification(ndId).then(function(){
       toast('Notification dismissed.', 'ok');
-      if (APP.state.route === 'home') { renderRoute(); }
+      renderNav();
+      if (notifModalOpen2) { openNotificationsPanel(); }
+      else if (APP.state.route === 'home') { renderRoute(); }
     }).catch(function(err){ toast(extractSpErrorMessage(err) || 'Could not dismiss.', 'danger'); });
     return;
   }
@@ -15500,7 +15373,7 @@ function handleClick(e){
   if (action === 'export-data-quality') { exportTableToCSV('.table-wrap table', 'data_quality_report'); return; }
   if (action === 'run-data-quality') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return; } toast('Running data quality checks...', 'ok'); var issues = runDataQualityChecks(); toast(issues.length ? issues.length + ' data quality issue(s) found.' : 'All checks passed!', issues.length ? 'warn' : 'ok'); if (APP.state.route === 'admin') { renderAdmin(); } return; }
   if (action === 'print-view') { printView(); return; }
-  if (action === 'toggle-notifications') { var panel = document.getElementById('notificationPanel'); if (panel) { panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; } return; }
+  if (action === 'toggle-notifications') { openNotificationsPanel(); return; }
   if (action === 'edit-request') { openRequestEditModal(el.getAttribute('data-id')); return; }
   if (action === 'save-request-edit') { saveRequestEdit(); return; }
   if (action === 'close-request') { closeRequest(el.getAttribute('data-id')); return; }
