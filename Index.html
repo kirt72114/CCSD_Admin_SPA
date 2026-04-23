@@ -10387,6 +10387,7 @@ function renderDuties(){
     }).join('');
     html += '<div class="card" style="margin-top:14px"><div class="card-head"><div><div class="card-title">Duty Roster</div><div class="card-sub">' + escHtml(scopeLabels[ui.scope]) + ' · ' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + '</div></div>'
       + '<div class="quick-actions">'
+      +   (canManageDuties() ? '<button class="btn subtle" data-action="duty-scan-gaps" title="Mark expired or orphaned duties as Vacant and notify POCs">Scan for Gaps</button> ' : '')
       +   (canManageDuties() ? '<button class="btn primary" data-action="duty-open-assign">Assign Duty</button>' : '')
       + '</div></div>';
     html += '<div class="card-body">'
@@ -10431,6 +10432,13 @@ function renderDuties(){
     }
     html += '</div></div>';
     setView(html);
+    /* Auto-scan for gaps once per session, silent, only if user can manage. */
+    if (canManageDuties() && !APP.state.dutyScanRan) {
+      APP.state.dutyScanRan = true;
+      scanDutyGaps({ silent: true }).then(function(res){
+        if (res && res.flipped > 0) { renderDuties(); }
+      }).catch(function(){ /* non-fatal */ });
+    }
   }).catch(function(err){
     addDiagnostic('error', 'renderDuties', 'Failed to render duties page.', { detail: err && (err.text || err.message || err) });
     setView('<div class="card"><div class="card-body"><div class="empty">Could not load duties. Check diagnostics for details.</div></div></div>');
@@ -10619,6 +10627,117 @@ function saveDutyEdit(){
   }).catch(function(err){
     addDiagnostic('error', 'saveDutyEdit', 'Update failed.', { detail: err && (err.text || err.message || err) });
     toast('Failed to update duty.', 'danger');
+  });
+}
+
+/* ============================================================================
+ * ADDITIONAL DUTIES — gap detection
+ * Auto-flips Active duties to Vacant when the assignee is Departed or the
+ * AppointmentEndDate is in the past, writes a CCSD_DutyVacancyLog entry, and
+ * sends a best-effort notification to the duty's NotificationPOC (with 24h
+ * cooldown on LastNotifiedOn).  Safe to call repeatedly.
+ * ========================================================================== */
+function resolvePersonFromSpUser(spUser){
+  if (!spUser) { return null; }
+  var people = APP.state.data.people || [];
+  var spId = spUser.Id;
+  var spEmail = String(spUser.EMail || spUser.Email || '').toLowerCase();
+  for (var i = 0; i < people.length; i++) {
+    var p = people[i];
+    if (spId && p.Account && p.Account.Id && String(p.Account.Id) === String(spId)) { return p; }
+    if (spEmail && p.Email && String(p.Email).toLowerCase() === spEmail) { return p; }
+    if (spEmail && p.Account && p.Account.EMail && String(p.Account.EMail).toLowerCase() === spEmail) { return p; }
+  }
+  return null;
+}
+function personIsDeparted(person){
+  if (!person) { return false; }
+  if (String(person.Status || '').toLowerCase().indexOf('depart') >= 0) { return true; }
+  var dep = parseSpDate(person.DateDeparted);
+  if (dep && dep < new Date()) { return true; }
+  return false;
+}
+function scanDutyGaps(options){
+  options = options || {};
+  var silent = !!options.silent;
+  return Promise.all([ensurePeopleLoaded().catch(function(){ return []; }), ensureAdditionalDutiesLoaded(true), ensureDutyTypesLoaded()]).then(function(){
+    var duties = APP.state.data.additionalDuties || [];
+    var people = APP.state.data.people || [];
+    var peopleById = {};
+    people.forEach(function(p){ peopleById[String(p.Id)] = p; });
+    var now = new Date();
+    var cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    var todoQueue = [];
+    duties.forEach(function(d){
+      if (String(d.Status || '') !== 'Active') { return; }
+      var reason = null;
+      var end = parseSpDate(d.AppointmentEndDate);
+      if (end && end < now) { reason = 'Appointment end date has passed'; }
+      var personId = d.PersonID && d.PersonID.Id;
+      var person = personId ? peopleById[String(personId)] : null;
+      if (!reason && person && personIsDeparted(person)) { reason = 'Assigned person is departed'; }
+      if (!reason) { return; }
+      /* 24h cooldown: if LastNotifiedOn is recent, don't re-notify (but still flip status
+       * if it somehow reverted). */
+      var lastNotified = parseSpDate(d.LastNotifiedOn);
+      var notifyNow = !lastNotified || lastNotified < cutoff24h;
+      todoQueue.push({ duty: d, reason: reason, notifyNow: notifyNow });
+    });
+    if (!todoQueue.length) { return { scanned: duties.length, flagged: 0 }; }
+    var flipped = 0;
+    var notified = 0;
+    var chain = Promise.resolve();
+    todoQueue.forEach(function(item){
+      chain = chain.then(function(){
+        var d = item.duty;
+        var nowIso = new Date().toISOString();
+        var updates = { Status: 'Vacant', LastNotifiedOn: nowIso };
+        return updateListItem(APP.lists.AdditionalDuties, d.Id, updates, { entityType: 'AdditionalDuty', before: d, reason: 'Gap scan: ' + item.reason })
+          .then(function(){
+            flipped++;
+            var logValues = {
+              Title: dutyDisplayName(d) + ' — vacancy detected',
+              DutyIDId: d.Id,
+              DateVacant: nowIso,
+              Notes: 'Auto-detected by gap scan. Reason: ' + item.reason
+            };
+            if (d.PersonID && d.PersonID.Id) { logValues.PreviousPersonIDId = d.PersonID.Id; }
+            return createListItem(APP.lists.DutyVacancyLog, logValues, { entityType: 'DutyVacancyLog', reason: 'Gap scan' }).catch(function(){ return null; });
+          })
+          .then(function(){
+            if (!item.notifyNow) { return; }
+            if (!d.NotificationPOC || !d.NotificationPOC.Id) { return; }
+            var pocPerson = resolvePersonFromSpUser(d.NotificationPOC);
+            if (!pocPerson || !pocPerson.Id) {
+              addDiagnostic('warn', 'scanDutyGaps', 'Could not resolve NotificationPOC to a CCSD_Personnel record.', { dutyId: d.Id, poc: d.NotificationPOC });
+              return;
+            }
+            return sendNotification({
+              title: 'Duty vacancy: ' + dutyDisplayName(d),
+              body: 'The additional-duty assignment "' + dutyDisplayName(d) + '" is now vacant (reason: ' + item.reason + '). Please reassign or extend the appointment.',
+              audienceType: 'Individual',
+              recipientPersonId: pocPerson.Id,
+              notificationType: 'DutyVacancy',
+              sourceModule: 'Duties',
+              isSystemGenerated: true,
+              relatedEntityType: 'AdditionalDuty',
+              relatedEntityID: d.Id,
+              actionURL: (window.location.pathname + '#duties')
+            }).then(function(){ notified++; }).catch(function(err){
+              addDiagnostic('warn', 'scanDutyGaps', 'Vacancy notification failed.', { dutyId: d.Id, detail: err && (err.text || err.message || err) });
+            });
+          })
+          .catch(function(err){
+            addDiagnostic('error', 'scanDutyGaps', 'Failed to flip duty to Vacant.', { dutyId: d.Id, detail: err && (err.text || err.message || err) });
+          });
+      });
+    });
+    return chain.then(function(){
+      APP.state.data.additionalDuties = null;
+      APP.state.data.dutyVacancyLog = null;
+      if (!silent) { toast(flipped + ' duty row' + (flipped === 1 ? '' : 's') + ' flipped to Vacant; ' + notified + ' POC notification' + (notified === 1 ? '' : 's') + ' sent.', 'ok'); }
+      return { scanned: duties.length, flagged: todoQueue.length, flipped: flipped, notified: notified };
+    });
   });
 }
 
@@ -11235,11 +11354,15 @@ function renderSimpleAssetTable(title, rows){
 }
 function renderAdmin(){
   renderLoading('Loading admin...');
-  return Promise.all([ensureWorkflowsLoaded(), ensureHowToLoaded(), ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureRequestsLoaded(), ensureTrainingCatalogLoaded(), ensureAllRolesLoaded()]).then(function(){
+  return Promise.all([ensureWorkflowsLoaded(), ensureHowToLoaded(), ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureRequestsLoaded(), ensureTrainingCatalogLoaded(), ensureAllRolesLoaded(), ensureAdditionalDutiesLoaded().catch(function(){ return []; })]).then(function(){
     var people = APP.state.data.people || [];
     var orgs = APP.state.data.organizations || [];
     var reqs = APP.state.data.requests || [];
     var catalog = APP.state.data.trainingCatalog || [];
+    var duties = APP.state.data.additionalDuties || [];
+    var dutyVacant = duties.filter(function(d){ return String(d.Status) === 'Vacant'; }).length;
+    var dutyExpiring = duties.filter(function(d){ return isDutyExpiring(d, 30); }).length;
+    var dutyGapCount = dutyVacant + dutyExpiring;
     var dqIssues = runDataQualityChecks();
     var dangerIssues = dqIssues.filter(function(i){ return i.severity === 'danger'; }).length;
     var warnIssues = dqIssues.filter(function(i){ return i.severity === 'warn'; }).length;
@@ -11248,6 +11371,12 @@ function renderAdmin(){
     var openReqs = reqs.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('complete') < 0 && s.indexOf('closed') < 0; }).length;
     var html = '';
     html += '<div class="exec-strip"><div class="title">Administration</div><div class="item"><span class="swatch"></span>' + escHtml(APP.siteLabel || APP.environment) + '</div><div class="item"><span class="swatch"></span>Version ' + escHtml(APP.version) + '</div><div class="item"><span class="swatch"></span>Data Quality Issues ' + escHtml(String(dqIssues.length)) + '</div><div class="item"><span class="swatch"></span>People ' + escHtml(String(people.length)) + '</div><div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(openReqs)) + '</div></div>';
+    if (dutyGapCount > 0) {
+      html += '<div class="card" style="margin-top:10px;border-left:4px solid var(--warn,#c78a00)"><div class="card-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">'
+        + '<div><strong>Duty gaps need attention</strong><div class="small-note">' + dutyVacant + ' vacant · ' + dutyExpiring + ' expiring in the next 30 days</div></div>'
+        + '<div><button class="btn" data-action="nav" data-route="duties">Review duties</button></div>'
+        + '</div></div>';
+    }
     html += '<div class="grid cols-4">';
     html += metricCard('Total Personnel', people.length, 'Loaded personnel records', Math.min(100, people.length / 6));
     html += metricCard('Organizations', orgs.length, 'Active organizational units', Math.min(100, orgs.length * 4));
@@ -15612,6 +15741,7 @@ function handleClick(e){
   if (action === 'duty-save-assign') { saveDutyAssignment(); return; }
   if (action === 'duty-save-edit') { saveDutyEdit(); return; }
   if (action === 'duty-confirm-end') { confirmEndDuty(); return; }
+  if (action === 'duty-scan-gaps') { scanDutyGaps({ silent: false }).then(function(){ renderDuties(); }); return; }
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
   if (action === 'sec-admin-tab') { APP.state.securityAdminTab = el.getAttribute('data-tab') || 'incidents'; renderSecurityAdmin(); return; }
   if (action === 'edit-sec-record') { openEditSecRecordModal(el.getAttribute('data-person-id')); return; }
