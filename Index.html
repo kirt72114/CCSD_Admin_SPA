@@ -2990,6 +2990,24 @@ function canViewOwnSecurity(){ return APP.state.currentPersonnel && APP.state.cu
 function canSeeSupervisorHub(){ return can('seeSupervisorHub'); }
 function canManageRoles(){ return can('manageRoles'); }
 function canManageDuties(){ return can('manageDuties'); }
+/* Scoped permission helpers.  Use these whenever the target of an action
+ * (a Person row, a Duty row) is known.  They layer org-scope on top of the
+ * capability check so an Admin scoped to Org X cannot mutate a row in
+ * Org Y.  App Admin and HR stay enterprise-wide by design. */
+function canEditPerson(person){
+  if (!can('editPeople')) { return false; }
+  if (hasRole('App Admin') || hasRole('HR')) { return true; }
+  var targetOrgId = person && person.OrgID && person.OrgID.Id;
+  if (!targetOrgId) { return true; }
+  return canAdminOrg(targetOrgId);
+}
+function canAdminDuty(duty){
+  if (!canManageDuties()) { return false; }
+  if (hasRole('App Admin')) { return true; }
+  var targetOrgId = duty && duty.OrgID && duty.OrgID.Id;
+  if (!targetOrgId) { return true; }
+  return canAdminOrg(targetOrgId);
+}
 function getCurrentOrgId(){
   var p = APP.state.currentPersonnel;
   return p && p.OrgID && p.OrgID.Id ? p.OrgID.Id : null;
@@ -3485,6 +3503,19 @@ function renderContextBar(){
     if (person.OrgID && person.OrgID.Title) { html += '<div class="status-pill"><span class="dot"></span><span>' + escHtml(person.OrgID.Title) + '</span></div>'; }
   }
   roles.forEach(function(role){ html += '<div class="role-chip"><span class="dot"></span><span>' + escHtml(role) + '</span></div>'; });
+  var scopes = APP.state.derivedRoleScopes || [];
+  if (scopes.length) {
+    var orgsMap = {};
+    (APP.state.data.organizations || []).forEach(function(o){ orgsMap[String(o.Id)] = o; });
+    var scopeLabels = scopes.filter(function(s){ return s.role === 'Admin' && s.orgId; }).map(function(s){
+      var org = orgsMap[String(s.orgId)];
+      return (org && org.Title) || ('Org #' + s.orgId);
+    });
+    if (scopeLabels.length) {
+      var title = 'Admin derived from active duty assignment(s): ' + scopeLabels.join(', ') + ' (plus descendants)';
+      html += '<div class="role-chip" title="' + escAttr(title) + '"><span class="dot"></span><span>Admin scope: ' + escHtml(scopeLabels.slice(0, 2).join(', ')) + (scopeLabels.length > 2 ? ' +' + (scopeLabels.length - 2) + ' more' : '') + '</span></div>';
+    }
+  }
   html += '<div class="spacer"></div>';
   if (APP.siteLabel) { html += '<div class="status-pill" title="' + escAttr(APP.rootUrl) + '"><span class="dot" style="background:var(--accent-2)"></span><span>' + escHtml(APP.siteLabel) + '</span></div>'; }
   html += '<div class="small-note" title="SharePoint site root URL">' + escHtml(APP.rootUrl) + '</div>';
@@ -3888,7 +3919,7 @@ function renderPeople(){
       html += '<div class="tile-sub">' + escHtml((p.OrgID && p.OrgID.Title) || '') + ' • ' + escHtml((p.PositionID && p.PositionID.Title) || '') + '</div>';
       html += '<div style="margin-top:10px">' + statusBadge(p.Status || 'Unknown') + '</div>';
       html += '<div class="small-note" style="margin-top:10px">' + escHtml(p.Email || '') + '</div>';
-      html += '<div style="margin-top:12px" class="quick-actions"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(p.Id) + '">View</button><button class="btn subtle" data-action="focus-person-assets" data-id="' + escAttr(p.Id) + '">Equipment / Software</button>' + (canEdit ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit</button>' : '') + '</div>';
+      html += '<div style="margin-top:12px" class="quick-actions"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(p.Id) + '">View</button><button class="btn subtle" data-action="focus-person-assets" data-id="' + escAttr(p.Id) + '">Equipment / Software</button>' + (canEdit && canEditPerson(p) ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit</button>' : '') + '</div>';
       html += '</div>';
     });
     html += '</div></div></div>';
@@ -3959,6 +3990,7 @@ function savePersonEdit(){
   var personId = APP.modalState.personId;
   var person = findPersonById(personId);
   if (!personId || !person) { toast('Missing person context.', 'danger'); return; }
+  if (!canEditPerson(person)) { toast('You no longer have admin scope to save this person.', 'danger'); return; }
   var firstName = document.getElementById('personFirstName').value;
   var lastName = document.getElementById('personLastName').value;
   var email = document.getElementById('personEmail').value;
@@ -4252,9 +4284,9 @@ function openPersonDetailPage(id){
     body += '</div>';
     var footer = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
       + '<button class="btn subtle" data-action="focus-person-assets" data-id="' + escAttr(p.Id) + '">Full Assets View</button>'
-      + (canEditPeople() ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit Person</button>' : '')
-      + (canEditPeople() ? '<button class="btn warn" data-action="depart-person" data-id="' + escAttr(p.Id) + '">Process Departure</button>' : '')
-      + (canEditPeople() ? '<button class="btn subtle" data-action="transfer-person" data-id="' + escAttr(p.Id) + '">Transfer Org</button>' : '')
+      + (canEditPerson(p) ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit Person</button>' : '')
+      + (canEditPerson(p) ? '<button class="btn warn" data-action="depart-person" data-id="' + escAttr(p.Id) + '">Process Departure</button>' : '')
+      + (canEditPerson(p) ? '<button class="btn subtle" data-action="transfer-person" data-id="' + escAttr(p.Id) + '">Transfer Org</button>' : '')
       + '</div><button class="btn" data-action="close-modal">Close</button>';
     openModal('Personnel Detail — ' + escHtml(formatPerson(p)), body, footer, p.PersonID || '');
   });
@@ -10413,7 +10445,7 @@ function renderDuties(){
         return (order[aS] != null ? order[aS] : 9) - (order[bS] != null ? order[bS] : 9);
       });
       rows.forEach(function(d){
-        var canEdit = canManageDuties() && (hasRole('App Admin') || (d.OrgID && d.OrgID.Id && canAdminOrg(d.OrgID.Id)) || (!d.OrgID || !d.OrgID.Id));
+        var canEdit = canAdminDuty(d);
         var expiring = isDutyExpiring(d, 30);
         html += '<tr' + (expiring ? ' style="background:var(--warn-bg,rgba(255,180,0,.06))"' : '') + '>'
           + '<td>' + escHtml((d.DutyTypeID && d.DutyTypeID.Title) || d.Title || 'Duty') + '</td>'
@@ -10501,7 +10533,7 @@ function openAssignDutyModal(){
 function openEditDutyModal(dutyId){
   var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
   if (!duty) { toast('Duty not found.', 'danger'); return; }
-  if (!canManageDuties() || (duty.OrgID && duty.OrgID.Id && !canAdminOrg(duty.OrgID.Id) && !hasRole('App Admin'))) {
+  if (!canAdminDuty(duty)) {
     toast('You do not have permission to edit this duty.', 'danger'); return;
   }
   return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
@@ -10513,7 +10545,7 @@ function openEditDutyModal(dutyId){
 function openEndDutyModal(dutyId){
   var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
   if (!duty) { toast('Duty not found.', 'danger'); return; }
-  if (!canManageDuties() || (duty.OrgID && duty.OrgID.Id && !canAdminOrg(duty.OrgID.Id) && !hasRole('App Admin'))) {
+  if (!canAdminDuty(duty)) {
     toast('You do not have permission to end this duty.', 'danger'); return;
   }
   APP.modalState = { dutyMode: 'end', dutyId: duty.Id, before: duty };
@@ -10532,7 +10564,7 @@ function openEndDutyModal(dutyId){
 function openReappointDutyModal(dutyId){
   var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
   if (!duty) { toast('Duty not found.', 'danger'); return; }
-  if (!canManageDuties() || (duty.OrgID && duty.OrgID.Id && !canAdminOrg(duty.OrgID.Id) && !hasRole('App Admin'))) {
+  if (!canAdminDuty(duty)) {
     toast('You do not have permission to reappoint this duty.', 'danger'); return;
   }
   return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
@@ -10851,7 +10883,7 @@ function renderLetterHtml(duty, letterType, signer, customBody){
 function openGenerateLetterModal(dutyId){
   var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
   if (!duty) { toast('Duty not found.', 'danger'); return; }
-  if (!canManageDuties() || (duty.OrgID && duty.OrgID.Id && !canAdminOrg(duty.OrgID.Id) && !hasRole('App Admin'))) {
+  if (!canAdminDuty(duty)) {
     toast('You do not have permission to generate letters for this duty.', 'danger'); return;
   }
   return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
@@ -16248,7 +16280,11 @@ function handleClick(e){
   if (action === 'focus-person-assets') { getAssetUi(); APP.state.assetUi.personId = Number(el.getAttribute('data-id')); closeModal(); routeTo('assets'); return; }
   if (action === 'clear-person-assets') { getAssetUi(); APP.state.assetUi.personId = null; if (APP.state.route === 'assets') { renderAssets(); } closeModal(); return; }
   if (action === 'focus-seat-assets') { routeTo('facilities'); toast('Seat-focused map support will plug into Facilities next.', 'ok'); return; }
-  if (action === 'edit-person') { openPersonModal(el.getAttribute('data-id'), true); return; }
+  if (action === 'edit-person') {
+    var targetPerson = findPersonById(el.getAttribute('data-id'));
+    if (targetPerson && !canEditPerson(targetPerson)) { toast('You do not have admin scope over this person’s organization.', 'danger'); return; }
+    openPersonModal(el.getAttribute('data-id'), true); return;
+  }
   if (action === 'save-person') { savePersonEdit(); return; }
   if (action === 'open-onboarding-wizard') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } openOnboardingWizard(); return; }
   if (action === 'onboarding-next') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } onboardingNext(); return; }
@@ -16265,10 +16301,26 @@ function handleClick(e){
     return;
   }
   if (action === 'onboarding-finish') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } onboardingFinish(); return; }
-  if (action === 'depart-person') { if (!canEditPeople()) { toast('Departure processing is restricted to HR or Admin roles.', 'danger'); return; } openDepartureModal(el.getAttribute('data-id')); return; }
-  if (action === 'confirm-departure') { if (!canEditPeople()) { toast('Departure processing is restricted to HR or Admin roles.', 'danger'); return; } confirmDeparture(); return; }
-  if (action === 'transfer-person') { if (!canEditPeople()) { toast('Transfer is restricted to HR or Admin roles.', 'danger'); return; } openTransferPersonModal(el.getAttribute('data-id')); return; }
-  if (action === 'confirm-transfer-person') { if (!canEditPeople()) { toast('Transfer is restricted to HR or Admin roles.', 'danger'); return; } confirmTransferPerson(); return; }
+  if (action === 'depart-person') {
+    var dpPerson = findPersonById(el.getAttribute('data-id'));
+    if (!dpPerson || !canEditPerson(dpPerson)) { toast('Departure processing requires HR or Admin scope covering this person’s org.', 'danger'); return; }
+    openDepartureModal(el.getAttribute('data-id')); return;
+  }
+  if (action === 'confirm-departure') {
+    var cdPerson = findPersonById(APP.modalState.departPersonId);
+    if (!cdPerson || !canEditPerson(cdPerson)) { toast('You no longer have admin scope to complete this departure.', 'danger'); return; }
+    confirmDeparture(); return;
+  }
+  if (action === 'transfer-person') {
+    var tpPerson = findPersonById(el.getAttribute('data-id'));
+    if (!tpPerson || !canEditPerson(tpPerson)) { toast('Transfer requires HR or Admin scope covering this person’s org.', 'danger'); return; }
+    openTransferPersonModal(el.getAttribute('data-id')); return;
+  }
+  if (action === 'confirm-transfer-person') {
+    var ctpPerson = findPersonById(APP.modalState.xferPersonId);
+    if (!ctpPerson || !canEditPerson(ctpPerson)) { toast('You no longer have admin scope to complete this transfer.', 'danger'); return; }
+    confirmTransferPerson(); return;
+  }
   if (action === 'export-people-csv') { if (!canEditPeople()) { toast('People export is restricted to HR or Admin roles.', 'danger'); return; } exportPeopleCSV(); return; }
   if (action === 'view-training') { openTrainingModal(el.getAttribute('data-id')); return; }
   if (action === 'submit-training' || action === 'open-training-submit') { openTrainingSubmissionModal(el.getAttribute('data-id')); return; }
