@@ -9971,34 +9971,45 @@ function openCalEntryDetail(entryId){
 
 /* ─── Add / Delete Time Off Entries ─── */
 function openAddTimeOffModal(){
-  var people = APP.state.data.people || [];
-  var personOpts = people.filter(function(p){ return p.Status === 'Active'; }).map(function(p){
-    return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
-  }).join('');
-  var typeOpts = Object.keys(CAL_TYPES).filter(function(k){ return k !== 'Holiday'; }).map(function(k){
-    return '<option value="' + escAttr(k) + '">' + escHtml(k) + '</option>';
-  }).join('');
-  var today = new Date().toISOString().slice(0, 10);
-  var body = '<div class="form-grid">'
-    + formField('Person', '<select id="toPersonId" class="select"><option value="">-- Select --</option>' + personOpts + '</select>')
-    + formField('Type', '<select id="toType" class="select">' + typeOpts + '</select>')
-    + formField('Start Date', '<input id="toStart" class="input" type="date" value="' + today + '" />')
-    + formField('End Date', '<input id="toEnd" class="input" type="date" value="' + today + '" />')
-    + formField('Hours', '<input id="toHours" class="input" type="number" placeholder="8" />')
-    + formField('Status', '<select id="toStatus" class="select"><option value="Approved" selected>Approved</option><option value="Pending">Pending</option><option value="Denied">Denied</option></select>')
-    + '<div class="full">' + formField('Notes', '<textarea id="toNotes" class="textarea" style="min-height:60px" placeholder="Optional notes"></textarea>') + '</div>'
-    + '</div>';
-  openModal('Add Time Off Entry', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="cal-save-entry">Save Entry</button></div>', 'Create a new time off record');
+  return Promise.all([ensurePeopleLoaded(), ensureCurrentPersonnelLoaded()]).then(function(){
+    var people = APP.state.data.people || [];
+    var me = APP.state.currentPersonnel;
+    var myId = me && me.Id ? me.Id : null;
+    var myOrgId = (me && me.OrgID && me.OrgID.Id) ? me.OrgID.Id : null;
+    var personOpts = people.filter(function(p){
+      if (p.Status !== 'Active') return false;
+      if (myId && String(p.Id) === String(myId)) return true;
+      if (myOrgId && p.OrgID && String(p.OrgID.Id) === String(myOrgId)) return true;
+      return false;
+    }).map(function(p){
+      return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>';
+    }).join('');
+    var typeOpts = Object.keys(CAL_TYPES).filter(function(k){ return k !== 'Holiday'; }).map(function(k){
+      return '<option value="' + escAttr(k) + '">' + escHtml(k) + '</option>';
+    }).join('');
+    var today = new Date().toISOString().slice(0, 10);
+    var body = '<div class="form-grid">'
+      + formField('Person', '<select id="toPersonId" class="select"><option value="">-- Select --</option>' + personOpts + '</select>')
+      + formField('Type', '<select id="toType" class="select">' + typeOpts + '</select>')
+      + formField('Start Date', '<input id="toStart" class="input" type="date" value="' + today + '" />')
+      + formField('Start Time', '<input id="toStartTime" class="input" type="time" />')
+      + formField('End Date', '<input id="toEnd" class="input" type="date" value="' + today + '" />')
+      + formField('End Time', '<input id="toEndTime" class="input" type="time" />')
+      + formField('Hours', '<input id="toHours" class="input" type="number" placeholder="8" />')
+      + formField('Status', '<select id="toStatus" class="select"><option value="Approved" selected>Approved</option><option value="Pending">Pending</option><option value="Denied">Denied</option></select>')
+      + '<div class="full">' + formField('Notes', '<textarea id="toNotes" class="textarea" style="min-height:60px" placeholder="Optional notes"></textarea>') + '</div>'
+      + '</div>';
+    openModal('Add Time Off Entry', body, '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="cal-save-entry">Save Entry</button></div>', 'Create a new time off record');
+  });
 }
 
 function openAddTimeOffModalWithDates(startDate, endDate){
-  openAddTimeOffModal();
-  setTimeout(function(){
+  openAddTimeOffModal().then(function(){
     var startEl = document.getElementById('toStart');
     var endEl = document.getElementById('toEnd');
     if (startEl) startEl.value = startDate;
     if (endEl) endEl.value = endDate;
-  }, 50);
+  });
 }
 
 function initCalendarDragToCreate(){
@@ -10065,12 +10076,16 @@ function saveTimeOffEntry(){
   var type = document.getElementById('toType').value;
   var start = document.getElementById('toStart').value;
   var end = document.getElementById('toEnd').value;
+  var startTime = document.getElementById('toStartTime').value;
+  var endTime = document.getElementById('toEndTime').value;
   var errors = runValidation([
     function(){ return validateRequired(personId, 'Person'); },
     function(){ return validateRequired(start, 'Start Date'); },
     function(){ return validateRequired(end, 'End Date'); }
   ]);
   if (showValidationErrors(errors)) { return; }
+  var startValue = startTime ? (start + 'T' + startTime + ':00') : start;
+  var endValue = endTime ? (end + 'T' + endTime + ':00') : end;
   /* Look up person's org */
   var people = APP.state.data.people || [];
   var person = null;
@@ -10080,8 +10095,8 @@ function saveTimeOffEntry(){
     Title: type + ' - ' + start,
     PersonID: parseInt(personId, 10),
     TimeOffType: type,
-    StartDate: start,
-    EndDate: end,
+    StartDate: startValue,
+    EndDate: endValue,
     Hours: document.getElementById('toHours').value ? parseFloat(document.getElementById('toHours').value) : null,
     Status: document.getElementById('toStatus').value,
     Notes: document.getElementById('toNotes').value
