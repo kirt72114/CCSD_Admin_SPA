@@ -10425,7 +10425,8 @@ function renderDuties(){
           + '<td style="text-align:right">'
           +   (canEdit ? '<button class="btn subtle" data-action="duty-open-edit" data-id="' + escAttr(d.Id) + '">Edit</button> ' : '')
           +   (canEdit && String(d.Status) === 'Active' ? '<button class="btn subtle" data-action="duty-open-end" data-id="' + escAttr(d.Id) + '">End</button> ' : '')
-          +   (canEdit && (String(d.Status) === 'Closed' || String(d.Status) === 'Vacant') ? '<button class="btn subtle" data-action="duty-open-reappoint" data-id="' + escAttr(d.Id) + '">Reappoint</button>' : '')
+          +   (canEdit && (String(d.Status) === 'Closed' || String(d.Status) === 'Vacant') ? '<button class="btn subtle" data-action="duty-open-reappoint" data-id="' + escAttr(d.Id) + '">Reappoint</button> ' : '')
+          +   (canEdit ? '<button class="btn subtle" data-action="duty-open-letter" data-id="' + escAttr(d.Id) + '">Letter</button>' : '')
           + '</td></tr>';
       });
       html += '</tbody></table></div>';
@@ -10627,6 +10628,334 @@ function saveDutyEdit(){
   }).catch(function(err){
     addDiagnostic('error', 'saveDutyEdit', 'Update failed.', { detail: err && (err.text || err.message || err) });
     toast('Failed to update duty.', 'danger');
+  });
+}
+
+/* ============================================================================
+ * ADDITIONAL DUTIES — letter generation
+ * Builds a real Office Open XML .docx using the alt-chunk technique: a single
+ * HTML fragment is embedded inside a minimal OOXML package, and Word converts
+ * it to native paragraphs on open.  This lets us preview the exact same HTML
+ * the .docx contains without running an HTML -> WordprocessingML converter.
+ *
+ * Download triggers a client-side save AND uploads the .docx to
+ * CCSD_Letters with metadata (PersonID, DutyTypeID, LetterType, RelatedDutyID,
+ * GeneratedOn, GeneratedBy).  Failure to upload does not block the download.
+ * ========================================================================== */
+var _CRC32_TABLE = null;
+function _crc32Table(){
+  var t = new Uint32Array(256);
+  for (var n = 0; n < 256; n++) {
+    var c = n;
+    for (var k = 0; k < 8; k++) { c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1); }
+    t[n] = c;
+  }
+  return t;
+}
+function crc32Bytes(bytes){
+  _CRC32_TABLE = _CRC32_TABLE || _crc32Table();
+  var crc = 0 ^ (-1);
+  for (var i = 0; i < bytes.length; i++) { crc = (crc >>> 8) ^ _CRC32_TABLE[(crc ^ bytes[i]) & 0xFF]; }
+  return (crc ^ (-1)) >>> 0;
+}
+function toUtf8Bytes(s){
+  if (typeof TextEncoder !== 'undefined') { return new TextEncoder().encode(s); }
+  var bytes = [];
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    if (c < 0x80) { bytes.push(c); }
+    else if (c < 0x800) { bytes.push(0xC0 | (c >> 6)); bytes.push(0x80 | (c & 0x3F)); }
+    else if ((c & 0xFC00) === 0xD800 && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xFC00) === 0xDC00) {
+      var cp = 0x10000 + ((c & 0x3FF) << 10) + (s.charCodeAt(++i) & 0x3FF);
+      bytes.push(0xF0 | (cp >> 18)); bytes.push(0x80 | ((cp >> 12) & 0x3F));
+      bytes.push(0x80 | ((cp >> 6) & 0x3F)); bytes.push(0x80 | (cp & 0x3F));
+    } else { bytes.push(0xE0 | (c >> 12)); bytes.push(0x80 | ((c >> 6) & 0x3F)); bytes.push(0x80 | (c & 0x3F)); }
+  }
+  return new Uint8Array(bytes);
+}
+function buildZipStored(entries){
+  /* Stored (no-compression) ZIP.  Each entry: { path, bytes (Uint8Array) }. */
+  function u16(v){ return new Uint8Array([v & 0xFF, (v >>> 8) & 0xFF]); }
+  function u32(v){ return new Uint8Array([v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF]); }
+  function concat(arrs){
+    var total = 0; arrs.forEach(function(a){ total += a.length; });
+    var out = new Uint8Array(total); var o = 0;
+    arrs.forEach(function(a){ out.set(a, o); o += a.length; });
+    return out;
+  }
+  var parts = [], central = [], offset = 0;
+  var modTime = 0, modDate = 0x21; /* 1980-01-01 */
+  entries.forEach(function(e){
+    var nameBytes = toUtf8Bytes(e.path);
+    var data = e.bytes instanceof Uint8Array ? e.bytes : new Uint8Array(e.bytes);
+    var crc = crc32Bytes(data);
+    var lh = concat([
+      u32(0x04034b50), u16(20), u16(0), u16(0),
+      u16(modTime), u16(modDate),
+      u32(crc), u32(data.length), u32(data.length),
+      u16(nameBytes.length), u16(0),
+      nameBytes, data
+    ]);
+    parts.push(lh);
+    var cd = concat([
+      u32(0x02014b50), u16(20), u16(20), u16(0), u16(0),
+      u16(modTime), u16(modDate),
+      u32(crc), u32(data.length), u32(data.length),
+      u16(nameBytes.length), u16(0), u16(0),
+      u16(0), u16(0), u32(0),
+      u32(offset), nameBytes
+    ]);
+    central.push(cd);
+    offset += lh.length;
+  });
+  var centralStart = offset;
+  central.forEach(function(c){ parts.push(c); offset += c.length; });
+  var centralSize = offset - centralStart;
+  parts.push(concat([
+    u32(0x06054b50), u16(0), u16(0),
+    u16(entries.length), u16(entries.length),
+    u32(centralSize), u32(centralStart), u16(0)
+  ]));
+  var total = 0; parts.forEach(function(p){ total += p.length; });
+  var out = new Uint8Array(total); var o = 0;
+  parts.forEach(function(p){ out.set(p, o); o += p.length; });
+  return out;
+}
+function buildDocxFromHtml(htmlBody, title){
+  var altChunkHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escHtml(title || 'Letter') + '</title>'
+    + '<style>body{font-family:"Times New Roman",serif;font-size:11pt;line-height:1.4;color:#000}h1,h2,h3{margin:10pt 0 6pt 0}p{margin:6pt 0}hr{border:none;border-top:1pt solid #000;margin:10pt 0}table{border-collapse:collapse}</style>'
+    + '</head><body>' + htmlBody + '</body></html>';
+  var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    + '<Default Extension="xml" ContentType="application/xml"/>'
+    + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+    + '<Override PartName="/word/afchunk.htm" ContentType="text/html"/>'
+    + '</Types>';
+  var rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+    + '</Relationships>';
+  var docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    + '<Relationship Id="altChunk1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/aFChunk" Target="afchunk.htm"/>'
+    + '</Relationships>';
+  var docXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+    + '<w:body><w:altChunk r:id="altChunk1"/><w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body>'
+    + '</w:document>';
+  return buildZipStored([
+    { path: '[Content_Types].xml', bytes: toUtf8Bytes(contentTypes) },
+    { path: '_rels/.rels', bytes: toUtf8Bytes(rels) },
+    { path: 'word/document.xml', bytes: toUtf8Bytes(docXml) },
+    { path: 'word/_rels/document.xml.rels', bytes: toUtf8Bytes(docRels) },
+    { path: 'word/afchunk.htm', bytes: toUtf8Bytes(altChunkHtml) }
+  ]);
+}
+function uploadFileToLibrary(libraryTitle, fileName, bytes){
+  return getFormDigest().then(function(digest){
+    var safeName = String(fileName).replace(/[#%&{}\\<>*?/$!'":@+`|=]/g, '_');
+    var url = apiUrl("/web/lists/GetByTitle('" + escOData(libraryTitle) + "')/RootFolder/Files/add(url='" + encodeURIComponent(safeName) + "',overwrite=true)");
+    return new Promise(function(resolve, reject){
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
+      xhr.setRequestHeader('X-RequestDigest', digest);
+      xhr.onreadystatechange = function(){
+        if (xhr.readyState !== 4) { return; }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            var body = JSON.parse(xhr.responseText);
+            var result = body && body.d ? body.d : body;
+            resolve({ serverRelativeUrl: result && result.ServerRelativeUrl, raw: result, fileName: safeName });
+          } catch (e) { resolve({ serverRelativeUrl: null, fileName: safeName }); }
+        } else {
+          reject({ status: xhr.status, text: xhr.responseText });
+        }
+      };
+      xhr.send(bytes);
+    });
+  });
+}
+function resolveLetterSigner(duty){
+  var type = duty && duty.DutyTypeID && duty.DutyTypeID.Id ? dutyTypeById(duty.DutyTypeID.Id) : null;
+  var role = type && type.DefaultSignerRole ? String(type.DefaultSignerRole) : '';
+  var people = APP.state.data.people || [];
+  function findById(id){ for (var i = 0; i < people.length; i++) { if (String(people[i].Id) === String(id)) { return people[i]; } } return null; }
+  if (role === 'Custom' && type && type.DefaultSignerPerson && type.DefaultSignerPerson.Id) {
+    var p = resolvePersonFromSpUser(type.DefaultSignerPerson);
+    if (p) { return { name: formatPerson(p), title: (p.PositionID && p.PositionID.Title) || '', source: 'DutyType.DefaultSignerPerson' }; }
+    return { name: type.DefaultSignerPerson.Title, title: '', source: 'DutyType.DefaultSignerPerson (unresolved)' };
+  }
+  if (role === 'Supervisor') {
+    var person = duty && duty.PersonID && duty.PersonID.Id ? findById(duty.PersonID.Id) : null;
+    if (person && person.SupervisorPersonID && person.SupervisorPersonID.Id) {
+      var sup = findById(person.SupervisorPersonID.Id);
+      if (sup) { return { name: formatPerson(sup), title: (sup.PositionID && sup.PositionID.Title) || 'Supervisor', source: 'Supervisor' }; }
+    }
+    return { name: '', title: 'Supervisor', source: 'Supervisor (unresolved)' };
+  }
+  if (role === 'OrgLead') {
+    return { name: '', title: 'Organizational Lead — ' + ((duty.OrgID && duty.OrgID.Title) || ''), source: 'OrgLead' };
+  }
+  if (role === 'NotificationPOC' && duty && duty.NotificationPOC) {
+    var poc = resolvePersonFromSpUser(duty.NotificationPOC);
+    if (poc) { return { name: formatPerson(poc), title: (poc.PositionID && poc.PositionID.Title) || '', source: 'NotificationPOC' }; }
+    return { name: duty.NotificationPOC.Title || '', title: '', source: 'NotificationPOC (unresolved)' };
+  }
+  /* Default: no signer derived. */
+  return { name: '', title: role || '', source: role || 'default' };
+}
+function renderLetterHtml(duty, letterType, signer, customBody){
+  var type = duty && duty.DutyTypeID && duty.DutyTypeID.Id ? dutyTypeById(duty.DutyTypeID.Id) : null;
+  var typeTitle = (type && type.Title) || (duty.DutyTypeID && duty.DutyTypeID.Title) || 'Duty';
+  var person = duty && duty.PersonID ? (duty.PersonID.Title || '') : '— Vacant —';
+  var org = duty && duty.OrgID ? (duty.OrgID.Title || '') : '';
+  var start = dutyFmtDate(duty.AppointmentStartDate);
+  var end = dutyFmtDate(duty.AppointmentEndDate);
+  var today = new Date().toISOString().slice(0, 10);
+  var subjects = {
+    Appointment: 'Appointment as ' + typeTitle,
+    Reappointment: 'Reappointment as ' + typeTitle,
+    Revocation: 'Revocation of Appointment as ' + typeTitle,
+    'Temporary Assignment': 'Temporary Assignment as ' + typeTitle
+  };
+  var subject = subjects[letterType] || ('Appointment — ' + typeTitle);
+  var bodyPara;
+  if (customBody) {
+    bodyPara = escHtml(customBody).replace(/\n/g, '<br>');
+  } else if (letterType === 'Revocation') {
+    bodyPara = '1. Effective ' + escHtml(today) + ', the appointment of ' + escHtml(person) + ' as ' + escHtml(typeTitle) + ' for ' + escHtml(org) + ' is hereby revoked.<br><br>'
+      + '2. Records and materials pertaining to the duty should be transferred to the organization for reassignment.';
+  } else if (letterType === 'Temporary Assignment') {
+    bodyPara = '1. ' + escHtml(person) + ' is hereby temporarily assigned as ' + escHtml(typeTitle) + ' for ' + escHtml(org) + ', effective ' + escHtml(start) + (end !== '—' ? ' through ' + escHtml(end) : '') + '.<br><br>'
+      + '2. This assignment is made under the authority of applicable regulations and continues until rescinded or the end date above.';
+  } else if (letterType === 'Reappointment') {
+    bodyPara = '1. ' + escHtml(person) + ' is hereby reappointed as ' + escHtml(typeTitle) + ' for ' + escHtml(org) + ', effective ' + escHtml(start) + (end !== '—' ? ' through ' + escHtml(end) : '') + '.<br><br>'
+      + '2. All previously issued guidance and responsibilities of this duty continue in force.';
+  } else {
+    bodyPara = '1. ' + escHtml(person) + ' is hereby appointed as ' + escHtml(typeTitle) + ' for ' + escHtml(org) + ', effective ' + escHtml(start) + (end !== '—' ? ' through ' + escHtml(end) : '') + '.<br><br>'
+      + '2. The appointee will perform all duties and responsibilities associated with this position in accordance with applicable guidance.<br><br>'
+      + '3. This appointment continues until rescinded, superseded, or the end date above.';
+  }
+  return '<div style="font-family:\'Times New Roman\',serif;color:#000">'
+    + '<div style="text-align:right;margin-bottom:20pt">' + escHtml(today) + '</div>'
+    + '<div style="margin-bottom:10pt"><strong>MEMORANDUM FOR</strong> ' + escHtml(person || '—') + '</div>'
+    + '<div style="margin-bottom:14pt"><strong>FROM:</strong> ' + escHtml(org || '—') + '</div>'
+    + '<div style="margin-bottom:14pt"><strong>SUBJECT:</strong> ' + escHtml(subject) + '</div>'
+    + '<div style="margin-bottom:20pt">' + bodyPara + '</div>'
+    + '<div style="margin-top:40pt"><div>' + escHtml((signer && signer.name) || '______________________________') + '</div>'
+    + '<div>' + escHtml((signer && signer.title) || '') + '</div></div>'
+    + '</div>';
+}
+function openGenerateLetterModal(dutyId){
+  var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
+  if (!duty) { toast('Duty not found.', 'danger'); return; }
+  if (!canManageDuties() || (duty.OrgID && duty.OrgID.Id && !canAdminOrg(duty.OrgID.Id) && !hasRole('App Admin'))) {
+    toast('You do not have permission to generate letters for this duty.', 'danger'); return;
+  }
+  return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
+    APP.modalState = { dutyMode: 'letter', dutyId: duty.Id, duty: duty };
+    renderGenerateLetterModal();
+  });
+}
+function renderGenerateLetterModal(){
+  var ms = APP.modalState || {};
+  var duty = ms.duty;
+  if (!duty) { return; }
+  var letterType = ms.letterType = ms.letterType || (String(duty.Status) === 'Closed' || String(duty.Status) === 'Vacant' ? 'Revocation' : 'Appointment');
+  var signer = ms.signerOverride || resolveLetterSigner(duty);
+  var html = renderLetterHtml(duty, letterType, signer, ms.customBody);
+  var letterTypeOpts = ['Appointment','Reappointment','Revocation','Temporary Assignment'].map(function(t){
+    return '<option value="' + t + '"' + (letterType === t ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+  var body = '<div class="form-grid" style="grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;margin-bottom:12px">'
+    + formField('Letter Type', '<select id="letterType" class="select">' + letterTypeOpts + '</select>')
+    + formField('Signer Name', '<input id="letterSigner" class="input" type="text" value="' + escAttr((signer && signer.name) || '') + '" placeholder="Typed signature block" />')
+    + formField('Signer Title', '<input id="letterSignerTitle" class="input" type="text" value="' + escAttr((signer && signer.title) || '') + '" placeholder="e.g. Squadron Commander" />')
+    + formField('Default Source', '<input class="input" type="text" value="' + escAttr(signer && signer.source || '') + '" disabled />')
+    + '<div class="full">' + formField('Body (optional override)', '<textarea id="letterBody" class="textarea" style="min-height:90px" placeholder="Leave blank to use the standard body for this letter type.">' + escHtml(ms.customBody || '') + '</textarea>') + '</div>'
+    + '</div>'
+    + '<div class="card" style="margin-top:6px"><div class="card-head"><div class="card-title">Preview</div><div class="card-sub">This is the exact HTML that will be embedded in the .docx.</div></div>'
+    + '<div class="card-body" style="background:#fff;color:#000;padding:24pt;border-radius:4px;max-height:50vh;overflow:auto">' + html + '</div></div>';
+  var footer = '<div></div><div>'
+    + '<button class="btn subtle" data-action="letter-refresh">Refresh Preview</button> '
+    + '<button class="btn" data-action="close-modal">Close</button> '
+    + '<button class="btn" data-action="letter-print">Print / Save as PDF</button> '
+    + '<button class="btn primary" data-action="letter-download-docx">Download Word & File</button>'
+    + '</div>';
+  openModal('Generate Letter — ' + dutyDisplayName(duty), body, footer, letterType + ' letter');
+}
+function letterRefreshFromForm(){
+  var ms = APP.modalState || {};
+  if (!ms.duty) { return; }
+  var typeEl = document.getElementById('letterType');
+  var nameEl = document.getElementById('letterSigner');
+  var titleEl = document.getElementById('letterSignerTitle');
+  var bodyEl = document.getElementById('letterBody');
+  ms.letterType = typeEl ? typeEl.value : ms.letterType;
+  ms.signerOverride = { name: nameEl ? nameEl.value : '', title: titleEl ? titleEl.value : '', source: 'override' };
+  ms.customBody = bodyEl ? bodyEl.value : '';
+  renderGenerateLetterModal();
+}
+function letterPrintView(){
+  var ms = APP.modalState || {};
+  if (!ms.duty) { return; }
+  letterRefreshFromForm();
+  ms = APP.modalState;
+  var html = renderLetterHtml(ms.duty, ms.letterType, ms.signerOverride, ms.customBody);
+  var w = window.open('', '_blank');
+  if (!w) { toast('Pop-up blocker prevented print window.', 'danger'); return; }
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escHtml(dutyDisplayName(ms.duty)) + '</title>'
+    + '<style>body{font-family:\"Times New Roman\",serif;margin:1in;color:#000}</style></head><body>' + html
+    + '<script>window.onload=function(){window.print();};<\/script></body></html>');
+  w.document.close();
+}
+function letterDownloadDocx(){
+  var ms = APP.modalState || {};
+  if (!ms.duty) { return; }
+  letterRefreshFromForm();
+  ms = APP.modalState;
+  var duty = ms.duty;
+  var html = renderLetterHtml(duty, ms.letterType, ms.signerOverride, ms.customBody);
+  var docxBytes = buildDocxFromHtml(html, dutyDisplayName(duty) + ' — ' + ms.letterType);
+  var personSlug = (duty.PersonID && duty.PersonID.Title ? String(duty.PersonID.Title) : 'Unassigned').replace(/[^A-Za-z0-9]+/g, '_');
+  var typeSlug = String((duty.DutyTypeID && duty.DutyTypeID.Title) || 'Duty').replace(/[^A-Za-z0-9]+/g, '_');
+  var stamp = new Date().toISOString().slice(0, 10);
+  var fileName = ms.letterType + '_' + typeSlug + '_' + personSlug + '_' + stamp + '.docx';
+  /* Client-side download */
+  var blob = new Blob([docxBytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+  /* Upload to CCSD_Letters + metadata row */
+  uploadFileToLibrary(APP.lists.Letters, fileName, docxBytes).then(function(uploadRes){
+    var serverRel = uploadRes && uploadRes.serverRelativeUrl;
+    if (!serverRel) { toast('Downloaded, but upload to CCSD_Letters did not return a file URL.', 'warn'); return null; }
+    /* Find the file's list item and populate metadata. */
+    var metaUrl = apiUrl("/web/GetFileByServerRelativeUrl('" + escOData(serverRel) + "')/ListItemAllFields");
+    return spGetJson(metaUrl.substring(metaUrl.indexOf('/_api') + 5), 'letterMetaLookup').then(function(item){
+      var itemId = item && item.Id;
+      if (!itemId) { return null; }
+      var updates = {
+        LetterType: ms.letterType,
+        GeneratedOn: new Date().toISOString(),
+        Notes: 'Auto-generated from duty page'
+      };
+      if (duty.PersonID && duty.PersonID.Id) { updates.PersonIDId = duty.PersonID.Id; }
+      if (duty.DutyTypeID && duty.DutyTypeID.Id) { updates.DutyTypeIDId = duty.DutyTypeID.Id; }
+      if (duty.Id) { updates.RelatedDutyIDId = duty.Id; }
+      if (APP.state.currentPersonnel && APP.state.currentPersonnel.Id) { updates.GeneratedById = APP.state.currentPersonnel.Id; }
+      return updateListItem(APP.lists.Letters, itemId, updates, { entityType: 'Letter', reason: 'Letter generation metadata' }).catch(function(){ return null; });
+    });
+  }).then(function(){
+    toast('Letter downloaded and filed in CCSD_Letters.', 'ok');
+    APP.state.data.letters = null;
+  }).catch(function(err){
+    addDiagnostic('warn', 'letterDownloadDocx', 'Upload to CCSD_Letters failed.', { detail: err && (err.text || err.message || err) });
+    toast('Downloaded locally; upload to CCSD_Letters failed (see diagnostics).', 'warn');
   });
 }
 
@@ -15742,6 +16071,10 @@ function handleClick(e){
   if (action === 'duty-save-edit') { saveDutyEdit(); return; }
   if (action === 'duty-confirm-end') { confirmEndDuty(); return; }
   if (action === 'duty-scan-gaps') { scanDutyGaps({ silent: false }).then(function(){ renderDuties(); }); return; }
+  if (action === 'duty-open-letter') { openGenerateLetterModal(el.getAttribute('data-id')); return; }
+  if (action === 'letter-refresh') { letterRefreshFromForm(); return; }
+  if (action === 'letter-print') { letterPrintView(); return; }
+  if (action === 'letter-download-docx') { letterDownloadDocx(); return; }
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
   if (action === 'sec-admin-tab') { APP.state.securityAdminTab = el.getAttribute('data-tab') || 'incidents'; renderSecurityAdmin(); return; }
   if (action === 'edit-sec-record') { openEditSecRecordModal(el.getAttribute('data-person-id')); return; }
