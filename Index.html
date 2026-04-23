@@ -1029,7 +1029,12 @@ var APP = {
     DestructionRecords: 'CCSD_DestructionRecords',
     OPSECProgram: 'CCSD_OPSECProgram',
     DD254Registry: 'CCSD_DD254Registry',
-    ContractorPersonnel: 'CCSD_ContractorPersonnel'
+    ContractorPersonnel: 'CCSD_ContractorPersonnel',
+    DutyTypes: 'CCSD_DutyTypes',
+    AdditionalDuties: 'CCSD_AdditionalDuties',
+    DutyVacancyLog: 'CCSD_DutyVacancyLog',
+    LetterTemplates: 'CCSD_LetterTemplates',
+    Letters: 'CCSD_Letters'
     /* ───────────────────────────────────────────────────────────────────────
      * TODO: Conference Room Scheduling
      * ─────────────────────────────────────────────────────────────────────
@@ -1090,6 +1095,7 @@ var APP = {
     currentPersonnel: null,
     rolesRaw: [],
     roleNames: [],
+    derivedRoleScopes: [],
     schemas: {},
     health: [],
     diagnostics: [],
@@ -3065,14 +3071,50 @@ function ensureRolesLoaded(){
     if (roleNames.indexOf('Supervisor') < 0 && APP.state.currentPersonnel && normalizeBoolean(APP.state.currentPersonnel.IsSupervisor)) { roleNames.push('Supervisor'); }
     APP.state.rolesRaw = matches;
     APP.state.roleNames = roleNames;
-    setUserPill();
-    return roleNames;
+    return augmentRolesFromDuties().then(function(){ setUserPill(); return APP.state.roleNames; });
   }).catch(function(err){
     addDiagnostic('error', 'ensureRolesLoaded', 'Role resolution failed.', { detail: err.text || err });
     APP.state.rolesRaw = [];
     APP.state.roleNames = [];
+    APP.state.derivedRoleScopes = [];
     setUserPill();
     return [];
+  });
+}
+
+/* Derives Admin role entries for the current user from active duty
+ * assignments whose DutyType has GrantsAdminRole=Yes.  Populates
+ * APP.state.derivedRoleScopes with { role, orgId, source, dutyId } for
+ * scoped gating via canAdminOrg(). Tolerant: duty lists may not exist yet. */
+function augmentRolesFromDuties(){
+  APP.state.derivedRoleScopes = APP.state.derivedRoleScopes || [];
+  var person = APP.state.currentPersonnel;
+  if (!person || !person.Id) { return Promise.resolve(); }
+  return Promise.all([ensureDutyTypesLoaded(), ensureAdditionalDutiesLoaded()]).then(function(){
+    var types = APP.state.data.dutyTypes || [];
+    var adminTypeIds = {};
+    types.forEach(function(t){ if (normalizeBoolean(t.GrantsAdminRole)) { adminTypeIds[String(t.Id)] = true; } });
+    var duties = APP.state.data.additionalDuties || [];
+    var scopes = [];
+    var now = new Date();
+    duties.forEach(function(d){
+      if (!isDutyActive(d, now)) { return; }
+      var personId = d.PersonID && d.PersonID.Id;
+      if (!personId || String(personId) !== String(person.Id)) { return; }
+      var typeId = d.DutyTypeID && d.DutyTypeID.Id;
+      if (!typeId || !adminTypeIds[String(typeId)]) { return; }
+      var orgId = d.OrgID && d.OrgID.Id;
+      scopes.push({ role: 'Admin', orgId: orgId || null, source: 'duty', dutyId: d.Id, dutyTitle: d.Title });
+    });
+    APP.state.derivedRoleScopes = scopes;
+    if (scopes.length) {
+      var names = APP.state.roleNames || [];
+      if (names.indexOf('Admin') < 0) { names.push('Admin'); APP.state.roleNames = names; }
+    }
+    return APP.state.roleNames;
+  }).catch(function(err){
+    addDiagnostic('warn', 'augmentRolesFromDuties', 'Duty-based role derivation skipped.', { detail: err && (err.text || err.message || err) });
+    return APP.state.roleNames;
   });
 }
 function ensureMyRolesLoaded(){ return ensureRolesLoaded(); }
@@ -3144,6 +3186,123 @@ function ensureSF182Loaded(force){
 function ensureRequestsLoaded(force){
   if (APP.state.data.requests && !force) { return Promise.resolve(APP.state.data.requests); }
   return queryList(APP.lists.AppRequests, ['Title','RequestID','RequestType','Status','Priority','Requester/Id','Requester/Title','Requester/EMail','RequestingOrgID/Id','RequestingOrgID/Title','PersonID/Id','PersonID/Title','SeatID/Id','SeatID/Title','InOutID/Id','InOutID/Title','DutyID/Id','DutyID/Title','HardwareAssetID/Id','HardwareAssetID/Title','SoftwareID/Id','SoftwareID/Title','ChangeID/Id','ChangeID/Title','AssignedOrgID/Id','AssignedOrgID/Title','AssignedTo/Id','AssignedTo/Title','AssignedTo/EMail','SubmittedOn','DueDate','CompletedOn','Details','WorkflowStep','WorkflowJson','CorrelationID'], { top: 1000, orderby: 'Id desc' }, 'ensureRequestsLoaded').then(function(rows){ APP.state.data.requests = rows || []; return rows || []; });
+}
+function ensureDutyTypesLoaded(force){
+  if (APP.state.data.dutyTypes && !force) { return Promise.resolve(APP.state.data.dutyTypes); }
+  return queryList(APP.lists.DutyTypes, ['Title','DutyTypeID','Description','DefaultOrgID/Id','DefaultOrgID/Title','TemplateName','DefaultNotificationPOC/Id','DefaultNotificationPOC/Title','DefaultNotificationPOC/EMail','RequiredTraining','IsActive','DefaultSignerRole','GrantsAdminRole','DefaultSignerPerson/Id','DefaultSignerPerson/Title','DefaultSignerPerson/EMail'], { top: 500, orderby: 'Title asc' }, 'ensureDutyTypesLoaded').then(function(rows){ APP.state.data.dutyTypes = rows || []; return rows || []; }).catch(function(){ APP.state.data.dutyTypes = []; return []; });
+}
+function ensureAdditionalDutiesLoaded(force){
+  if (APP.state.data.additionalDuties && !force) { return Promise.resolve(APP.state.data.additionalDuties); }
+  return queryList(APP.lists.AdditionalDuties, ['Title','DutyID','PersonID/Id','PersonID/Title','PersonID/EMail','DutyTypeID/Id','DutyTypeID/Title','OrgID/Id','OrgID/Title','AppointmentStartDate','AppointmentEndDate','Status','NotificationPOC/Id','NotificationPOC/Title','NotificationPOC/EMail','AppointmentLetterURL','LastNotifiedOn','Notes'], { top: 2000, orderby: 'AppointmentStartDate desc' }, 'ensureAdditionalDutiesLoaded').then(function(rows){ APP.state.data.additionalDuties = rows || []; return rows || []; }).catch(function(){ APP.state.data.additionalDuties = []; return []; });
+}
+function ensureDutyVacancyLogLoaded(force){
+  if (APP.state.data.dutyVacancyLog && !force) { return Promise.resolve(APP.state.data.dutyVacancyLog); }
+  return queryList(APP.lists.DutyVacancyLog, ['Title','LogID','DutyID/Id','DutyID/Title','PreviousPersonID/Id','PreviousPersonID/Title','DateVacant','NotifiedTo/Id','NotifiedTo/Title','NotifiedTo/EMail','NotificationDate','Notes'], { top: 2000, orderby: 'DateVacant desc' }, 'ensureDutyVacancyLogLoaded').then(function(rows){ APP.state.data.dutyVacancyLog = rows || []; return rows || []; }).catch(function(){ APP.state.data.dutyVacancyLog = []; return []; });
+}
+function ensureLetterTemplatesLoaded(force){
+  if (APP.state.data.letterTemplates && !force) { return Promise.resolve(APP.state.data.letterTemplates); }
+  return queryList(APP.lists.LetterTemplates, ['Title','TemplateID','TemplateType','DutyTypeID/Id','DutyTypeID/Title','VersionNumber','IsActive','Notes','FileRef','FileLeafRef'], { top: 500 }, 'ensureLetterTemplatesLoaded').then(function(rows){ APP.state.data.letterTemplates = rows || []; return rows || []; }).catch(function(){ APP.state.data.letterTemplates = []; return []; });
+}
+function ensureLettersLoaded(force){
+  if (APP.state.data.letters && !force) { return Promise.resolve(APP.state.data.letters); }
+  return queryList(APP.lists.Letters, ['Title','PersonID/Id','PersonID/Title','DutyTypeID/Id','DutyTypeID/Title','LetterType','RelatedDutyID/Id','RelatedDutyID/Title','GeneratedOn','GeneratedBy/Id','GeneratedBy/Title','GeneratedBy/EMail','Notes','FileRef','FileLeafRef'], { top: 1000, orderby: 'GeneratedOn desc' }, 'ensureLettersLoaded').then(function(rows){ APP.state.data.letters = rows || []; return rows || []; }).catch(function(){ APP.state.data.letters = []; return []; });
+}
+
+/* ============================================================================
+ * ADDITIONAL DUTIES — helpers
+ * Active assignments on CCSD_AdditionalDuties drive:
+ *  - "My Duties" view
+ *  - Gap / vacancy alerts on departure or expiry
+ *  - Derived Admin role (when DutyType.GrantsAdminRole = Yes)
+ * ========================================================================== */
+function parseSpDate(v){ if (!v) { return null; } var d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+function isDutyActive(duty, now){
+  if (!duty) { return false; }
+  if (String(duty.Status || '') !== 'Active') { return false; }
+  now = now || new Date();
+  var start = parseSpDate(duty.AppointmentStartDate);
+  var end = parseSpDate(duty.AppointmentEndDate);
+  if (start && start > now) { return false; }
+  if (end && end < now) { return false; }
+  return true;
+}
+function isDutyExpiring(duty, withinDays){
+  if (!duty || String(duty.Status || '') !== 'Active') { return false; }
+  var end = parseSpDate(duty.AppointmentEndDate);
+  if (!end) { return false; }
+  var days = Number(withinDays || 30);
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() + days);
+  return end >= new Date() && end <= cutoff;
+}
+function getPersonActiveDuties(personId, duties){
+  if (!personId) { return []; }
+  var rows = duties || APP.state.data.additionalDuties || [];
+  var now = new Date();
+  return rows.filter(function(d){
+    var pid = d.PersonID && d.PersonID.Id;
+    return pid && String(pid) === String(personId) && isDutyActive(d, now);
+  });
+}
+function getOrgActiveDuties(orgId, includeDescendants, duties){
+  if (!orgId) { return []; }
+  var rows = duties || APP.state.data.additionalDuties || [];
+  var scope = includeDescendants && typeof getOrgAndDescendants === 'function'
+    ? getOrgAndDescendants(orgId).map(function(o){ return String(o.Id || o); })
+    : [String(orgId)];
+  var now = new Date();
+  return rows.filter(function(d){
+    if (!isDutyActive(d, now)) { return false; }
+    var oid = d.OrgID && d.OrgID.Id;
+    return oid && scope.indexOf(String(oid)) >= 0;
+  });
+}
+function dutyDisplayName(duty){
+  if (!duty) { return ''; }
+  var type = duty.DutyTypeID && duty.DutyTypeID.Title ? duty.DutyTypeID.Title : (duty.Title || 'Duty');
+  var person = duty.PersonID && duty.PersonID.Title ? duty.PersonID.Title : 'Unassigned';
+  return type + ' — ' + person;
+}
+function dutyTypeById(typeId){
+  var types = APP.state.data.dutyTypes || [];
+  for (var i = 0; i < types.length; i++) { if (String(types[i].Id) === String(typeId)) { return types[i]; } }
+  return null;
+}
+/* canAdminOrg(orgId): true if the current user's Admin authority covers orgId.
+ * Sources: (1) CCSD_AppRoles entries with Role=Admin + scope covers orgId, or
+ * App Admin (global); (2) active duty assignments on a DutyType flagged
+ * GrantsAdminRole, scoped to the duty's OrgID + descendants. */
+function canAdminOrg(orgId){
+  if (!orgId) { return false; }
+  if (typeof hasRole === 'function' && hasRole('App Admin')) { return true; }
+  var raw = APP.state.rolesRaw || [];
+  var target = String(orgId);
+  for (var i = 0; i < raw.length; i++) {
+    var r = raw[i];
+    var roleVals = typeof normalizeRoleValues === 'function' ? normalizeRoleValues(r.Role) : [r.Role];
+    if (roleVals.indexOf('Admin') < 0 && roleVals.indexOf('App Admin') < 0) { continue; }
+    var scopeType = String(r.ScopeType || '');
+    if (scopeType === 'All' || scopeType === '' || scopeType === 'Global') { return true; }
+    var scopeOrg = r.ScopeOrgID && r.ScopeOrgID.Id;
+    if (!scopeOrg) { continue; }
+    if (String(scopeOrg) === target) { return true; }
+    if (typeof getOrgAndDescendants === 'function') {
+      var descendants = getOrgAndDescendants(scopeOrg) || [];
+      for (var j = 0; j < descendants.length; j++) { if (String(descendants[j].Id || descendants[j]) === target) { return true; } }
+    }
+  }
+  var scopes = APP.state.derivedRoleScopes || [];
+  for (var k = 0; k < scopes.length; k++) {
+    if (scopes[k].role !== 'Admin') { continue; }
+    var sOrg = scopes[k].orgId;
+    if (!sOrg) { continue; }
+    if (String(sOrg) === target) { return true; }
+    if (typeof getOrgAndDescendants === 'function') {
+      var ds = getOrgAndDescendants(sOrg) || [];
+      for (var m = 0; m < ds.length; m++) { if (String(ds[m].Id || ds[m]) === target) { return true; } }
+    }
+  }
+  return false;
 }
 function ensureWorkflowsLoaded(force){
   if (APP.state.data.workflows && !force) { return Promise.resolve(APP.state.data.workflows); }
