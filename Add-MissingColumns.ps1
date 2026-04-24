@@ -170,6 +170,32 @@ if ($null -eq $timeOffList) {
 }
 
 # ============================================================
+# STEP 1b: Create Additional-Duty lists + libraries if missing
+# ============================================================
+$dutyListsToCreate = @(
+    @{ Name = "CCSD_DutyTypes";        Template = "GenericList" },
+    @{ Name = "CCSD_AdditionalDuties"; Template = "GenericList" },
+    @{ Name = "CCSD_DutyVacancyLog";   Template = "GenericList" },
+    @{ Name = "CCSD_LetterTemplates";  Template = "DocumentLibrary" },
+    @{ Name = "CCSD_Letters";          Template = "DocumentLibrary" }
+)
+foreach ($d in $dutyListsToCreate) {
+    Write-Host "`n--- Checking $($d.Name) ---" -ForegroundColor Cyan
+    $existingList = Get-PnPList -Identity $d.Name -ErrorAction SilentlyContinue
+    if ($null -eq $existingList) {
+        Write-Host "  Creating $($d.Name) ($($d.Template))..." -ForegroundColor Yellow
+        try {
+            New-PnPList -Title $d.Name -Template $d.Template -ErrorAction Stop | Out-Null
+            Write-Host "  Created $($d.Name)." -ForegroundColor Green
+        } catch {
+            Write-Host "  ERROR creating $($d.Name): $($_.Exception.Message)" -ForegroundColor Red
+        }
+    } else {
+        Write-Host "  $($d.Name) already exists." -ForegroundColor Gray
+    }
+}
+
+# ============================================================
 # STEP 2: Define all expected columns per list
 # ============================================================
 $ListSchemas = @(
@@ -620,6 +646,72 @@ $ListSchemas = @(
             @{ Name="OrgID"; Type="Lookup"; LookupList="CCSD_Organizations" },
             @{ Name="ApprovedBy"; Type="User" },
             @{ Name="CreatedBy"; Type="User" }
+        )
+    },
+    @{
+        List = "CCSD_DutyTypes"
+        Columns = @(
+            @{ Name="DutyTypeID"; Type="Text" },
+            @{ Name="Description"; Type="Note" },
+            @{ Name="TemplateName"; Type="Text" },
+            @{ Name="RequiredTraining"; Type="Note" },
+            @{ Name="IsActive"; Type="Boolean" },
+            @{ Name="DefaultSignerRole"; Type="Choice"; Choices=@("Supervisor","OrgLead","AppAdmin","NotificationPOC","Custom") },
+            @{ Name="GrantsAdminRole"; Type="Boolean" },
+            @{ Name="DefaultOrgID"; Type="Lookup"; LookupList="CCSD_Organizations" },
+            @{ Name="DefaultNotificationPOC"; Type="User" },
+            @{ Name="DefaultSignerPerson"; Type="User" }
+        )
+    },
+    @{
+        List = "CCSD_AdditionalDuties"
+        Columns = @(
+            @{ Name="DutyID"; Type="Text" },
+            @{ Name="AppointmentStartDate"; Type="DateTime" },
+            @{ Name="AppointmentEndDate"; Type="DateTime" },
+            @{ Name="Status"; Type="Choice"; Choices=@("Pending","Active","Vacant","Suspended","Closed") },
+            @{ Name="AppointmentLetterURL"; Type="URL" },
+            @{ Name="LastNotifiedOn"; Type="DateTime" },
+            @{ Name="Notes"; Type="Note" },
+            @{ Name="PersonID"; Type="Lookup"; LookupList="CCSD_Personnel" },
+            @{ Name="DutyTypeID"; Type="Lookup"; LookupList="CCSD_DutyTypes" },
+            @{ Name="OrgID"; Type="Lookup"; LookupList="CCSD_Organizations" },
+            @{ Name="NotificationPOC"; Type="User" }
+        )
+    },
+    @{
+        List = "CCSD_DutyVacancyLog"
+        Columns = @(
+            @{ Name="LogID"; Type="Text" },
+            @{ Name="DateVacant"; Type="DateTime" },
+            @{ Name="NotificationDate"; Type="DateTime" },
+            @{ Name="Notes"; Type="Note" },
+            @{ Name="DutyID"; Type="Lookup"; LookupList="CCSD_AdditionalDuties" },
+            @{ Name="PreviousPersonID"; Type="Lookup"; LookupList="CCSD_Personnel" },
+            @{ Name="NotifiedTo"; Type="User" }
+        )
+    },
+    @{
+        List = "CCSD_LetterTemplates"
+        Columns = @(
+            @{ Name="TemplateID"; Type="Text" },
+            @{ Name="TemplateType"; Type="Choice"; Choices=@("Appointment Letter","Additional Duty Letter","Revocation Letter","Delegation Letter","Memorandum","Other") },
+            @{ Name="VersionNumber"; Type="Number" },
+            @{ Name="IsActive"; Type="Boolean" },
+            @{ Name="Notes"; Type="Note" },
+            @{ Name="DutyTypeID"; Type="Lookup"; LookupList="CCSD_DutyTypes" }
+        )
+    },
+    @{
+        List = "CCSD_Letters"
+        Columns = @(
+            @{ Name="LetterType"; Type="Choice"; Choices=@("Appointment","Reappointment","Revocation","Temporary Assignment","Other") },
+            @{ Name="GeneratedOn"; Type="DateTime" },
+            @{ Name="Notes"; Type="Note" },
+            @{ Name="PersonID"; Type="Lookup"; LookupList="CCSD_Personnel" },
+            @{ Name="DutyTypeID"; Type="Lookup"; LookupList="CCSD_DutyTypes" },
+            @{ Name="RelatedDutyID"; Type="Lookup"; LookupList="CCSD_AdditionalDuties" },
+            @{ Name="GeneratedBy"; Type="User" }
         )
     }
 )

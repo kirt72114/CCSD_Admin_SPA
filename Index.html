@@ -965,6 +965,7 @@ var APP = {
     { key: 'calendar', label: 'Calendar' },
     { key: 'assets', label: 'Assets' },
     { key: 'security', label: 'Security' },
+    { key: 'duties', label: 'Duties' },
     { key: 'reporting', label: 'Reports' },
     { key: 'supervisor', label: 'Supervisor Hub' },
     { key: 'admin', label: 'Admin' },
@@ -1029,7 +1030,12 @@ var APP = {
     DestructionRecords: 'CCSD_DestructionRecords',
     OPSECProgram: 'CCSD_OPSECProgram',
     DD254Registry: 'CCSD_DD254Registry',
-    ContractorPersonnel: 'CCSD_ContractorPersonnel'
+    ContractorPersonnel: 'CCSD_ContractorPersonnel',
+    DutyTypes: 'CCSD_DutyTypes',
+    AdditionalDuties: 'CCSD_AdditionalDuties',
+    DutyVacancyLog: 'CCSD_DutyVacancyLog',
+    LetterTemplates: 'CCSD_LetterTemplates',
+    Letters: 'CCSD_Letters'
     /* ───────────────────────────────────────────────────────────────────────
      * TODO: Conference Room Scheduling
      * ─────────────────────────────────────────────────────────────────────
@@ -1090,6 +1096,7 @@ var APP = {
     currentPersonnel: null,
     rolesRaw: [],
     roleNames: [],
+    derivedRoleScopes: [],
     schemas: {},
     health: [],
     diagnostics: [],
@@ -2951,7 +2958,8 @@ APP.roles = {
     seeAdmin:         ['App Admin'],
     manageSecurity:   ['Security','App Admin'],
     seeSupervisorHub: ['Supervisor','App Admin'],
-    manageRoles:      ['App Admin']
+    manageRoles:      ['App Admin'],
+    manageDuties:     ['Admin','App Admin','HR']
   },
   /* Narrative text surfaced in the in-app Help panel. */
   capabilityDocs: {
@@ -2962,7 +2970,8 @@ APP.roles = {
     seeAdmin:         'Access the Admin tab, Diagnostics, and run self-tests / flush telemetry.',
     manageSecurity:   'Create and edit security incidents and incident actions.',
     seeSupervisorHub: 'Access the Supervisor Hub with team roll-ups.',
-    manageRoles:      'Grant, edit, or deactivate role assignments in CCSD_AppRoles.'
+    manageRoles:      'Grant, edit, or deactivate role assignments in CCSD_AppRoles.',
+    manageDuties:     'Assign, edit, end, and reappoint additional duties; generate appointment / revocation letters.'
   }
 };
 function hasRole(role){ return (APP.state.roleNames || []).indexOf(role) >= 0; }
@@ -2980,6 +2989,25 @@ function canManageSecurity(){ return can('manageSecurity'); }
 function canViewOwnSecurity(){ return APP.state.currentPersonnel && APP.state.currentPersonnel.Id; }
 function canSeeSupervisorHub(){ return can('seeSupervisorHub'); }
 function canManageRoles(){ return can('manageRoles'); }
+function canManageDuties(){ return can('manageDuties'); }
+/* Scoped permission helpers.  Use these whenever the target of an action
+ * (a Person row, a Duty row) is known.  They layer org-scope on top of the
+ * capability check so an Admin scoped to Org X cannot mutate a row in
+ * Org Y.  App Admin and HR stay enterprise-wide by design. */
+function canEditPerson(person){
+  if (!can('editPeople')) { return false; }
+  if (hasRole('App Admin') || hasRole('HR')) { return true; }
+  var targetOrgId = person && person.OrgID && person.OrgID.Id;
+  if (!targetOrgId) { return true; }
+  return canAdminOrg(targetOrgId);
+}
+function canAdminDuty(duty){
+  if (!canManageDuties()) { return false; }
+  if (hasRole('App Admin')) { return true; }
+  var targetOrgId = duty && duty.OrgID && duty.OrgID.Id;
+  if (!targetOrgId) { return true; }
+  return canAdminOrg(targetOrgId);
+}
 function getCurrentOrgId(){
   var p = APP.state.currentPersonnel;
   return p && p.OrgID && p.OrgID.Id ? p.OrgID.Id : null;
@@ -3065,14 +3093,50 @@ function ensureRolesLoaded(){
     if (roleNames.indexOf('Supervisor') < 0 && APP.state.currentPersonnel && normalizeBoolean(APP.state.currentPersonnel.IsSupervisor)) { roleNames.push('Supervisor'); }
     APP.state.rolesRaw = matches;
     APP.state.roleNames = roleNames;
-    setUserPill();
-    return roleNames;
+    return augmentRolesFromDuties().then(function(){ setUserPill(); return APP.state.roleNames; });
   }).catch(function(err){
     addDiagnostic('error', 'ensureRolesLoaded', 'Role resolution failed.', { detail: err.text || err });
     APP.state.rolesRaw = [];
     APP.state.roleNames = [];
+    APP.state.derivedRoleScopes = [];
     setUserPill();
     return [];
+  });
+}
+
+/* Derives Admin role entries for the current user from active duty
+ * assignments whose DutyType has GrantsAdminRole=Yes.  Populates
+ * APP.state.derivedRoleScopes with { role, orgId, source, dutyId } for
+ * scoped gating via canAdminOrg(). Tolerant: duty lists may not exist yet. */
+function augmentRolesFromDuties(){
+  APP.state.derivedRoleScopes = APP.state.derivedRoleScopes || [];
+  var person = APP.state.currentPersonnel;
+  if (!person || !person.Id) { return Promise.resolve(); }
+  return Promise.all([ensureDutyTypesLoaded(), ensureAdditionalDutiesLoaded()]).then(function(){
+    var types = APP.state.data.dutyTypes || [];
+    var adminTypeIds = {};
+    types.forEach(function(t){ if (normalizeBoolean(t.GrantsAdminRole)) { adminTypeIds[String(t.Id)] = true; } });
+    var duties = APP.state.data.additionalDuties || [];
+    var scopes = [];
+    var now = new Date();
+    duties.forEach(function(d){
+      if (!isDutyActive(d, now)) { return; }
+      var personId = d.PersonID && d.PersonID.Id;
+      if (!personId || String(personId) !== String(person.Id)) { return; }
+      var typeId = d.DutyTypeID && d.DutyTypeID.Id;
+      if (!typeId || !adminTypeIds[String(typeId)]) { return; }
+      var orgId = d.OrgID && d.OrgID.Id;
+      scopes.push({ role: 'Admin', orgId: orgId || null, source: 'duty', dutyId: d.Id, dutyTitle: d.Title });
+    });
+    APP.state.derivedRoleScopes = scopes;
+    if (scopes.length) {
+      var names = APP.state.roleNames || [];
+      if (names.indexOf('Admin') < 0) { names.push('Admin'); APP.state.roleNames = names; }
+    }
+    return APP.state.roleNames;
+  }).catch(function(err){
+    addDiagnostic('warn', 'augmentRolesFromDuties', 'Duty-based role derivation skipped.', { detail: err && (err.text || err.message || err) });
+    return APP.state.roleNames;
   });
 }
 function ensureMyRolesLoaded(){ return ensureRolesLoaded(); }
@@ -3144,6 +3208,123 @@ function ensureSF182Loaded(force){
 function ensureRequestsLoaded(force){
   if (APP.state.data.requests && !force) { return Promise.resolve(APP.state.data.requests); }
   return queryList(APP.lists.AppRequests, ['Title','RequestID','RequestType','Status','Priority','Requester/Id','Requester/Title','Requester/EMail','RequestingOrgID/Id','RequestingOrgID/Title','PersonID/Id','PersonID/Title','SeatID/Id','SeatID/Title','InOutID/Id','InOutID/Title','DutyID/Id','DutyID/Title','HardwareAssetID/Id','HardwareAssetID/Title','SoftwareID/Id','SoftwareID/Title','ChangeID/Id','ChangeID/Title','AssignedOrgID/Id','AssignedOrgID/Title','AssignedTo/Id','AssignedTo/Title','AssignedTo/EMail','SubmittedOn','DueDate','CompletedOn','Details','WorkflowStep','WorkflowJson','CorrelationID'], { top: 1000, orderby: 'Id desc' }, 'ensureRequestsLoaded').then(function(rows){ APP.state.data.requests = rows || []; return rows || []; });
+}
+function ensureDutyTypesLoaded(force){
+  if (APP.state.data.dutyTypes && !force) { return Promise.resolve(APP.state.data.dutyTypes); }
+  return queryList(APP.lists.DutyTypes, ['Title','DutyTypeID','Description','DefaultOrgID/Id','DefaultOrgID/Title','TemplateName','DefaultNotificationPOC/Id','DefaultNotificationPOC/Title','DefaultNotificationPOC/EMail','RequiredTraining','IsActive','DefaultSignerRole','GrantsAdminRole','DefaultSignerPerson/Id','DefaultSignerPerson/Title','DefaultSignerPerson/EMail'], { top: 500, orderby: 'Title asc' }, 'ensureDutyTypesLoaded').then(function(rows){ APP.state.data.dutyTypes = rows || []; return rows || []; }).catch(function(){ APP.state.data.dutyTypes = []; return []; });
+}
+function ensureAdditionalDutiesLoaded(force){
+  if (APP.state.data.additionalDuties && !force) { return Promise.resolve(APP.state.data.additionalDuties); }
+  return queryList(APP.lists.AdditionalDuties, ['Title','DutyID','PersonID/Id','PersonID/Title','PersonID/EMail','DutyTypeID/Id','DutyTypeID/Title','OrgID/Id','OrgID/Title','AppointmentStartDate','AppointmentEndDate','Status','NotificationPOC/Id','NotificationPOC/Title','NotificationPOC/EMail','AppointmentLetterURL','LastNotifiedOn','Notes'], { top: 2000, orderby: 'AppointmentStartDate desc' }, 'ensureAdditionalDutiesLoaded').then(function(rows){ APP.state.data.additionalDuties = rows || []; return rows || []; }).catch(function(){ APP.state.data.additionalDuties = []; return []; });
+}
+function ensureDutyVacancyLogLoaded(force){
+  if (APP.state.data.dutyVacancyLog && !force) { return Promise.resolve(APP.state.data.dutyVacancyLog); }
+  return queryList(APP.lists.DutyVacancyLog, ['Title','LogID','DutyID/Id','DutyID/Title','PreviousPersonID/Id','PreviousPersonID/Title','DateVacant','NotifiedTo/Id','NotifiedTo/Title','NotifiedTo/EMail','NotificationDate','Notes'], { top: 2000, orderby: 'DateVacant desc' }, 'ensureDutyVacancyLogLoaded').then(function(rows){ APP.state.data.dutyVacancyLog = rows || []; return rows || []; }).catch(function(){ APP.state.data.dutyVacancyLog = []; return []; });
+}
+function ensureLetterTemplatesLoaded(force){
+  if (APP.state.data.letterTemplates && !force) { return Promise.resolve(APP.state.data.letterTemplates); }
+  return queryList(APP.lists.LetterTemplates, ['Title','TemplateID','TemplateType','DutyTypeID/Id','DutyTypeID/Title','VersionNumber','IsActive','Notes','FileRef','FileLeafRef'], { top: 500 }, 'ensureLetterTemplatesLoaded').then(function(rows){ APP.state.data.letterTemplates = rows || []; return rows || []; }).catch(function(){ APP.state.data.letterTemplates = []; return []; });
+}
+function ensureLettersLoaded(force){
+  if (APP.state.data.letters && !force) { return Promise.resolve(APP.state.data.letters); }
+  return queryList(APP.lists.Letters, ['Title','PersonID/Id','PersonID/Title','DutyTypeID/Id','DutyTypeID/Title','LetterType','RelatedDutyID/Id','RelatedDutyID/Title','GeneratedOn','GeneratedBy/Id','GeneratedBy/Title','GeneratedBy/EMail','Notes','FileRef','FileLeafRef'], { top: 1000, orderby: 'GeneratedOn desc' }, 'ensureLettersLoaded').then(function(rows){ APP.state.data.letters = rows || []; return rows || []; }).catch(function(){ APP.state.data.letters = []; return []; });
+}
+
+/* ============================================================================
+ * ADDITIONAL DUTIES — helpers
+ * Active assignments on CCSD_AdditionalDuties drive:
+ *  - "My Duties" view
+ *  - Gap / vacancy alerts on departure or expiry
+ *  - Derived Admin role (when DutyType.GrantsAdminRole = Yes)
+ * ========================================================================== */
+function parseSpDate(v){ if (!v) { return null; } var d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+function isDutyActive(duty, now){
+  if (!duty) { return false; }
+  if (String(duty.Status || '') !== 'Active') { return false; }
+  now = now || new Date();
+  var start = parseSpDate(duty.AppointmentStartDate);
+  var end = parseSpDate(duty.AppointmentEndDate);
+  if (start && start > now) { return false; }
+  if (end && end < now) { return false; }
+  return true;
+}
+function isDutyExpiring(duty, withinDays){
+  if (!duty || String(duty.Status || '') !== 'Active') { return false; }
+  var end = parseSpDate(duty.AppointmentEndDate);
+  if (!end) { return false; }
+  var days = Number(withinDays || 30);
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() + days);
+  return end >= new Date() && end <= cutoff;
+}
+function getPersonActiveDuties(personId, duties){
+  if (!personId) { return []; }
+  var rows = duties || APP.state.data.additionalDuties || [];
+  var now = new Date();
+  return rows.filter(function(d){
+    var pid = d.PersonID && d.PersonID.Id;
+    return pid && String(pid) === String(personId) && isDutyActive(d, now);
+  });
+}
+function getOrgActiveDuties(orgId, includeDescendants, duties){
+  if (!orgId) { return []; }
+  var rows = duties || APP.state.data.additionalDuties || [];
+  var scope = includeDescendants && typeof getOrgAndDescendants === 'function'
+    ? getOrgAndDescendants(orgId).map(function(o){ return String(o.Id || o); })
+    : [String(orgId)];
+  var now = new Date();
+  return rows.filter(function(d){
+    if (!isDutyActive(d, now)) { return false; }
+    var oid = d.OrgID && d.OrgID.Id;
+    return oid && scope.indexOf(String(oid)) >= 0;
+  });
+}
+function dutyDisplayName(duty){
+  if (!duty) { return ''; }
+  var type = duty.DutyTypeID && duty.DutyTypeID.Title ? duty.DutyTypeID.Title : (duty.Title || 'Duty');
+  var person = duty.PersonID && duty.PersonID.Title ? duty.PersonID.Title : 'Unassigned';
+  return type + ' — ' + person;
+}
+function dutyTypeById(typeId){
+  var types = APP.state.data.dutyTypes || [];
+  for (var i = 0; i < types.length; i++) { if (String(types[i].Id) === String(typeId)) { return types[i]; } }
+  return null;
+}
+/* canAdminOrg(orgId): true if the current user's Admin authority covers orgId.
+ * Sources: (1) CCSD_AppRoles entries with Role=Admin + scope covers orgId, or
+ * App Admin (global); (2) active duty assignments on a DutyType flagged
+ * GrantsAdminRole, scoped to the duty's OrgID + descendants. */
+function canAdminOrg(orgId){
+  if (!orgId) { return false; }
+  if (typeof hasRole === 'function' && hasRole('App Admin')) { return true; }
+  var raw = APP.state.rolesRaw || [];
+  var target = String(orgId);
+  for (var i = 0; i < raw.length; i++) {
+    var r = raw[i];
+    var roleVals = typeof normalizeRoleValues === 'function' ? normalizeRoleValues(r.Role) : [r.Role];
+    if (roleVals.indexOf('Admin') < 0 && roleVals.indexOf('App Admin') < 0) { continue; }
+    var scopeType = String(r.ScopeType || '');
+    if (scopeType === 'All' || scopeType === '' || scopeType === 'Global') { return true; }
+    var scopeOrg = r.ScopeOrgID && r.ScopeOrgID.Id;
+    if (!scopeOrg) { continue; }
+    if (String(scopeOrg) === target) { return true; }
+    if (typeof getOrgAndDescendants === 'function') {
+      var descendants = getOrgAndDescendants(scopeOrg) || [];
+      for (var j = 0; j < descendants.length; j++) { if (String(descendants[j].Id || descendants[j]) === target) { return true; } }
+    }
+  }
+  var scopes = APP.state.derivedRoleScopes || [];
+  for (var k = 0; k < scopes.length; k++) {
+    if (scopes[k].role !== 'Admin') { continue; }
+    var sOrg = scopes[k].orgId;
+    if (!sOrg) { continue; }
+    if (String(sOrg) === target) { return true; }
+    if (typeof getOrgAndDescendants === 'function') {
+      var ds = getOrgAndDescendants(sOrg) || [];
+      for (var m = 0; m < ds.length; m++) { if (String(ds[m].Id || ds[m]) === target) { return true; } }
+    }
+  }
+  return false;
 }
 function ensureWorkflowsLoaded(force){
   if (APP.state.data.workflows && !force) { return Promise.resolve(APP.state.data.workflows); }
@@ -3322,6 +3503,19 @@ function renderContextBar(){
     if (person.OrgID && person.OrgID.Title) { html += '<div class="status-pill"><span class="dot"></span><span>' + escHtml(person.OrgID.Title) + '</span></div>'; }
   }
   roles.forEach(function(role){ html += '<div class="role-chip"><span class="dot"></span><span>' + escHtml(role) + '</span></div>'; });
+  var scopes = APP.state.derivedRoleScopes || [];
+  if (scopes.length) {
+    var orgsMap = {};
+    (APP.state.data.organizations || []).forEach(function(o){ orgsMap[String(o.Id)] = o; });
+    var scopeLabels = scopes.filter(function(s){ return s.role === 'Admin' && s.orgId; }).map(function(s){
+      var org = orgsMap[String(s.orgId)];
+      return (org && org.Title) || ('Org #' + s.orgId);
+    });
+    if (scopeLabels.length) {
+      var title = 'Admin derived from active duty assignment(s): ' + scopeLabels.join(', ') + ' (plus descendants)';
+      html += '<div class="role-chip" title="' + escAttr(title) + '"><span class="dot"></span><span>Admin scope: ' + escHtml(scopeLabels.slice(0, 2).join(', ')) + (scopeLabels.length > 2 ? ' +' + (scopeLabels.length - 2) + ' more' : '') + '</span></div>';
+    }
+  }
   html += '<div class="spacer"></div>';
   if (APP.siteLabel) { html += '<div class="status-pill" title="' + escAttr(APP.rootUrl) + '"><span class="dot" style="background:var(--accent-2)"></span><span>' + escHtml(APP.siteLabel) + '</span></div>'; }
   html += '<div class="small-note" title="SharePoint site root URL">' + escHtml(APP.rootUrl) + '</div>';
@@ -3725,7 +3919,7 @@ function renderPeople(){
       html += '<div class="tile-sub">' + escHtml((p.OrgID && p.OrgID.Title) || '') + ' • ' + escHtml((p.PositionID && p.PositionID.Title) || '') + '</div>';
       html += '<div style="margin-top:10px">' + statusBadge(p.Status || 'Unknown') + '</div>';
       html += '<div class="small-note" style="margin-top:10px">' + escHtml(p.Email || '') + '</div>';
-      html += '<div style="margin-top:12px" class="quick-actions"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(p.Id) + '">View</button><button class="btn subtle" data-action="focus-person-assets" data-id="' + escAttr(p.Id) + '">Equipment / Software</button>' + (canEdit ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit</button>' : '') + '</div>';
+      html += '<div style="margin-top:12px" class="quick-actions"><button class="btn subtle" data-action="view-person" data-id="' + escAttr(p.Id) + '">View</button><button class="btn subtle" data-action="focus-person-assets" data-id="' + escAttr(p.Id) + '">Equipment / Software</button>' + (canEdit && canEditPerson(p) ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit</button>' : '') + '</div>';
       html += '</div>';
     });
     html += '</div></div></div>';
@@ -3796,6 +3990,7 @@ function savePersonEdit(){
   var personId = APP.modalState.personId;
   var person = findPersonById(personId);
   if (!personId || !person) { toast('Missing person context.', 'danger'); return; }
+  if (!canEditPerson(person)) { toast('You no longer have admin scope to save this person.', 'danger'); return; }
   var firstName = document.getElementById('personFirstName').value;
   var lastName = document.getElementById('personLastName').value;
   var email = document.getElementById('personEmail').value;
@@ -4089,9 +4284,9 @@ function openPersonDetailPage(id){
     body += '</div>';
     var footer = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
       + '<button class="btn subtle" data-action="focus-person-assets" data-id="' + escAttr(p.Id) + '">Full Assets View</button>'
-      + (canEditPeople() ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit Person</button>' : '')
-      + (canEditPeople() ? '<button class="btn warn" data-action="depart-person" data-id="' + escAttr(p.Id) + '">Process Departure</button>' : '')
-      + (canEditPeople() ? '<button class="btn subtle" data-action="transfer-person" data-id="' + escAttr(p.Id) + '">Transfer Org</button>' : '')
+      + (canEditPerson(p) ? '<button class="btn subtle" data-action="edit-person" data-id="' + escAttr(p.Id) + '">Edit Person</button>' : '')
+      + (canEditPerson(p) ? '<button class="btn warn" data-action="depart-person" data-id="' + escAttr(p.Id) + '">Process Departure</button>' : '')
+      + (canEditPerson(p) ? '<button class="btn subtle" data-action="transfer-person" data-id="' + escAttr(p.Id) + '">Transfer Org</button>' : '')
       + '</div><button class="btn" data-action="close-modal">Close</button>';
     openModal('Personnel Detail — ' + escHtml(formatPerson(p)), body, footer, p.PersonID || '');
   });
@@ -10152,6 +10347,813 @@ function deleteTimeOffEntry(entryId){
   }).catch(function(){ toast('Delete failed.', 'danger'); });
 }
 
+/* ============================================================================
+ * ADDITIONAL DUTIES — UI (renderDuties, modals, CRUD)
+ * ========================================================================== */
+function dutiesScopeFor(){
+  /* Scope options available to current user:
+   *   'mine'  : duties where PersonID = me  (always available)
+   *   'org'   : duties in my org + descendants (supervisor/admin)
+   *   'all'   : all duties (manageDuties or App Admin)                       */
+  var modes = ['mine'];
+  if (canSeeSupervisorHub() || canManageDuties() || hasRole('App Admin')) { modes.push('org'); }
+  if (canManageDuties() || hasRole('App Admin')) { modes.push('all'); }
+  return modes;
+}
+function dutyStatusBadge(status){
+  var s = String(status || '');
+  var kind = 'mute';
+  if (s === 'Active') { kind = 'ok'; }
+  else if (s === 'Pending') { kind = 'warn'; }
+  else if (s === 'Vacant') { kind = 'danger'; }
+  else if (s === 'Suspended') { kind = 'warn'; }
+  else if (s === 'Closed') { kind = 'mute'; }
+  return '<span class="role-chip ' + kind + '" style="padding:2px 8px;font-size:11px">' + escHtml(s || 'Unknown') + '</span>';
+}
+function dutyFmtDate(v){ if (!v) { return '—'; } var d = parseSpDate(v); return d ? d.toISOString().slice(0, 10) : '—'; }
+function renderDuties(){
+  renderLoading('Loading duties...');
+  var loaders = [
+    ensureCurrentPersonnelLoaded(),
+    ensurePeopleLoaded().catch(function(){ return []; }),
+    ensureOrganizationsLoaded().catch(function(){ return []; }),
+    ensureDutyTypesLoaded(),
+    ensureAdditionalDutiesLoaded(),
+    ensureDutyVacancyLogLoaded().catch(function(){ return []; })
+  ];
+  Promise.all(loaders).then(function(){
+    var me = APP.state.currentPersonnel;
+    var myOrgId = me && me.OrgID && me.OrgID.Id ? me.OrgID.Id : null;
+    var duties = APP.state.data.additionalDuties || [];
+    var types = APP.state.data.dutyTypes || [];
+    var ui = APP.state.dutiesUi = APP.state.dutiesUi || { scope: dutiesScopeFor()[0], status: 'Active', typeId: '' };
+    var modes = dutiesScopeFor();
+    if (modes.indexOf(ui.scope) < 0) { ui.scope = modes[0]; }
+    /* Apply scope */
+    var rows = duties.slice();
+    if (ui.scope === 'mine' && me && me.Id) {
+      rows = rows.filter(function(d){ return d.PersonID && String(d.PersonID.Id) === String(me.Id); });
+    } else if (ui.scope === 'org' && myOrgId) {
+      var scopeIds = (typeof getOrgAndDescendants === 'function' ? getOrgAndDescendants(myOrgId) : [{ Id: myOrgId }])
+        .map(function(o){ return String(o.Id || o); });
+      rows = rows.filter(function(d){ return d.OrgID && scopeIds.indexOf(String(d.OrgID.Id)) >= 0; });
+    }
+    /* Apply status + type filters */
+    if (ui.status && ui.status !== 'all') { rows = rows.filter(function(d){ return String(d.Status) === ui.status; }); }
+    if (ui.typeId) { rows = rows.filter(function(d){ return d.DutyTypeID && String(d.DutyTypeID.Id) === String(ui.typeId); }); }
+    /* Metrics across current scope (before status/type filter) */
+    var scoped = duties.slice();
+    if (ui.scope === 'mine' && me && me.Id) {
+      scoped = scoped.filter(function(d){ return d.PersonID && String(d.PersonID.Id) === String(me.Id); });
+    } else if (ui.scope === 'org' && myOrgId) {
+      var sids = (typeof getOrgAndDescendants === 'function' ? getOrgAndDescendants(myOrgId) : [{ Id: myOrgId }])
+        .map(function(o){ return String(o.Id || o); });
+      scoped = scoped.filter(function(d){ return d.OrgID && sids.indexOf(String(d.OrgID.Id)) >= 0; });
+    }
+    var activeCount = scoped.filter(function(d){ return isDutyActive(d); }).length;
+    var vacantCount = scoped.filter(function(d){ return String(d.Status) === 'Vacant'; }).length;
+    var expiringCount = scoped.filter(function(d){ return isDutyExpiring(d, 30); }).length;
+    var pendingCount = scoped.filter(function(d){ return String(d.Status) === 'Pending'; }).length;
+    var html = '';
+    html += '<div class="exec-strip"><div class="title">Additional Duties</div>'
+      + '<div class="item"><span class="swatch"></span>Active ' + activeCount + '</div>'
+      + '<div class="item"><span class="swatch"></span>Pending ' + pendingCount + '</div>'
+      + '<div class="item"><span class="swatch"></span>Vacant ' + vacantCount + '</div>'
+      + '<div class="item"><span class="swatch"></span>Expiring &lt;30d ' + expiringCount + '</div>'
+      + '</div>';
+    /* Filters + actions */
+    var scopeLabels = { mine: 'My Duties', org: 'My Org', all: 'All Duties' };
+    var scopeOpts = modes.map(function(m){ return '<option value="' + m + '"' + (ui.scope === m ? ' selected' : '') + '>' + scopeLabels[m] + '</option>'; }).join('');
+    var statusOpts = ['all','Active','Pending','Vacant','Suspended','Closed'].map(function(s){
+      return '<option value="' + s + '"' + (ui.status === s ? ' selected' : '') + '>' + (s === 'all' ? 'All statuses' : s) + '</option>';
+    }).join('');
+    var typeOpts = '<option value="">All types</option>' + types.filter(function(t){ return normalizeBoolean(t.IsActive); }).map(function(t){
+      return '<option value="' + escAttr(t.Id) + '"' + (String(ui.typeId) === String(t.Id) ? ' selected' : '') + '>' + escHtml(t.Title) + '</option>';
+    }).join('');
+    html += '<div class="card" style="margin-top:14px"><div class="card-head"><div><div class="card-title">Duty Roster</div><div class="card-sub">' + escHtml(scopeLabels[ui.scope]) + ' · ' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + '</div></div>'
+      + '<div class="quick-actions">'
+      +   (canManageDuties() ? '<button class="btn subtle" data-action="duty-scan-gaps" title="Mark expired or orphaned duties as Vacant and notify POCs">Scan for Gaps</button> ' : '')
+      +   (canManageDuties() ? '<button class="btn primary" data-action="duty-open-assign">Assign Duty</button>' : '')
+      + '</div></div>';
+    html += '<div class="card-body">'
+      + '<div class="form-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));gap:10px;margin-bottom:12px">'
+      +   formField('Scope', '<select id="dutyScope" class="select" data-action="duty-filter-change" data-field="scope">' + scopeOpts + '</select>')
+      +   formField('Status', '<select id="dutyStatus" class="select" data-action="duty-filter-change" data-field="status">' + statusOpts + '</select>')
+      +   formField('Duty Type', '<select id="dutyType" class="select" data-action="duty-filter-change" data-field="typeId">' + typeOpts + '</select>')
+      + '</div>';
+    if (!rows.length) {
+      html += '<div class="empty">No duty assignments match the current filters.</div>';
+    } else {
+      html += '<div class="table-wrap"><table class="table"><thead><tr>'
+        + '<th>Duty Type</th><th>Person</th><th>Organization</th><th>Status</th><th>Start</th><th>End</th><th style="text-align:right">Actions</th>'
+        + '</tr></thead><tbody>';
+      rows.sort(function(a, b){
+        var aS = String(a.Status), bS = String(b.Status);
+        if (aS === bS) {
+          var aE = parseSpDate(a.AppointmentEndDate);
+          var bE = parseSpDate(b.AppointmentEndDate);
+          return (aE ? aE.getTime() : 0) - (bE ? bE.getTime() : 0);
+        }
+        var order = { Vacant: 0, Pending: 1, Active: 2, Suspended: 3, Closed: 4 };
+        return (order[aS] != null ? order[aS] : 9) - (order[bS] != null ? order[bS] : 9);
+      });
+      rows.forEach(function(d){
+        var canEdit = canAdminDuty(d);
+        var expiring = isDutyExpiring(d, 30);
+        html += '<tr' + (expiring ? ' style="background:var(--warn-bg,rgba(255,180,0,.06))"' : '') + '>'
+          + '<td>' + escHtml((d.DutyTypeID && d.DutyTypeID.Title) || d.Title || 'Duty') + '</td>'
+          + '<td>' + escHtml((d.PersonID && d.PersonID.Title) || '— Vacant —') + '</td>'
+          + '<td>' + escHtml((d.OrgID && d.OrgID.Title) || '—') + '</td>'
+          + '<td>' + dutyStatusBadge(d.Status) + (expiring ? ' <span class="small-note" style="color:var(--warn)">expiring soon</span>' : '') + '</td>'
+          + '<td>' + dutyFmtDate(d.AppointmentStartDate) + '</td>'
+          + '<td>' + dutyFmtDate(d.AppointmentEndDate) + '</td>'
+          + '<td style="text-align:right">'
+          +   (canEdit ? '<button class="btn subtle" data-action="duty-open-edit" data-id="' + escAttr(d.Id) + '">Edit</button> ' : '')
+          +   (canEdit && String(d.Status) === 'Active' ? '<button class="btn subtle" data-action="duty-open-end" data-id="' + escAttr(d.Id) + '">End</button> ' : '')
+          +   (canEdit && (String(d.Status) === 'Closed' || String(d.Status) === 'Vacant') ? '<button class="btn subtle" data-action="duty-open-reappoint" data-id="' + escAttr(d.Id) + '">Reappoint</button> ' : '')
+          +   (canEdit ? '<button class="btn subtle" data-action="duty-open-letter" data-id="' + escAttr(d.Id) + '">Letter</button>' : '')
+          + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</div></div>';
+    setView(html);
+    /* Auto-scan for gaps once per session, silent, only if user can manage. */
+    if (canManageDuties() && !APP.state.dutyScanRan) {
+      APP.state.dutyScanRan = true;
+      scanDutyGaps({ silent: true }).then(function(res){
+        if (res && res.flipped > 0) { renderDuties(); }
+      }).catch(function(){ /* non-fatal */ });
+    }
+  }).catch(function(err){
+    addDiagnostic('error', 'renderDuties', 'Failed to render duties page.', { detail: err && (err.text || err.message || err) });
+    setView('<div class="card"><div class="card-body"><div class="empty">Could not load duties. Check diagnostics for details.</div></div></div>');
+  });
+}
+
+function dutiesFilterChange(el){
+  var field = el.getAttribute('data-field');
+  var val = el.value;
+  APP.state.dutiesUi = APP.state.dutiesUi || {};
+  APP.state.dutiesUi[field] = val;
+  renderDuties();
+}
+
+function dutyBuildForm(mode, duty){
+  /* mode: 'assign' | 'edit' | 'reappoint' */
+  var types = (APP.state.data.dutyTypes || []).filter(function(t){ return normalizeBoolean(t.IsActive); });
+  var orgs = APP.state.data.organizations || [];
+  var people = (APP.state.data.people || []).filter(function(p){ return p.Status === 'Active'; });
+  var selectedTypeId = duty && duty.DutyTypeID ? duty.DutyTypeID.Id : '';
+  var selectedOrgId = duty && duty.OrgID ? duty.OrgID.Id : (APP.state.currentPersonnel && APP.state.currentPersonnel.OrgID && APP.state.currentPersonnel.OrgID.Id);
+  var selectedPersonId = duty && duty.PersonID ? duty.PersonID.Id : '';
+  var today = new Date().toISOString().slice(0, 10);
+  var start = duty && duty.AppointmentStartDate ? String(duty.AppointmentStartDate).slice(0, 10) : today;
+  var end = duty && duty.AppointmentEndDate ? String(duty.AppointmentEndDate).slice(0, 10) : '';
+  if (mode === 'reappoint') { start = today; end = ''; }
+  var typeOpts = '<option value="">-- Select duty type --</option>' + types.map(function(t){
+    return '<option value="' + escAttr(t.Id) + '"' + (String(selectedTypeId) === String(t.Id) ? ' selected' : '') + '>' + escHtml(t.Title) + (normalizeBoolean(t.GrantsAdminRole) ? ' (grants Admin)' : '') + '</option>';
+  }).join('');
+  var orgOpts = '<option value="">-- Select org --</option>' + orgs.map(function(o){
+    return '<option value="' + escAttr(o.Id) + '"' + (String(selectedOrgId) === String(o.Id) ? ' selected' : '') + '>' + escHtml(o.Title || o.OrgName) + '</option>';
+  }).join('');
+  var personOpts = '<option value="">-- Select person --</option>' + people.map(function(p){
+    return '<option value="' + escAttr(p.Id) + '"' + (String(selectedPersonId) === String(p.Id) ? ' selected' : '') + '>' + escHtml(formatPerson(p)) + '</option>';
+  }).join('');
+  var statusOpts = ['Active','Pending','Suspended'].map(function(s){
+    var sel = duty && String(duty.Status) === s ? ' selected' : (!duty && s === 'Active' ? ' selected' : '');
+    return '<option value="' + s + '"' + sel + '>' + s + '</option>';
+  }).join('');
+  return '<div class="form-grid">'
+    + formField('Duty Type', '<select id="dutyFormType" class="select">' + typeOpts + '</select>')
+    + formField('Person', '<select id="dutyFormPerson" class="select">' + personOpts + '</select>')
+    + formField('Organization', '<select id="dutyFormOrg" class="select">' + orgOpts + '</select>')
+    + formField('Status', '<select id="dutyFormStatus" class="select">' + statusOpts + '</select>')
+    + formField('Appointment Start', '<input id="dutyFormStart" class="input" type="date" value="' + escAttr(start) + '" />')
+    + formField('Appointment End', '<input id="dutyFormEnd" class="input" type="date" value="' + escAttr(end) + '" />')
+    + '<div class="full">' + formField('Notes', '<textarea id="dutyFormNotes" class="textarea" style="min-height:60px" placeholder="Appointment notes, delegation scope, etc.">' + escHtml((duty && duty.Notes) || '') + '</textarea>') + '</div>'
+    + '</div>';
+}
+
+function openAssignDutyModal(){
+  if (!canManageDuties()) { toast('You do not have permission to assign duties.', 'danger'); return; }
+  return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
+    APP.modalState = { dutyMode: 'assign', dutyId: null };
+    var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="duty-save-assign">Create</button></div>';
+    openModal('Assign Additional Duty', dutyBuildForm('assign', null), footer, 'Create a new duty appointment');
+  });
+}
+function openEditDutyModal(dutyId){
+  var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
+  if (!duty) { toast('Duty not found.', 'danger'); return; }
+  if (!canAdminDuty(duty)) {
+    toast('You do not have permission to edit this duty.', 'danger'); return;
+  }
+  return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
+    APP.modalState = { dutyMode: 'edit', dutyId: duty.Id, before: duty };
+    var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="duty-save-edit">Save</button></div>';
+    openModal('Edit Duty', dutyBuildForm('edit', duty), footer, dutyDisplayName(duty));
+  });
+}
+function openEndDutyModal(dutyId){
+  var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
+  if (!duty) { toast('Duty not found.', 'danger'); return; }
+  if (!canAdminDuty(duty)) {
+    toast('You do not have permission to end this duty.', 'danger'); return;
+  }
+  APP.modalState = { dutyMode: 'end', dutyId: duty.Id, before: duty };
+  var today = new Date().toISOString().slice(0, 10);
+  var body = '<div class="form-grid">'
+    + '<div class="full"><div class="kv"><div class="k">Duty</div><div class="v">' + escHtml(dutyDisplayName(duty)) + '</div>'
+    + '<div class="k">Organization</div><div class="v">' + escHtml((duty.OrgID && duty.OrgID.Title) || '—') + '</div>'
+    + '<div class="k">Status</div><div class="v">' + dutyStatusBadge(duty.Status) + '</div></div></div>'
+    + formField('End Date', '<input id="dutyEndDate" class="input" type="date" value="' + escAttr(today) + '" />')
+    + formField('New Status', '<select id="dutyEndStatus" class="select"><option value="Closed" selected>Closed (person reassigned)</option><option value="Vacant">Vacant (role unfilled)</option></select>')
+    + '<div class="full">' + formField('Reason / notes', '<textarea id="dutyEndNotes" class="textarea" style="min-height:60px" placeholder="Why is this duty ending?"></textarea>') + '</div>'
+    + '</div>';
+  var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn danger" data-action="duty-confirm-end">End Duty</button></div>';
+  openModal('End Duty', body, footer, 'Record end-of-duty and log vacancy');
+}
+function openReappointDutyModal(dutyId){
+  var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
+  if (!duty) { toast('Duty not found.', 'danger'); return; }
+  if (!canAdminDuty(duty)) {
+    toast('You do not have permission to reappoint this duty.', 'danger'); return;
+  }
+  return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
+    APP.modalState = { dutyMode: 'reappoint', dutyId: null, clonedFrom: duty.Id };
+    var footer = '<div></div><div><button class="btn" data-action="close-modal">Cancel</button> <button class="btn primary" data-action="duty-save-assign">Create Reappointment</button></div>';
+    openModal('Reappoint Duty', dutyBuildForm('reappoint', duty), footer, 'Creates a new assignment; original row is left as-is.');
+  });
+}
+
+function dutyReadForm(){
+  var typeId = document.getElementById('dutyFormType').value;
+  var personId = document.getElementById('dutyFormPerson').value;
+  var orgId = document.getElementById('dutyFormOrg').value;
+  var status = document.getElementById('dutyFormStatus').value;
+  var start = document.getElementById('dutyFormStart').value;
+  var end = document.getElementById('dutyFormEnd').value;
+  var notes = document.getElementById('dutyFormNotes').value;
+  return { typeId: typeId, personId: personId, orgId: orgId, status: status, start: start, end: end, notes: notes };
+}
+
+function saveDutyAssignment(){
+  var f = dutyReadForm();
+  var errors = runValidation([
+    function(){ return validateRequired(f.typeId, 'Duty Type'); },
+    function(){ return validateRequired(f.personId, 'Person'); },
+    function(){ return validateRequired(f.orgId, 'Organization'); },
+    function(){ return validateRequired(f.start, 'Start Date'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var type = dutyTypeById(f.typeId);
+  var typeTitle = type && type.Title ? type.Title : 'Duty';
+  var personRow = (APP.state.data.people || []).filter(function(p){ return String(p.Id) === String(f.personId); })[0];
+  var personName = personRow ? formatPerson(personRow) : 'Person';
+  var values = {
+    Title: typeTitle + ' — ' + personName,
+    PersonIDId: parseInt(f.personId, 10),
+    DutyTypeIDId: parseInt(f.typeId, 10),
+    OrgIDId: parseInt(f.orgId, 10),
+    AppointmentStartDate: f.start,
+    Status: f.status || 'Active',
+    Notes: f.notes || ''
+  };
+  if (f.end) { values.AppointmentEndDate = f.end; }
+  if (type && type.DefaultNotificationPOC && type.DefaultNotificationPOC.Id) {
+    values.NotificationPOCId = type.DefaultNotificationPOC.Id;
+  }
+  createListItem(APP.lists.AdditionalDuties, values, { entityType: 'AdditionalDuty', reason: 'Assign duty via UI' }).then(function(){
+    toast('Duty assigned.', 'ok');
+    closeModal();
+    APP.state.data.additionalDuties = null;
+    renderDuties();
+    /* Refresh derived Admin scopes since a new duty may grant admin. */
+    APP.state.rolesRaw = null; APP.state.roleNames = []; APP.state.derivedRoleScopes = [];
+    ensureRolesLoaded().then(function(){ renderContextBar(); });
+  }).catch(function(err){
+    addDiagnostic('error', 'saveDutyAssignment', 'Create failed.', { detail: err && (err.text || err.message || err) });
+    toast('Failed to create duty.', 'danger');
+  });
+}
+
+function saveDutyEdit(){
+  var ms = APP.modalState || {};
+  if (!ms.dutyId) { return; }
+  var f = dutyReadForm();
+  var errors = runValidation([
+    function(){ return validateRequired(f.typeId, 'Duty Type'); },
+    function(){ return validateRequired(f.personId, 'Person'); },
+    function(){ return validateRequired(f.orgId, 'Organization'); },
+    function(){ return validateRequired(f.start, 'Start Date'); }
+  ]);
+  if (showValidationErrors(errors)) { return; }
+  var type = dutyTypeById(f.typeId);
+  var typeTitle = type && type.Title ? type.Title : 'Duty';
+  var personRow = (APP.state.data.people || []).filter(function(p){ return String(p.Id) === String(f.personId); })[0];
+  var personName = personRow ? formatPerson(personRow) : 'Person';
+  var values = {
+    Title: typeTitle + ' — ' + personName,
+    PersonIDId: parseInt(f.personId, 10),
+    DutyTypeIDId: parseInt(f.typeId, 10),
+    OrgIDId: parseInt(f.orgId, 10),
+    AppointmentStartDate: f.start,
+    Status: f.status,
+    Notes: f.notes || ''
+  };
+  values.AppointmentEndDate = f.end || null;
+  updateListItem(APP.lists.AdditionalDuties, ms.dutyId, values, { entityType: 'AdditionalDuty', before: ms.before, reason: 'Edit duty via UI' }).then(function(){
+    toast('Duty updated.', 'ok');
+    closeModal();
+    APP.state.data.additionalDuties = null;
+    renderDuties();
+    APP.state.rolesRaw = null; APP.state.roleNames = []; APP.state.derivedRoleScopes = [];
+    ensureRolesLoaded().then(function(){ renderContextBar(); });
+  }).catch(function(err){
+    addDiagnostic('error', 'saveDutyEdit', 'Update failed.', { detail: err && (err.text || err.message || err) });
+    toast('Failed to update duty.', 'danger');
+  });
+}
+
+/* ============================================================================
+ * ADDITIONAL DUTIES — letter generation
+ * Builds a real Office Open XML .docx using the alt-chunk technique: a single
+ * HTML fragment is embedded inside a minimal OOXML package, and Word converts
+ * it to native paragraphs on open.  This lets us preview the exact same HTML
+ * the .docx contains without running an HTML -> WordprocessingML converter.
+ *
+ * Download triggers a client-side save AND uploads the .docx to
+ * CCSD_Letters with metadata (PersonID, DutyTypeID, LetterType, RelatedDutyID,
+ * GeneratedOn, GeneratedBy).  Failure to upload does not block the download.
+ * ========================================================================== */
+var _CRC32_TABLE = null;
+function _crc32Table(){
+  var t = new Uint32Array(256);
+  for (var n = 0; n < 256; n++) {
+    var c = n;
+    for (var k = 0; k < 8; k++) { c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1); }
+    t[n] = c;
+  }
+  return t;
+}
+function crc32Bytes(bytes){
+  _CRC32_TABLE = _CRC32_TABLE || _crc32Table();
+  var crc = 0 ^ (-1);
+  for (var i = 0; i < bytes.length; i++) { crc = (crc >>> 8) ^ _CRC32_TABLE[(crc ^ bytes[i]) & 0xFF]; }
+  return (crc ^ (-1)) >>> 0;
+}
+function toUtf8Bytes(s){
+  if (typeof TextEncoder !== 'undefined') { return new TextEncoder().encode(s); }
+  var bytes = [];
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    if (c < 0x80) { bytes.push(c); }
+    else if (c < 0x800) { bytes.push(0xC0 | (c >> 6)); bytes.push(0x80 | (c & 0x3F)); }
+    else if ((c & 0xFC00) === 0xD800 && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xFC00) === 0xDC00) {
+      var cp = 0x10000 + ((c & 0x3FF) << 10) + (s.charCodeAt(++i) & 0x3FF);
+      bytes.push(0xF0 | (cp >> 18)); bytes.push(0x80 | ((cp >> 12) & 0x3F));
+      bytes.push(0x80 | ((cp >> 6) & 0x3F)); bytes.push(0x80 | (cp & 0x3F));
+    } else { bytes.push(0xE0 | (c >> 12)); bytes.push(0x80 | ((c >> 6) & 0x3F)); bytes.push(0x80 | (c & 0x3F)); }
+  }
+  return new Uint8Array(bytes);
+}
+function buildZipStored(entries){
+  /* Stored (no-compression) ZIP.  Each entry: { path, bytes (Uint8Array) }. */
+  function u16(v){ return new Uint8Array([v & 0xFF, (v >>> 8) & 0xFF]); }
+  function u32(v){ return new Uint8Array([v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF]); }
+  function concat(arrs){
+    var total = 0; arrs.forEach(function(a){ total += a.length; });
+    var out = new Uint8Array(total); var o = 0;
+    arrs.forEach(function(a){ out.set(a, o); o += a.length; });
+    return out;
+  }
+  var parts = [], central = [], offset = 0;
+  var modTime = 0, modDate = 0x21; /* 1980-01-01 */
+  entries.forEach(function(e){
+    var nameBytes = toUtf8Bytes(e.path);
+    var data = e.bytes instanceof Uint8Array ? e.bytes : new Uint8Array(e.bytes);
+    var crc = crc32Bytes(data);
+    var lh = concat([
+      u32(0x04034b50), u16(20), u16(0), u16(0),
+      u16(modTime), u16(modDate),
+      u32(crc), u32(data.length), u32(data.length),
+      u16(nameBytes.length), u16(0),
+      nameBytes, data
+    ]);
+    parts.push(lh);
+    var cd = concat([
+      u32(0x02014b50), u16(20), u16(20), u16(0), u16(0),
+      u16(modTime), u16(modDate),
+      u32(crc), u32(data.length), u32(data.length),
+      u16(nameBytes.length), u16(0), u16(0),
+      u16(0), u16(0), u32(0),
+      u32(offset), nameBytes
+    ]);
+    central.push(cd);
+    offset += lh.length;
+  });
+  var centralStart = offset;
+  central.forEach(function(c){ parts.push(c); offset += c.length; });
+  var centralSize = offset - centralStart;
+  parts.push(concat([
+    u32(0x06054b50), u16(0), u16(0),
+    u16(entries.length), u16(entries.length),
+    u32(centralSize), u32(centralStart), u16(0)
+  ]));
+  var total = 0; parts.forEach(function(p){ total += p.length; });
+  var out = new Uint8Array(total); var o = 0;
+  parts.forEach(function(p){ out.set(p, o); o += p.length; });
+  return out;
+}
+function buildDocxFromHtml(htmlBody, title){
+  var altChunkHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escHtml(title || 'Letter') + '</title>'
+    + '<style>body{font-family:"Times New Roman",serif;font-size:11pt;line-height:1.4;color:#000}h1,h2,h3{margin:10pt 0 6pt 0}p{margin:6pt 0}hr{border:none;border-top:1pt solid #000;margin:10pt 0}table{border-collapse:collapse}</style>'
+    + '</head><body>' + htmlBody + '</body></html>';
+  var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    + '<Default Extension="xml" ContentType="application/xml"/>'
+    + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+    + '<Override PartName="/word/afchunk.htm" ContentType="text/html"/>'
+    + '</Types>';
+  var rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+    + '</Relationships>';
+  var docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    + '<Relationship Id="altChunk1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/aFChunk" Target="afchunk.htm"/>'
+    + '</Relationships>';
+  var docXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+    + '<w:body><w:altChunk r:id="altChunk1"/><w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body>'
+    + '</w:document>';
+  return buildZipStored([
+    { path: '[Content_Types].xml', bytes: toUtf8Bytes(contentTypes) },
+    { path: '_rels/.rels', bytes: toUtf8Bytes(rels) },
+    { path: 'word/document.xml', bytes: toUtf8Bytes(docXml) },
+    { path: 'word/_rels/document.xml.rels', bytes: toUtf8Bytes(docRels) },
+    { path: 'word/afchunk.htm', bytes: toUtf8Bytes(altChunkHtml) }
+  ]);
+}
+function uploadFileToLibrary(libraryTitle, fileName, bytes){
+  return getFormDigest().then(function(digest){
+    var safeName = String(fileName).replace(/[#%&{}\\<>*?/$!'":@+`|=]/g, '_');
+    var url = apiUrl("/web/lists/GetByTitle('" + escOData(libraryTitle) + "')/RootFolder/Files/add(url='" + encodeURIComponent(safeName) + "',overwrite=true)");
+    return new Promise(function(resolve, reject){
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Accept', 'application/json;odata=verbose');
+      xhr.setRequestHeader('X-RequestDigest', digest);
+      xhr.onreadystatechange = function(){
+        if (xhr.readyState !== 4) { return; }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            var body = JSON.parse(xhr.responseText);
+            var result = body && body.d ? body.d : body;
+            resolve({ serverRelativeUrl: result && result.ServerRelativeUrl, raw: result, fileName: safeName });
+          } catch (e) { resolve({ serverRelativeUrl: null, fileName: safeName }); }
+        } else {
+          reject({ status: xhr.status, text: xhr.responseText });
+        }
+      };
+      xhr.send(bytes);
+    });
+  });
+}
+function resolveLetterSigner(duty){
+  var type = duty && duty.DutyTypeID && duty.DutyTypeID.Id ? dutyTypeById(duty.DutyTypeID.Id) : null;
+  var role = type && type.DefaultSignerRole ? String(type.DefaultSignerRole) : '';
+  var people = APP.state.data.people || [];
+  function findById(id){ for (var i = 0; i < people.length; i++) { if (String(people[i].Id) === String(id)) { return people[i]; } } return null; }
+  if (role === 'Custom' && type && type.DefaultSignerPerson && type.DefaultSignerPerson.Id) {
+    var p = resolvePersonFromSpUser(type.DefaultSignerPerson);
+    if (p) { return { name: formatPerson(p), title: (p.PositionID && p.PositionID.Title) || '', source: 'DutyType.DefaultSignerPerson' }; }
+    return { name: type.DefaultSignerPerson.Title, title: '', source: 'DutyType.DefaultSignerPerson (unresolved)' };
+  }
+  if (role === 'Supervisor') {
+    var person = duty && duty.PersonID && duty.PersonID.Id ? findById(duty.PersonID.Id) : null;
+    if (person && person.SupervisorPersonID && person.SupervisorPersonID.Id) {
+      var sup = findById(person.SupervisorPersonID.Id);
+      if (sup) { return { name: formatPerson(sup), title: (sup.PositionID && sup.PositionID.Title) || 'Supervisor', source: 'Supervisor' }; }
+    }
+    return { name: '', title: 'Supervisor', source: 'Supervisor (unresolved)' };
+  }
+  if (role === 'OrgLead') {
+    return { name: '', title: 'Organizational Lead — ' + ((duty.OrgID && duty.OrgID.Title) || ''), source: 'OrgLead' };
+  }
+  if (role === 'NotificationPOC' && duty && duty.NotificationPOC) {
+    var poc = resolvePersonFromSpUser(duty.NotificationPOC);
+    if (poc) { return { name: formatPerson(poc), title: (poc.PositionID && poc.PositionID.Title) || '', source: 'NotificationPOC' }; }
+    return { name: duty.NotificationPOC.Title || '', title: '', source: 'NotificationPOC (unresolved)' };
+  }
+  /* Default: no signer derived. */
+  return { name: '', title: role || '', source: role || 'default' };
+}
+function renderLetterHtml(duty, letterType, signer, customBody){
+  var type = duty && duty.DutyTypeID && duty.DutyTypeID.Id ? dutyTypeById(duty.DutyTypeID.Id) : null;
+  var typeTitle = (type && type.Title) || (duty.DutyTypeID && duty.DutyTypeID.Title) || 'Duty';
+  var person = duty && duty.PersonID ? (duty.PersonID.Title || '') : '— Vacant —';
+  var org = duty && duty.OrgID ? (duty.OrgID.Title || '') : '';
+  var start = dutyFmtDate(duty.AppointmentStartDate);
+  var end = dutyFmtDate(duty.AppointmentEndDate);
+  var today = new Date().toISOString().slice(0, 10);
+  var subjects = {
+    Appointment: 'Appointment as ' + typeTitle,
+    Reappointment: 'Reappointment as ' + typeTitle,
+    Revocation: 'Revocation of Appointment as ' + typeTitle,
+    'Temporary Assignment': 'Temporary Assignment as ' + typeTitle
+  };
+  var subject = subjects[letterType] || ('Appointment — ' + typeTitle);
+  var bodyPara;
+  if (customBody) {
+    bodyPara = escHtml(customBody).replace(/\n/g, '<br>');
+  } else if (letterType === 'Revocation') {
+    bodyPara = '1. Effective ' + escHtml(today) + ', the appointment of ' + escHtml(person) + ' as ' + escHtml(typeTitle) + ' for ' + escHtml(org) + ' is hereby revoked.<br><br>'
+      + '2. Records and materials pertaining to the duty should be transferred to the organization for reassignment.';
+  } else if (letterType === 'Temporary Assignment') {
+    bodyPara = '1. ' + escHtml(person) + ' is hereby temporarily assigned as ' + escHtml(typeTitle) + ' for ' + escHtml(org) + ', effective ' + escHtml(start) + (end !== '—' ? ' through ' + escHtml(end) : '') + '.<br><br>'
+      + '2. This assignment is made under the authority of applicable regulations and continues until rescinded or the end date above.';
+  } else if (letterType === 'Reappointment') {
+    bodyPara = '1. ' + escHtml(person) + ' is hereby reappointed as ' + escHtml(typeTitle) + ' for ' + escHtml(org) + ', effective ' + escHtml(start) + (end !== '—' ? ' through ' + escHtml(end) : '') + '.<br><br>'
+      + '2. All previously issued guidance and responsibilities of this duty continue in force.';
+  } else {
+    bodyPara = '1. ' + escHtml(person) + ' is hereby appointed as ' + escHtml(typeTitle) + ' for ' + escHtml(org) + ', effective ' + escHtml(start) + (end !== '—' ? ' through ' + escHtml(end) : '') + '.<br><br>'
+      + '2. The appointee will perform all duties and responsibilities associated with this position in accordance with applicable guidance.<br><br>'
+      + '3. This appointment continues until rescinded, superseded, or the end date above.';
+  }
+  return '<div style="font-family:\'Times New Roman\',serif;color:#000">'
+    + '<div style="text-align:right;margin-bottom:20pt">' + escHtml(today) + '</div>'
+    + '<div style="margin-bottom:10pt"><strong>MEMORANDUM FOR</strong> ' + escHtml(person || '—') + '</div>'
+    + '<div style="margin-bottom:14pt"><strong>FROM:</strong> ' + escHtml(org || '—') + '</div>'
+    + '<div style="margin-bottom:14pt"><strong>SUBJECT:</strong> ' + escHtml(subject) + '</div>'
+    + '<div style="margin-bottom:20pt">' + bodyPara + '</div>'
+    + '<div style="margin-top:40pt"><div>' + escHtml((signer && signer.name) || '______________________________') + '</div>'
+    + '<div>' + escHtml((signer && signer.title) || '') + '</div></div>'
+    + '</div>';
+}
+function openGenerateLetterModal(dutyId){
+  var duty = (APP.state.data.additionalDuties || []).filter(function(d){ return String(d.Id) === String(dutyId); })[0];
+  if (!duty) { toast('Duty not found.', 'danger'); return; }
+  if (!canAdminDuty(duty)) {
+    toast('You do not have permission to generate letters for this duty.', 'danger'); return;
+  }
+  return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureDutyTypesLoaded()]).then(function(){
+    APP.modalState = { dutyMode: 'letter', dutyId: duty.Id, duty: duty };
+    renderGenerateLetterModal();
+  });
+}
+function renderGenerateLetterModal(){
+  var ms = APP.modalState || {};
+  var duty = ms.duty;
+  if (!duty) { return; }
+  var letterType = ms.letterType = ms.letterType || (String(duty.Status) === 'Closed' || String(duty.Status) === 'Vacant' ? 'Revocation' : 'Appointment');
+  var signer = ms.signerOverride || resolveLetterSigner(duty);
+  var html = renderLetterHtml(duty, letterType, signer, ms.customBody);
+  var letterTypeOpts = ['Appointment','Reappointment','Revocation','Temporary Assignment'].map(function(t){
+    return '<option value="' + t + '"' + (letterType === t ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+  var body = '<div class="form-grid" style="grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;margin-bottom:12px">'
+    + formField('Letter Type', '<select id="letterType" class="select">' + letterTypeOpts + '</select>')
+    + formField('Signer Name', '<input id="letterSigner" class="input" type="text" value="' + escAttr((signer && signer.name) || '') + '" placeholder="Typed signature block" />')
+    + formField('Signer Title', '<input id="letterSignerTitle" class="input" type="text" value="' + escAttr((signer && signer.title) || '') + '" placeholder="e.g. Squadron Commander" />')
+    + formField('Default Source', '<input class="input" type="text" value="' + escAttr(signer && signer.source || '') + '" disabled />')
+    + '<div class="full">' + formField('Body (optional override)', '<textarea id="letterBody" class="textarea" style="min-height:90px" placeholder="Leave blank to use the standard body for this letter type.">' + escHtml(ms.customBody || '') + '</textarea>') + '</div>'
+    + '</div>'
+    + '<div class="card" style="margin-top:6px"><div class="card-head"><div class="card-title">Preview</div><div class="card-sub">This is the exact HTML that will be embedded in the .docx.</div></div>'
+    + '<div class="card-body" style="background:#fff;color:#000;padding:24pt;border-radius:4px;max-height:50vh;overflow:auto">' + html + '</div></div>';
+  var footer = '<div></div><div>'
+    + '<button class="btn subtle" data-action="letter-refresh">Refresh Preview</button> '
+    + '<button class="btn" data-action="close-modal">Close</button> '
+    + '<button class="btn" data-action="letter-print">Print / Save as PDF</button> '
+    + '<button class="btn primary" data-action="letter-download-docx">Download Word & File</button>'
+    + '</div>';
+  openModal('Generate Letter — ' + dutyDisplayName(duty), body, footer, letterType + ' letter');
+}
+function letterRefreshFromForm(){
+  var ms = APP.modalState || {};
+  if (!ms.duty) { return; }
+  var typeEl = document.getElementById('letterType');
+  var nameEl = document.getElementById('letterSigner');
+  var titleEl = document.getElementById('letterSignerTitle');
+  var bodyEl = document.getElementById('letterBody');
+  ms.letterType = typeEl ? typeEl.value : ms.letterType;
+  ms.signerOverride = { name: nameEl ? nameEl.value : '', title: titleEl ? titleEl.value : '', source: 'override' };
+  ms.customBody = bodyEl ? bodyEl.value : '';
+  renderGenerateLetterModal();
+}
+function letterPrintView(){
+  var ms = APP.modalState || {};
+  if (!ms.duty) { return; }
+  letterRefreshFromForm();
+  ms = APP.modalState;
+  var html = renderLetterHtml(ms.duty, ms.letterType, ms.signerOverride, ms.customBody);
+  var w = window.open('', '_blank');
+  if (!w) { toast('Pop-up blocker prevented print window.', 'danger'); return; }
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escHtml(dutyDisplayName(ms.duty)) + '</title>'
+    + '<style>body{font-family:\"Times New Roman\",serif;margin:1in;color:#000}</style></head><body>' + html
+    + '<script>window.onload=function(){window.print();};<\/script></body></html>');
+  w.document.close();
+}
+function letterDownloadDocx(){
+  var ms = APP.modalState || {};
+  if (!ms.duty) { return; }
+  letterRefreshFromForm();
+  ms = APP.modalState;
+  var duty = ms.duty;
+  var html = renderLetterHtml(duty, ms.letterType, ms.signerOverride, ms.customBody);
+  var docxBytes = buildDocxFromHtml(html, dutyDisplayName(duty) + ' — ' + ms.letterType);
+  var personSlug = (duty.PersonID && duty.PersonID.Title ? String(duty.PersonID.Title) : 'Unassigned').replace(/[^A-Za-z0-9]+/g, '_');
+  var typeSlug = String((duty.DutyTypeID && duty.DutyTypeID.Title) || 'Duty').replace(/[^A-Za-z0-9]+/g, '_');
+  var stamp = new Date().toISOString().slice(0, 10);
+  var fileName = ms.letterType + '_' + typeSlug + '_' + personSlug + '_' + stamp + '.docx';
+  /* Client-side download */
+  var blob = new Blob([docxBytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+  /* Upload to CCSD_Letters + metadata row */
+  uploadFileToLibrary(APP.lists.Letters, fileName, docxBytes).then(function(uploadRes){
+    var serverRel = uploadRes && uploadRes.serverRelativeUrl;
+    if (!serverRel) { toast('Downloaded, but upload to CCSD_Letters did not return a file URL.', 'warn'); return null; }
+    /* Find the file's list item and populate metadata. */
+    var metaUrl = apiUrl("/web/GetFileByServerRelativeUrl('" + escOData(serverRel) + "')/ListItemAllFields");
+    return spGetJson(metaUrl.substring(metaUrl.indexOf('/_api') + 5), 'letterMetaLookup').then(function(item){
+      var itemId = item && item.Id;
+      if (!itemId) { return null; }
+      var updates = {
+        LetterType: ms.letterType,
+        GeneratedOn: new Date().toISOString(),
+        Notes: 'Auto-generated from duty page'
+      };
+      if (duty.PersonID && duty.PersonID.Id) { updates.PersonIDId = duty.PersonID.Id; }
+      if (duty.DutyTypeID && duty.DutyTypeID.Id) { updates.DutyTypeIDId = duty.DutyTypeID.Id; }
+      if (duty.Id) { updates.RelatedDutyIDId = duty.Id; }
+      if (APP.state.currentPersonnel && APP.state.currentPersonnel.Id) { updates.GeneratedById = APP.state.currentPersonnel.Id; }
+      return updateListItem(APP.lists.Letters, itemId, updates, { entityType: 'Letter', reason: 'Letter generation metadata' }).catch(function(){ return null; });
+    });
+  }).then(function(){
+    toast('Letter downloaded and filed in CCSD_Letters.', 'ok');
+    APP.state.data.letters = null;
+  }).catch(function(err){
+    addDiagnostic('warn', 'letterDownloadDocx', 'Upload to CCSD_Letters failed.', { detail: err && (err.text || err.message || err) });
+    toast('Downloaded locally; upload to CCSD_Letters failed (see diagnostics).', 'warn');
+  });
+}
+
+/* ============================================================================
+ * ADDITIONAL DUTIES — gap detection
+ * Auto-flips Active duties to Vacant when the assignee is Departed or the
+ * AppointmentEndDate is in the past, writes a CCSD_DutyVacancyLog entry, and
+ * sends a best-effort notification to the duty's NotificationPOC (with 24h
+ * cooldown on LastNotifiedOn).  Safe to call repeatedly.
+ * ========================================================================== */
+function resolvePersonFromSpUser(spUser){
+  if (!spUser) { return null; }
+  var people = APP.state.data.people || [];
+  var spId = spUser.Id;
+  var spEmail = String(spUser.EMail || spUser.Email || '').toLowerCase();
+  for (var i = 0; i < people.length; i++) {
+    var p = people[i];
+    if (spId && p.Account && p.Account.Id && String(p.Account.Id) === String(spId)) { return p; }
+    if (spEmail && p.Email && String(p.Email).toLowerCase() === spEmail) { return p; }
+    if (spEmail && p.Account && p.Account.EMail && String(p.Account.EMail).toLowerCase() === spEmail) { return p; }
+  }
+  return null;
+}
+function personIsDeparted(person){
+  if (!person) { return false; }
+  if (String(person.Status || '').toLowerCase().indexOf('depart') >= 0) { return true; }
+  var dep = parseSpDate(person.DateDeparted);
+  if (dep && dep < new Date()) { return true; }
+  return false;
+}
+function scanDutyGaps(options){
+  options = options || {};
+  var silent = !!options.silent;
+  return Promise.all([ensurePeopleLoaded().catch(function(){ return []; }), ensureAdditionalDutiesLoaded(true), ensureDutyTypesLoaded()]).then(function(){
+    var duties = APP.state.data.additionalDuties || [];
+    var people = APP.state.data.people || [];
+    var peopleById = {};
+    people.forEach(function(p){ peopleById[String(p.Id)] = p; });
+    var now = new Date();
+    var cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    var todoQueue = [];
+    duties.forEach(function(d){
+      if (String(d.Status || '') !== 'Active') { return; }
+      var reason = null;
+      var end = parseSpDate(d.AppointmentEndDate);
+      if (end && end < now) { reason = 'Appointment end date has passed'; }
+      var personId = d.PersonID && d.PersonID.Id;
+      var person = personId ? peopleById[String(personId)] : null;
+      if (!reason && person && personIsDeparted(person)) { reason = 'Assigned person is departed'; }
+      if (!reason) { return; }
+      /* 24h cooldown: if LastNotifiedOn is recent, don't re-notify (but still flip status
+       * if it somehow reverted). */
+      var lastNotified = parseSpDate(d.LastNotifiedOn);
+      var notifyNow = !lastNotified || lastNotified < cutoff24h;
+      todoQueue.push({ duty: d, reason: reason, notifyNow: notifyNow });
+    });
+    if (!todoQueue.length) { return { scanned: duties.length, flagged: 0 }; }
+    var flipped = 0;
+    var notified = 0;
+    var chain = Promise.resolve();
+    todoQueue.forEach(function(item){
+      chain = chain.then(function(){
+        var d = item.duty;
+        var nowIso = new Date().toISOString();
+        var updates = { Status: 'Vacant', LastNotifiedOn: nowIso };
+        return updateListItem(APP.lists.AdditionalDuties, d.Id, updates, { entityType: 'AdditionalDuty', before: d, reason: 'Gap scan: ' + item.reason })
+          .then(function(){
+            flipped++;
+            var logValues = {
+              Title: dutyDisplayName(d) + ' — vacancy detected',
+              DutyIDId: d.Id,
+              DateVacant: nowIso,
+              Notes: 'Auto-detected by gap scan. Reason: ' + item.reason
+            };
+            if (d.PersonID && d.PersonID.Id) { logValues.PreviousPersonIDId = d.PersonID.Id; }
+            return createListItem(APP.lists.DutyVacancyLog, logValues, { entityType: 'DutyVacancyLog', reason: 'Gap scan' }).catch(function(){ return null; });
+          })
+          .then(function(){
+            if (!item.notifyNow) { return; }
+            if (!d.NotificationPOC || !d.NotificationPOC.Id) { return; }
+            var pocPerson = resolvePersonFromSpUser(d.NotificationPOC);
+            if (!pocPerson || !pocPerson.Id) {
+              addDiagnostic('warn', 'scanDutyGaps', 'Could not resolve NotificationPOC to a CCSD_Personnel record.', { dutyId: d.Id, poc: d.NotificationPOC });
+              return;
+            }
+            return sendNotification({
+              title: 'Duty vacancy: ' + dutyDisplayName(d),
+              body: 'The additional-duty assignment "' + dutyDisplayName(d) + '" is now vacant (reason: ' + item.reason + '). Please reassign or extend the appointment.',
+              audienceType: 'Individual',
+              recipientPersonId: pocPerson.Id,
+              notificationType: 'DutyVacancy',
+              sourceModule: 'Duties',
+              isSystemGenerated: true,
+              relatedEntityType: 'AdditionalDuty',
+              relatedEntityID: d.Id,
+              actionURL: (window.location.pathname + '#duties')
+            }).then(function(){ notified++; }).catch(function(err){
+              addDiagnostic('warn', 'scanDutyGaps', 'Vacancy notification failed.', { dutyId: d.Id, detail: err && (err.text || err.message || err) });
+            });
+          })
+          .catch(function(err){
+            addDiagnostic('error', 'scanDutyGaps', 'Failed to flip duty to Vacant.', { dutyId: d.Id, detail: err && (err.text || err.message || err) });
+          });
+      });
+    });
+    return chain.then(function(){
+      APP.state.data.additionalDuties = null;
+      APP.state.data.dutyVacancyLog = null;
+      if (!silent) { toast(flipped + ' duty row' + (flipped === 1 ? '' : 's') + ' flipped to Vacant; ' + notified + ' POC notification' + (notified === 1 ? '' : 's') + ' sent.', 'ok'); }
+      return { scanned: duties.length, flagged: todoQueue.length, flipped: flipped, notified: notified };
+    });
+  });
+}
+
+function confirmEndDuty(){
+  var ms = APP.modalState || {};
+  if (!ms.dutyId) { return; }
+  var duty = ms.before;
+  var endDate = document.getElementById('dutyEndDate').value || new Date().toISOString().slice(0, 10);
+  var newStatus = document.getElementById('dutyEndStatus').value || 'Closed';
+  var endNotes = document.getElementById('dutyEndNotes').value || '';
+  var updates = {
+    Status: newStatus,
+    AppointmentEndDate: endDate
+  };
+  if (endNotes) {
+    var priorNotes = duty && duty.Notes ? (duty.Notes + '\n\n') : '';
+    updates.Notes = priorNotes + '[Ended ' + endDate + '] ' + endNotes;
+  }
+  updateListItem(APP.lists.AdditionalDuties, ms.dutyId, updates, { entityType: 'AdditionalDuty', before: duty, reason: 'End duty via UI' }).then(function(){
+    /* Write vacancy log */
+    var logValues = {
+      Title: dutyDisplayName(duty) + ' — ended ' + endDate,
+      DutyIDId: ms.dutyId,
+      DateVacant: endDate,
+      Notes: endNotes
+    };
+    if (duty.PersonID && duty.PersonID.Id) { logValues.PreviousPersonIDId = duty.PersonID.Id; }
+    return createListItem(APP.lists.DutyVacancyLog, logValues, { entityType: 'DutyVacancyLog', reason: 'End duty' }).catch(function(){ return null; });
+  }).then(function(){
+    toast('Duty ended.', 'ok');
+    closeModal();
+    APP.state.data.additionalDuties = null;
+    APP.state.data.dutyVacancyLog = null;
+    renderDuties();
+    APP.state.rolesRaw = null; APP.state.roleNames = []; APP.state.derivedRoleScopes = [];
+    ensureRolesLoaded().then(function(){ renderContextBar(); });
+  }).catch(function(err){
+    addDiagnostic('error', 'confirmEndDuty', 'End duty failed.', { detail: err && (err.text || err.message || err) });
+    toast('Failed to end duty.', 'danger');
+  });
+}
+
 /* ─── Calendar: Export to CSV ─── */
 function exportCalendarCSV(){
   var ui = ensureCalendarUi();
@@ -10726,11 +11728,15 @@ function renderSimpleAssetTable(title, rows){
 }
 function renderAdmin(){
   renderLoading('Loading admin...');
-  return Promise.all([ensureWorkflowsLoaded(), ensureHowToLoaded(), ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureRequestsLoaded(), ensureTrainingCatalogLoaded(), ensureAllRolesLoaded()]).then(function(){
+  return Promise.all([ensureWorkflowsLoaded(), ensureHowToLoaded(), ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensureRequestsLoaded(), ensureTrainingCatalogLoaded(), ensureAllRolesLoaded(), ensureAdditionalDutiesLoaded().catch(function(){ return []; })]).then(function(){
     var people = APP.state.data.people || [];
     var orgs = APP.state.data.organizations || [];
     var reqs = APP.state.data.requests || [];
     var catalog = APP.state.data.trainingCatalog || [];
+    var duties = APP.state.data.additionalDuties || [];
+    var dutyVacant = duties.filter(function(d){ return String(d.Status) === 'Vacant'; }).length;
+    var dutyExpiring = duties.filter(function(d){ return isDutyExpiring(d, 30); }).length;
+    var dutyGapCount = dutyVacant + dutyExpiring;
     var dqIssues = runDataQualityChecks();
     var dangerIssues = dqIssues.filter(function(i){ return i.severity === 'danger'; }).length;
     var warnIssues = dqIssues.filter(function(i){ return i.severity === 'warn'; }).length;
@@ -10739,6 +11745,12 @@ function renderAdmin(){
     var openReqs = reqs.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('complete') < 0 && s.indexOf('closed') < 0; }).length;
     var html = '';
     html += '<div class="exec-strip"><div class="title">Administration</div><div class="item"><span class="swatch"></span>' + escHtml(APP.siteLabel || APP.environment) + '</div><div class="item"><span class="swatch"></span>Version ' + escHtml(APP.version) + '</div><div class="item"><span class="swatch"></span>Data Quality Issues ' + escHtml(String(dqIssues.length)) + '</div><div class="item"><span class="swatch"></span>People ' + escHtml(String(people.length)) + '</div><div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(openReqs)) + '</div></div>';
+    if (dutyGapCount > 0) {
+      html += '<div class="card" style="margin-top:10px;border-left:4px solid var(--warn,#c78a00)"><div class="card-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">'
+        + '<div><strong>Duty gaps need attention</strong><div class="small-note">' + dutyVacant + ' vacant · ' + dutyExpiring + ' expiring in the next 30 days</div></div>'
+        + '<div><button class="btn" data-action="nav" data-route="duties">Review duties</button></div>'
+        + '</div></div>';
+    }
     html += '<div class="grid cols-4">';
     html += metricCard('Total Personnel', people.length, 'Loaded personnel records', Math.min(100, people.length / 6));
     html += metricCard('Organizations', orgs.length, 'Active organizational units', Math.min(100, orgs.length * 4));
@@ -14790,6 +15802,7 @@ function renderRoute(){
   if (route === 'calendar') { return renderCalendar(); }
   if (route === 'assets') { return renderAssets(); }
   if (route === 'security') { return renderSecurity(); }
+  if (route === 'duties') { return renderDuties(); }
   if (route === 'reporting') { return renderReporting(); }
   if (route === 'supervisor') { if (!canSeeSupervisorHub()) { toast('Access restricted to supervisors.', 'danger'); return renderHome(); } return renderSupervisorHub(); }
   if (route === 'admin') { if (!canSeeAdmin()) { toast('Access restricted to App Admin role.', 'danger'); return renderHome(); } return renderAdmin(); }
@@ -15077,6 +16090,7 @@ function handleInput(e){
   if (id === 'calOrgScope') { var ui = ensureCalendarUi(); ui.scopeOrgId = e.target.value ? Number(e.target.value) : null; renderCalendar(); return; }
   if (id === 'calTypeFilter') { ensureCalendarUi().typeFilter = e.target.value; renderCalendar(); return; }
   if (id === 'calSearchInput') { debouncedCalendarSearch(e.target.value); return; }
+  if (id === 'dutyScope' || id === 'dutyStatus' || id === 'dutyType') { dutiesFilterChange(e.target); return; }
 }
 function findActionEl(start){
   var el = start;
@@ -15094,6 +16108,18 @@ function handleClick(e){
   if (action === 'close-modal') { closeModal(); return; }
   if (action === 'nav') { if (el.getAttribute('data-close-modal') === '1') { closeModal(); } routeTo(el.getAttribute('data-route')); return; }
   if (action === 'refresh-route') { renderRoute(); return; }
+  if (action === 'duty-open-assign') { openAssignDutyModal(); return; }
+  if (action === 'duty-open-edit') { openEditDutyModal(el.getAttribute('data-id')); return; }
+  if (action === 'duty-open-end') { openEndDutyModal(el.getAttribute('data-id')); return; }
+  if (action === 'duty-open-reappoint') { openReappointDutyModal(el.getAttribute('data-id')); return; }
+  if (action === 'duty-save-assign') { saveDutyAssignment(); return; }
+  if (action === 'duty-save-edit') { saveDutyEdit(); return; }
+  if (action === 'duty-confirm-end') { confirmEndDuty(); return; }
+  if (action === 'duty-scan-gaps') { scanDutyGaps({ silent: false }).then(function(){ renderDuties(); }); return; }
+  if (action === 'duty-open-letter') { openGenerateLetterModal(el.getAttribute('data-id')); return; }
+  if (action === 'letter-refresh') { letterRefreshFromForm(); return; }
+  if (action === 'letter-print') { letterPrintView(); return; }
+  if (action === 'letter-download-docx') { letterDownloadDocx(); return; }
   if (action === 'export-incidents-csv') { exportIncidentCSV(); return; }
   if (action === 'sec-admin-tab') { APP.state.securityAdminTab = el.getAttribute('data-tab') || 'incidents'; renderSecurityAdmin(); return; }
   if (action === 'edit-sec-record') { openEditSecRecordModal(el.getAttribute('data-person-id')); return; }
@@ -15267,7 +16293,11 @@ function handleClick(e){
   if (action === 'focus-person-assets') { getAssetUi(); APP.state.assetUi.personId = Number(el.getAttribute('data-id')); closeModal(); routeTo('assets'); return; }
   if (action === 'clear-person-assets') { getAssetUi(); APP.state.assetUi.personId = null; if (APP.state.route === 'assets') { renderAssets(); } closeModal(); return; }
   if (action === 'focus-seat-assets') { routeTo('facilities'); toast('Seat-focused map support will plug into Facilities next.', 'ok'); return; }
-  if (action === 'edit-person') { openPersonModal(el.getAttribute('data-id'), true); return; }
+  if (action === 'edit-person') {
+    var targetPerson = findPersonById(el.getAttribute('data-id'));
+    if (targetPerson && !canEditPerson(targetPerson)) { toast('You do not have admin scope over this person’s organization.', 'danger'); return; }
+    openPersonModal(el.getAttribute('data-id'), true); return;
+  }
   if (action === 'save-person') { savePersonEdit(); return; }
   if (action === 'open-onboarding-wizard') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } openOnboardingWizard(); return; }
   if (action === 'onboarding-next') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } onboardingNext(); return; }
@@ -15284,10 +16314,26 @@ function handleClick(e){
     return;
   }
   if (action === 'onboarding-finish') { if (!canManageInOut()) { toast('Onboarding is restricted to HR, Admin, or Supervisor roles.', 'danger'); return; } onboardingFinish(); return; }
-  if (action === 'depart-person') { if (!canEditPeople()) { toast('Departure processing is restricted to HR or Admin roles.', 'danger'); return; } openDepartureModal(el.getAttribute('data-id')); return; }
-  if (action === 'confirm-departure') { if (!canEditPeople()) { toast('Departure processing is restricted to HR or Admin roles.', 'danger'); return; } confirmDeparture(); return; }
-  if (action === 'transfer-person') { if (!canEditPeople()) { toast('Transfer is restricted to HR or Admin roles.', 'danger'); return; } openTransferPersonModal(el.getAttribute('data-id')); return; }
-  if (action === 'confirm-transfer-person') { if (!canEditPeople()) { toast('Transfer is restricted to HR or Admin roles.', 'danger'); return; } confirmTransferPerson(); return; }
+  if (action === 'depart-person') {
+    var dpPerson = findPersonById(el.getAttribute('data-id'));
+    if (!dpPerson || !canEditPerson(dpPerson)) { toast('Departure processing requires HR or Admin scope covering this person’s org.', 'danger'); return; }
+    openDepartureModal(el.getAttribute('data-id')); return;
+  }
+  if (action === 'confirm-departure') {
+    var cdPerson = findPersonById(APP.modalState.departPersonId);
+    if (!cdPerson || !canEditPerson(cdPerson)) { toast('You no longer have admin scope to complete this departure.', 'danger'); return; }
+    confirmDeparture(); return;
+  }
+  if (action === 'transfer-person') {
+    var tpPerson = findPersonById(el.getAttribute('data-id'));
+    if (!tpPerson || !canEditPerson(tpPerson)) { toast('Transfer requires HR or Admin scope covering this person’s org.', 'danger'); return; }
+    openTransferPersonModal(el.getAttribute('data-id')); return;
+  }
+  if (action === 'confirm-transfer-person') {
+    var ctpPerson = findPersonById(APP.modalState.xferPersonId);
+    if (!ctpPerson || !canEditPerson(ctpPerson)) { toast('You no longer have admin scope to complete this transfer.', 'danger'); return; }
+    confirmTransferPerson(); return;
+  }
   if (action === 'export-people-csv') { if (!canEditPeople()) { toast('People export is restricted to HR or Admin roles.', 'danger'); return; } exportPeopleCSV(); return; }
   if (action === 'view-training') { openTrainingModal(el.getAttribute('data-id')); return; }
   if (action === 'submit-training' || action === 'open-training-submit') { openTrainingSubmissionModal(el.getAttribute('data-id')); return; }
