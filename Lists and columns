@@ -451,7 +451,7 @@ Working / Current added columns from screenshots and later chat:
 - ATONumber - Single line of text
 - ATOExpiration - Date and Time (later user correction; originally created as text)
 - AllowedNetworkEnvironments - Choice (multi-select) (later user clarified it was already multi-select)
-  Choices: not explicitly specified in source; intended to represent network environments
+  Choices: NIPR only. SIPR and JWICS are no longer tracked for software.
 - Requestable - Yes/No
 - RequiresAdministratorInstall - Yes/No
 
@@ -896,6 +896,10 @@ M. ADDITIONAL PROJECT-ASSOCIATED NOTES / IMPLIED CHOICES
    - SIPR
    - JWICS
    However, exact authoritative choice sets were not explicitly shown for every new NetworkEnvironment-style field.
+   NOTE: Software tracking (CCSD_SoftwareAssets.AllowedNetworkEnvironments,
+   CCSD_SoftwareAssignments.NetworkEnvironment) is limited to NIPR / Unclassified only.
+   SIPR and JWICS are no longer tracked for software; they remain valid for seats, facilities,
+   hardware, personnel access, and systems.
 
 2. CCSD_AppRoles definitely includes App Admin in working project use, even though one earlier checklist excerpt only listed:
    HR; Security; IT; Facilities; Training; Admin; Supervisor.

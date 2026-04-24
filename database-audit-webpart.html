@@ -238,7 +238,7 @@ var S=[
 {n:'Active',t:'Boolean'},{n:'Notes',t:'Note'},
 {n:'ApprovalStatus',t:'Text'},{n:'ApprovedVersion',t:'Text'},
 {n:'RequiresATO',t:'Boolean'},{n:'ATONumber',t:'Text'},{n:'ATOExpiration',t:'DateTime'},
-{n:'AllowedNetworkEnvironments',t:'MultiChoice'},
+{n:'AllowedNetworkEnvironments',t:'MultiChoice',c:['NIPR']},
 {n:'Requestable',t:'Boolean'},{n:'RequiresAdministratorInstall',t:'Boolean'},
 {n:'Owning Org',t:'Lookup'},{n:'Default Cost Center',t:'Lookup'},{n:'System',t:'Lookup'},
 {n:'TotalLicenses',t:'Number'},{n:'CostCenter',t:'Text'}
@@ -247,7 +247,7 @@ var S=[
 {n:'Assignment ID',t:'Text'},{n:'Assigned On',t:'DateTime'},{n:'Unassigned On',t:'DateTime'},
 {n:'Status',t:'Choice',c:['Active','Revoked','Expired','Pending']},
 {n:'Notes',t:'Note'},{n:'Ticket / Reason',t:'Text'},{n:'Correlation ID',t:'Text'},
-{n:'NetworkEnvironment',t:'Choice'},{n:'AssignmentType',t:'Text'},
+{n:'NetworkEnvironment',t:'Choice',c:['Unclassified Network']},{n:'AssignmentType',t:'Text'},
 {n:'ApprovalSnapshot',t:'Text'},{n:'VersionSnapshot',t:'Text'},
 {n:'ExceptionApproved',t:'Boolean'},{n:'ExceptionReason',t:'Note'},
 {n:'Software',t:'Lookup'},{n:'Person',t:'Lookup'},{n:'Seat',t:'Lookup'},{n:'Assigned By',t:'User'}
