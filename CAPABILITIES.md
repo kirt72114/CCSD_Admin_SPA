@@ -482,3 +482,155 @@ Gated by `seeAdmin`.
 - In-app documentation surfacing `APP.roles.registry` and
   `APP.roles.capabilityDocs` so users can see what their role unlocks.
 - How-To library backed by `CCSD_HowTo`.
+
+---
+
+## 5. Cross-Cutting Features
+
+### 5.1 Notification Framework
+Three-list architecture: `CCSD_Notifications` (the message),
+`CCSD_NotificationReceipts` (per-recipient status), and
+`CCSD_IncidentNotifications` (security-specific linkage).
+
+- **16 pre-built templates**, grouped:
+  - **Incident Update (NT-01 … NT-07)** — 7 sensitive-classified case
+    update messages (case update, access change, SOR correspondence,
+    resolution, closed, debriefing required, daily check-in).
+  - **SF-86 Reminder (SF86-REMIND-30 / 60 / 90)** — reinvestigation cadence.
+  - **Training Reminder** — `TRAIN-EXPIRE-30`, `TRAIN-EXPIRED`.
+  - **Request Update** — `REQ-ASSIGNED`, `REQ-OVERDUE`.
+  - **Supervisor Alert** — `SUP-TEAM-ALERT` (overdue training / expiring
+    clearances in the team).
+  - **Broadcast** — `SYS-BROADCAST` (Admin-only).
+- **Variable substitution** — `renderTemplate(templateId, vars)` fills
+  `{caseNumber}`, `{clearanceType}`, `{trainingName}`, `{daysRemaining}`,
+  `{expirationDate}`, `{requestId}`, `{requestTitle}`, `{dueDate}`, `{count}`.
+- **Audiences** — Individual, Organization (all active members), Role (via
+  `CCSD_AppRoles` lookup with email fallback), All (App Admin only).
+- **Sensitivity levels** — Public, Internal, Sensitive. Sensitive
+  notifications strip the body when routed to email; users must open the
+  app to read the detail.
+- **PII detection** — `containsPII()` scans for SSN (`###-##-####`), DoD ID
+  / EDIPI (10-digit), and a keyword list (`ssn`, `social security`,
+  `allegation`, `investigation`, `sor`, `statement of reasons`,
+  `adjudicative`, `derogatory`). Warns the sender before publish.
+- **Permission matrix** — `canSendNotification(type, audience)`:
+  - App Admin can send anything to anyone.
+  - Security / SF86 Reminder / Incident Update → Security role.
+  - Training Reminder → Training / HR / Admin.
+  - Supervisor Alert → Supervisor / Admin.
+  - General / Request Update / System → HR / Admin / Supervisor /
+    Security / Training.
+  - Broadcast → App Admin only.
+  - Organization / Role audience → App Admin only.
+- **Notification center UI** — bell icon in the header shows unread count;
+  click opens a dropdown listing recent items, each routing to its source
+  module on click.
+- **Source modules** tracked per notification: Security, Training,
+  Requests, Calendar, Assets, Facilities, SupervisorHub, System, Admin.
+- **Automatic checks** — `initNotificationChecks()` runs on startup and
+  after cache refresh: generates training-expired / training-expiring
+  notifications, overdue-request alerts, ATO-expiring software alerts,
+  supervisor team alerts. Results flow into `CCSD_Notifications`.
+- **Email delivery** — the app writes to `CCSD_Notifications` and
+  `CCSD_NotificationReceipts`; a Power Automate flow (spec in `TODO.md`
+  Section 4) is the planned delivery mechanism, not yet deployed.
+
+### 5.2 Audit Log
+- Every create / update / delete / view / export writes to
+  `CCSD_AppAuditLog` with user, timestamp, list, item id, action, and
+  before/after detail where applicable.
+- Queue is batched and flushed on idle to avoid thrash.
+- Admin panel exposes a "Flush Telemetry" button to force-drain.
+- `getSessionId()` stamps every audit row with the session, so related
+  actions can be correlated.
+
+### 5.3 Diagnostics & Schema Awareness
+- `APP.state.diagnostics` is an in-memory rolling buffer of structured
+  events (severity, where, message, payload).
+- `APP.state.schemas` caches the discovered column shape for each list on
+  first touch, so subsequent reads use `buildSelectExpand()` against the
+  real schema rather than a hard-coded list — drift in either direction
+  fails gracefully.
+- Diagnostics tab renders the buffer with filters and expandable detail.
+- `database-audit-webpart.html` is a standalone companion page that
+  verifies the full 76-list schema against a live SharePoint site and
+  reports missing lists or columns; it was used to confirm the production
+  schema is complete.
+
+### 5.4 Print & Export Paths
+- **CSV** — calendar, personnel, request queue, asset rollups, assignment
+  tables, reporting tabs.
+- **ICS** — calendar export of the current month / week / list view.
+- **DOCX** — additional-duty appointment and revocation letters, packaged
+  client-side without external libraries.
+- **Print view** — print-optimized CSS on every major list; Organizations
+  opens a dedicated print window with branded hierarchical layout.
+
+### 5.5 Config Surface (`CCSD_Config`)
+Config entries drive behavior without code changes:
+- Scheduled-report toggle (`ScheduledReport-Enabled`) and recipient list
+  (`ScheduledReport-Recipients`).
+- Depreciation thresholds per asset type.
+- Role fallbacks and feature flags.
+- Future: Azure AD client / tenant IDs for Graph integration.
+
+### 5.6 Multi-Environment Behavior
+- `APP.sites` maps known hostnames to `{ rootUrl, label, environment }`
+  and the bootstrap picks the correct one automatically.
+- The header shows the active site label and environment badge so users
+  can tell prod from replica at a glance.
+- `CCSD_Config.rootUrl` can override the mapping for custom deployments.
+
+---
+
+## 6. Known Gaps & Deferred Work
+
+Tracked in detail in `TODO.md`. Summary for orientation:
+
+### Requires owner / tenant action before Claude can build
+1. **Microsoft Graph / Outlook calendar overlay** — blocked on Azure AD
+   app registration (Client ID + Tenant ID + admin consent for
+   `Calendars.Read`, `Calendars.ReadWrite`, `User.Read.All`).
+2. **Email delivery for notifications** — blocked on the Power Automate
+   flow spec in TODO §4 (the SPA already writes receipts; the flow picks
+   them up).
+3. **DISS Excel ingestion** — blocked on a sample DISS export so column
+   mapping can be defined.
+4. **Barcode / asset-tag scanning** — blocked on a network policy decision
+   about `getUserMedia()` on SharePoint pages.
+5. **Photo / avatar support** — blocked on an approach decision
+   (SharePoint profile photos vs. `PhotoUrl` column).
+
+### Scoped but not yet built (all owner-approval gated)
+- **Security Phase 3** — Key control & SF-700/701/702, visitor control,
+  restricted areas, access rosters. List backing already deployed.
+- **Security Phase 4** — Derivative classifier roster, SCG registry, CUI
+  category reference, document accountability & destruction records.
+- **Security Phase 5** — OPSEC program dashboard, CIL version tracking
+  (metadata only), assessment findings, DD-254 registry, contractor
+  personnel, FCL tracking.
+- **Scheduled weekly summary email** — Power Automate flow spec exists in
+  TODO §5; not yet deployed.
+- **Admin config panel for Graph / email flow IDs** — planned code work.
+
+### Verified complete (not gaps)
+- All 76 SharePoint lists and columns exist in production (audited
+  2026-04-18).
+- Core infrastructure, all 16 modules above, audit coverage, notification
+  framework with 16 templates and 3-list architecture, RBAC including
+  scoped Admin.
+
+---
+
+## 7. How to Keep This Document Accurate
+
+- Update this file in the same commit that adds a new capability or
+  changes an existing one.
+- When a new list is added to `APP.lists`, add it under §3.
+- When a new template is added to `NOTIFICATION_TEMPLATES`, update §5.1.
+- When a new capability key is added to `APP.roles.capability`, update
+  the table in §1.3.
+- When a new route is added to `APP.nav`, add a section under §4.
+- When a TODO item is completed, remove it from §6 and add a one-line
+  note to the relevant module section in §4.
