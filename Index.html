@@ -8312,6 +8312,19 @@ function deriveSeatCapabilityLabel(seat){
   if (normalizeBoolean(seat.HasJWICS)) { out.push('Top Secret / JWICS'); }
   return out.join(' • ');
 }
+function softwareEnvLabel(value){
+  var label = envDisplayLabel(value);
+  if (label === 'Secret Network' || label === 'Top Secret / JWICS') { return 'Not Tagged'; }
+  return label;
+}
+function softwareAllowedNetworksDisplay(value){
+  if (value == null) { return ''; }
+  return String(value).split(/[,;|•]/).map(function(s){ return s.trim(); }).filter(function(s){
+    if (!s) { return false; }
+    var t = s.toLowerCase();
+    return t.indexOf('sipr') < 0 && t.indexOf('jwics') < 0 && t.indexOf('secret') < 0;
+  }).join(', ');
+}
 function buildAssetIndex(){
   var idx = {
     hardwareAssets: APP.state.data.hardwareAssets || [],
@@ -8351,7 +8364,7 @@ function buildAssetIndex(){
     a._seat = idx.seatsById[getLookupId(a.Seat)] || null;
     a._seatRoom = a._seat ? idx.roomsById[getLookupId(a._seat.RoomID)] : null;
     a._system = a._software ? idx.systemsById[getLookupId(a._software.System)] : null;
-    a._effectiveEnv = envDisplayLabel(a.NetworkEnvironment || (a._software && a._software.AllowedNetworkEnvironments) || deriveSeatCapabilityLabel(a._seat) || (a._system && a._system.NetworkEnvironment) || '');
+    a._effectiveEnv = softwareEnvLabel(a.NetworkEnvironment || softwareAllowedNetworksDisplay(a._software && a._software.AllowedNetworkEnvironments) || '');
     a._assignedByDisplay = getLookupTitle(a.AssignedByPerson) || getLookupTitle(a.AssignedByPersonNew) || '';
     push(idx.directSoftwareByPersonId, getLookupId(a.Person), a);
     push(idx.seatSoftwareBySeatId, getLookupId(a.Seat), a);
@@ -8832,7 +8845,7 @@ function openEditSwAssignmentModal(assignmentId){
   idx.softwareAssignments.forEach(function(a){ if (String(a.Id) === String(assignmentId)) { row = a; } });
   if (!row) { toast('Assignment not found.', 'danger'); return; }
   APP.modalState.editSwAssignId = assignmentId;
-  var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){
+  var envOpts = ['Unclassified Network'].map(function(e){
     return '<option value="' + escAttr(e) + '"' + (row._effectiveEnv === e ? ' selected' : '') + '>' + escHtml(e) + '</option>';
   }).join('');
   var statusOpts = ['Active','Pending','Revoked','Returned'].map(function(s){
@@ -10328,7 +10341,7 @@ function renderApprovedSoftwareCatalog(){
   html += '<table class="data-table" id="swCatalogTable"><thead><tr>';
   html += '<th>Title</th><th>Vendor</th><th>Version</th><th>License Type</th><th>Network</th><th>Requires ATO</th><th>Requestable</th></tr></thead><tbody>';
   approved.forEach(function(s){
-    var nets = s.AllowedNetworkEnvironments || '';
+    var nets = softwareAllowedNetworksDisplay(s.AllowedNetworkEnvironments);
     var reqAto = normalizeBoolean(s.RequiresATO) ? 'Yes' : 'No';
     var requestable = normalizeBoolean(s.Requestable) ? '<span style="color:var(--success,#27ae60)">Yes</span>' : 'No';
     html += '<tr>';
@@ -11626,7 +11639,7 @@ function openCreateSoftwareAssignmentModal(){
     var idx = buildAssetIndex();
     var swOpts = idx.softwareAssets.map(function(a){ return '<option value="' + escAttr(a.Id) + '">' + escHtml((a.SoftwareName || a.Title || 'Software') + (a.Version ? ' v' + a.Version : '')) + '</option>'; }).join('');
     var personOpts = (APP.state.data.people || []).map(function(p){ return '<option value="' + escAttr(p.Id) + '">' + escHtml(formatPerson(p)) + '</option>'; }).join('');
-    var envOpts = ['Unclassified Network','Secret Network','Top Secret / JWICS'].map(function(e){ return '<option value="' + escAttr(e) + '">' + escHtml(e) + '</option>'; }).join('');
+    var envOpts = ['Unclassified Network'].map(function(e){ return '<option value="' + escAttr(e) + '">' + escHtml(e) + '</option>'; }).join('');
     var body = '<div class="form-grid">'
       + formField('Software Title', '<select id="swAssignSoftware" class="select"><option value="">-- Select --</option>' + swOpts + '</select>')
       + formField('Assign To Person', '<select id="swAssignPerson" class="select"><option value="">-- Select --</option>' + personOpts + '</select>')
