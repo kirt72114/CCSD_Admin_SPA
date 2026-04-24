@@ -336,6 +336,63 @@ kbd{display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(255,2
 .picker-stats{display:flex;gap:12px;align-items:center;font-size:11px;color:var(--muted)}
 .picker-stats .stat-val{font-weight:700;color:var(--text)}
 
+/* ─── Responsive Layout (Tablet + Mobile) ─── */
+html,body{overflow-x:hidden;max-width:100vw}
+#app{max-width:100vw}
+@media (max-width:900px){
+  #app{padding:4px 6px 0}
+  .hero{padding:5px 8px 3px;border-radius:10px}
+  .hero-top{gap:6px}
+  .brand-title{font-size:13px}
+  .brand-sub{display:none}
+  .header-actions{gap:4px}
+  .header-actions .btn{padding:5px 8px;font-size:11px}
+  .asset-hero,.asset-grid-2,.asset-env-grid{grid-template-columns:1fr}
+  .asset-quickstats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .asset-soft-grid{grid-template-columns:1fr}
+  .modal{width:calc(100% - 16px);max-height:calc(100vh - 24px)}
+  .modal-mask{padding:12px}
+  .toast-host{right:8px;bottom:8px;left:8px;max-width:none}
+  .health-row{grid-template-columns:1fr;gap:4px}
+  .org-chart-toolbar .input{min-width:0;width:100%}
+}
+@media (max-width:640px){
+  #app{padding:2px 4px 0}
+  .hero{padding:4px 6px 3px;border-radius:8px}
+  .brand-mark{width:22px;height:22px}
+  .brand-title{font-size:12px}
+  .build-tag{display:none}
+  .nav-link{padding:4px 7px;font-size:10px}
+  .btn{padding:5px 7px;font-size:11px}
+  .btn.subtle{padding:4px 6px;font-size:10px}
+  .user-pill,.status-pill,.role-chip{font-size:10px;padding:3px 6px}
+  .header-actions .btn-popout,.header-actions .fullscreen-badge{display:none}
+  .card-head{padding:8px 10px 4px}
+  .card-body{padding:8px 10px}
+  .card-title{font-size:13px}
+  th,td{padding:5px 6px;font-size:11px}
+  th{font-size:9px}
+  table{min-width:520px}
+  .form-grid,.grid.cols-4,.grid.cols-3,.grid.cols-2{grid-template-columns:1fr}
+  .kv{grid-template-columns:1fr}
+  .tile-grid{grid-template-columns:1fr}
+  .dash-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dash-grid,.dash-grid-3,.kpi-band{grid-template-columns:1fr}
+  .modal{width:100%;max-width:100%;max-height:100vh;border-radius:0;margin:0}
+  .modal-mask{padding:0}
+  .section-title{font-size:14px}
+  .metric .big{font-size:22px}
+  .metric .spark{min-width:80px}
+  .table-wrap{max-height:60vh}
+}
+@media (max-width:420px){
+  table{min-width:0}
+  th,td{padding:4px 5px;font-size:10px}
+  .header-actions .btn:not(.primary){padding:4px 6px;font-size:10px}
+  .metric .spark{display:none}
+  .asset-quickstats{grid-template-columns:1fr}
+}
+
 </style>
 
 <style id="projectorThemeOverrides">
@@ -467,7 +524,9 @@ tr:hover td{background:#eef5ff}
 .health-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(101,213,255,.08);border:1px solid rgba(101,213,255,.15);color:var(--accent);font-size:10px;font-weight:800}
 .proj-note{font-size:12px;color:#5a7085;padding:10px 12px;border-radius:12px;background:#f8fbff;border:1px dashed #cfdceb}
 @media (max-width:1100px){.kpi-band{grid-template-columns:1fr}.dash-kpis{grid-template-columns:repeat(3,1fr)}.dash-grid,.dash-grid-3{grid-template-columns:1fr}}
-@media (max-width:900px){.grid.cols-4,.grid.cols-3,.grid.cols-2{grid-template-columns:1fr}.hero{position:relative;top:auto}}
+@media (max-width:900px){.grid.cols-4,.grid.cols-3,.grid.cols-2{grid-template-columns:1fr}.hero{position:relative;top:auto}.dash-kpis{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){table{min-width:520px}.dash-kpis{grid-template-columns:repeat(2,1fr)}.exec-strip{padding:8px 10px;gap:6px}.exec-strip .item{font-size:10px;padding:4px 8px}}
+@media (max-width:420px){table{min-width:0}}
 </style>
 
 
