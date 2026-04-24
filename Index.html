@@ -15961,6 +15961,13 @@ function toggleTheme(){
 }
 function loadThemePreference(){
   try {
+    // One-time reset: clear any stale 'dark' preference stored by an
+    // earlier build where dark was briefly the default, so everyone
+    // starts on the light/projector theme.
+    if (!localStorage.getItem('ccsd-theme-reset-v1')) {
+      localStorage.removeItem('ccsd-theme');
+      localStorage.setItem('ccsd-theme-reset-v1', '1');
+    }
     var saved = localStorage.getItem('ccsd-theme');
     applyThemeState(saved === 'dark');
   } catch(e) { applyThemeState(false); }
