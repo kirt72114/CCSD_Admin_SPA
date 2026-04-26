@@ -116,10 +116,10 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .loading .orb{display:inline-block;width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 0 10px rgba(101,213,255,.09);animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 .modal-mask{position:fixed;inset:0;background:rgba(0,4,12,.78);display:none;align-items:center;justify-content:center;padding:24px;z-index:60;backdrop-filter:blur(10px)}
-.modal{width:min(960px,100%);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#0c1828,#06101e);border:1px solid rgba(255,255,255,.18);border-radius:16px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
-.modal-head,.modal-foot{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.modal{display:flex;flex-direction:column;width:min(960px,100%);max-height:92vh;overflow:hidden;background:linear-gradient(180deg,#0c1828,#06101e);border:1px solid rgba(255,255,255,.18);border-radius:16px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
+.modal-head,.modal-foot{flex-shrink:0;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:space-between;gap:8px}
 .modal-foot{border-top:1px solid rgba(255,255,255,.10);border-bottom:0}
-.modal-body{padding:12px 14px}
+.modal-body{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 14px}
 .close-x{font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:6px 10px;border-radius:12px}
 .close-x:hover{background:rgba(255,255,255,.06);color:var(--text)}
 .toast-host{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;flex-direction:column;gap:10px;max-width:360px}
@@ -1009,7 +1009,7 @@ body.dark-theme .hero{background:linear-gradient(180deg,rgba(6,14,30,.96),rgba(4
       <div class="brand-wrap">
         <div class="brand-mark"></div>
         <div>
-          <div class="brand-title">CCSD All-Things Administrative<span class="build-tag" title="Deployed build tag">build 2026.04.24b</span></div>
+          <div class="brand-title">CCSD All-Things Administrative<span class="build-tag" title="Deployed build tag">build 2026.04.24c</span></div>
           <div class="brand-sub">Administrative operating platform for personnel, organizations, training, SF182, requests, facilities, assets, workflow, diagnostics, and reporting.</div>
         </div>
       </div>
@@ -1047,7 +1047,7 @@ body.dark-theme .hero{background:linear-gradient(180deg,rgba(6,14,30,.96),rgba(4
 'use strict';
 
 var APP = {
-  version: '2026.04.24b',
+  version: '2026.04.24c',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -4193,7 +4193,7 @@ function renderOnboardingStep(){
     if (!unassigned.length) {
       body += '<div class="empty">No unassigned assets available.</div>';
     } else {
-      body += '<div style="max-height:250px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:4px">';
+      body += '<div style="max-height:50vh;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:4px">';
       unassigned.slice(0, 50).forEach(function(a){
         body += '<label style="display:flex;gap:6px;padding:4px;cursor:pointer"><input type="checkbox" class="ob-asset-cb" value="' + a.Id + '"><span style="font-size:13px">' + escHtml(a.AssetTag || '') + ' — ' + escHtml(a.Title || a.Model || '') + ' (' + escHtml(a.AssetType || '') + ')</span></label>';
       });
@@ -14140,7 +14140,7 @@ function openBatchRemindersModal(){
   var rows = APP.state.data.securityIncidents || [];
   var open = rows.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('admin') < 0; });
   var body = '<p>Select cases to send daily check-in reminders:</p>';
-  body += '<div style="max-height:300px;overflow:auto">';
+  body += '<div style="max-height:50vh;overflow:auto">';
   open.forEach(function(r){
     body += '<label style="display:block;padding:4px 0"><input type="checkbox" class="batch-reminder-case" value="' + escAttr(r.Id) + '"> '
       + escHtml(r.CaseNumber || ('#' + r.Id)) + ' — ' + escHtml((r.PersonID && r.PersonID.Title) || 'Unknown') + ' (' + escHtml(r.Status || '') + ')</label>';
@@ -15409,7 +15409,7 @@ function openCaseLinkModal(incidentId){
   var others = rows.filter(function(r){ return String(r.Id) !== String(incidentId); });
   var existing = (current.RelatedCases || '').split(',').filter(Boolean);
   var body = '<p>Link case <strong>' + escHtml(current.CaseNumber || '') + '</strong> to related cases:</p>';
-  body += '<div style="max-height:300px;overflow:auto">';
+  body += '<div style="max-height:50vh;overflow:auto">';
   others.forEach(function(r){
     var checked = existing.indexOf(String(r.Id)) >= 0 ? ' checked' : '';
     body += '<label style="display:block;padding:3px 0"><input type="checkbox" class="case-link-cb" value="' + escAttr(r.Id) + '"' + checked + '> '
@@ -15443,7 +15443,7 @@ function openBulkStatusUpdateModal(){
   body += '<div style="margin-bottom:8px"><select id="bulkNewStatus">';
   ['Closed — Favorable','Closed — Adverse Action','Closed — Mitigated','Administrative Withdrawal'].forEach(function(s){ body += '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>'; });
   body += '</select></div>';
-  body += '<div style="max-height:250px;overflow:auto">';
+  body += '<div style="max-height:50vh;overflow:auto">';
   open.forEach(function(r){
     body += '<label style="display:block;padding:3px 0"><input type="checkbox" class="bulk-status-cb" value="' + escAttr(r.Id) + '"> '
       + escHtml(r.CaseNumber || '#' + r.Id) + ' — ' + escHtml((r.PersonID && r.PersonID.Title) || '') + ' (' + escHtml(r.Status || '') + ')</label>';
