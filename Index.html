@@ -80,6 +80,8 @@ th[data-sort]:hover{color:var(--accent)}
 th[data-sort].sort-asc:after{content:' ▲';font-size:9px}
 th[data-sort].sort-desc:after{content:' ▼';font-size:9px}
 table{width:100%;border-collapse:collapse;min-width:860px}
+table.data-table{width:100%;border-collapse:collapse}
+@media (max-width:900px){table.data-table{display:block;overflow-x:auto;min-width:0;-webkit-overflow-scrolling:touch}}
 th,td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left;vertical-align:top;font-size:12px}
 th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text);font-weight:700;background:rgba(255,255,255,.06);position:sticky;top:0}
 tr:hover td{background:rgba(255,255,255,.06)}
@@ -114,10 +116,10 @@ tr:hover td{background:rgba(255,255,255,.06)}
 .loading .orb{display:inline-block;width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 0 10px rgba(101,213,255,.09);animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 .modal-mask{position:fixed;inset:0;background:rgba(0,4,12,.78);display:none;align-items:center;justify-content:center;padding:24px;z-index:60;backdrop-filter:blur(10px)}
-.modal{width:min(960px,100%);max-height:92vh;overflow:auto;background:linear-gradient(180deg,#0c1828,#06101e);border:1px solid rgba(255,255,255,.18);border-radius:16px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
-.modal-head,.modal-foot{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.modal{display:flex;flex-direction:column;width:min(960px,100%);max-height:92vh;overflow:hidden;background:linear-gradient(180deg,#0c1828,#06101e);border:1px solid rgba(255,255,255,.18);border-radius:16px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
+.modal-head,.modal-foot{flex-shrink:0;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:space-between;gap:8px}
 .modal-foot{border-top:1px solid rgba(255,255,255,.10);border-bottom:0}
-.modal-body{padding:12px 14px}
+.modal-body{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 14px}
 .close-x{font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:6px 10px;border-radius:12px}
 .close-x:hover{background:rgba(255,255,255,.06);color:var(--text)}
 .toast-host{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;flex-direction:column;gap:10px;max-width:360px}
@@ -861,30 +863,8 @@ tr:hover td{background:#eef5ff}
 .report-bar-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--muted);white-space:nowrap}
 .report-bar-value{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:var(--text);white-space:nowrap}
 
-/* ─── Theme Toggle ─── */
-body.light-theme{--bg:#f0f2f5;--bg2:#e4e8ee;--panel:rgba(255,255,255,.92);--panel-2:rgba(255,255,255,.96);--line:rgba(0,0,0,.10);--text:#1a1a2e;--muted:#5a6478;--shadow:0 24px 60px rgba(0,0,0,.10)}
-body.light-theme:before,body.light-theme:after{opacity:.10}
-body.light-theme .hero{background:linear-gradient(180deg,rgba(240,242,245,.98),rgba(240,242,245,.92))}
-body.light-theme .btn{background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.08));color:var(--text)}
-body.light-theme .nav-link{color:var(--muted)}
-body.light-theme .nav-link.active{color:var(--text);border-bottom-color:var(--accent-2)}
-body.light-theme .card,.light-theme .dash-card{background:var(--panel);border-color:var(--line)}
-body.light-theme .tile{background:rgba(0,0,0,.03);border-color:var(--line)}
-body.light-theme .input,body.light-theme .select,body.light-theme .textarea{background:rgba(0,0,0,.04);border-color:var(--line);color:var(--text)}
-body.light-theme .modal{background:var(--panel-2);border-color:var(--line)}
-body.light-theme .modal-mask{background:rgba(0,0,0,.3)}
-body.light-theme .toast{background:var(--panel-2);color:var(--text);border-color:var(--line)}
-body.light-theme .seat-marker{border-color:rgba(0,0,0,.4)}
-body.light-theme .seat-tooltip{background:var(--panel-2);color:var(--text);border-color:var(--line)}
-body.light-theme .kv .k{color:var(--muted)}
-body.light-theme .dash-welcome{background:linear-gradient(135deg,rgba(101,213,255,.08),rgba(140,123,255,.08))}
-body.light-theme .dash-kpi{background:var(--panel)}
-body.light-theme .dash-nav-tile{background:rgba(0,0,0,.04)}
-body.light-theme .dash-nav-tile:hover{background:rgba(0,0,0,.08)}
-
 /* ─── Loading Skeletons ─── */
 .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
-body.light-theme .skeleton{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,rgba(0,0,0,.08) 50%,rgba(0,0,0,.04) 75%);background-size:200% 100%}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .skeleton-text{height:12px;margin:6px 0;width:80%}
 .skeleton-title{height:18px;margin:8px 0;width:60%}
@@ -1029,7 +1009,7 @@ body.dark-theme .hero{background:linear-gradient(180deg,rgba(6,14,30,.96),rgba(4
       <div class="brand-wrap">
         <div class="brand-mark"></div>
         <div>
-          <div class="brand-title">CCSD All-Things Administrative<span class="build-tag" title="Deployed build tag">build 2026.04.24a</span></div>
+          <div class="brand-title">CCSD All-Things Administrative<span class="build-tag" title="Deployed build tag">build 2026.04.24c</span></div>
           <div class="brand-sub">Administrative operating platform for personnel, organizations, training, SF182, requests, facilities, assets, workflow, diagnostics, and reporting.</div>
         </div>
       </div>
@@ -1067,7 +1047,7 @@ body.dark-theme .hero{background:linear-gradient(180deg,rgba(6,14,30,.96),rgba(4
 'use strict';
 
 var APP = {
-  version: '2026.04.24a',
+  version: '2026.04.24c',
   /* ─── Multi-Site Configuration ─── */
   sites: {
     'usaf.dps.mil': {
@@ -1358,7 +1338,7 @@ function buildDiagnosticDetailHtml(entry){
     if (value == null || value === '') { return ''; }
     if (typeof value === 'string') { body = value; }
     else { body = safeJson(value); }
-    return '<div style="margin-top:14px"><div class="mini" style="font-weight:700;color:#16314f;margin-bottom:6px">' + escHtml(title) + '</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;background:#f7f9fc;border:1px solid #d4dce7;border-radius:12px;padding:12px;max-height:260px;overflow:auto;color:#12263f">' + escHtml(body) + '</pre></div>';
+    return '<div style="margin-top:14px"><div class="mini" style="font-weight:700;color:var(--text);margin-bottom:6px">' + escHtml(title) + '</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:260px;overflow:auto;color:var(--text)">' + escHtml(body) + '</pre></div>';
   }
   html += addBlock('Payload Sent', meta.payload);
   html += addBlock('Original Values', meta.values);
@@ -4040,7 +4020,7 @@ function renderPeople(){
   return Promise.all([ensurePeopleLoaded(), ensureOrganizationsLoaded(), ensurePositionsLoaded()]).then(function(){
     var rows = APP.state.data.people || [];
     var canEdit = canEditPeople();
-    var html = '<div class="card"><div class="card-head"><div><div class="card-title">People</div><div class="card-sub">Fast search, details, and role-gated editing for CCSD personnel.</div></div><div class="filter-row"><input id="peopleSearchInput" class="input" style="width:260px" placeholder="Search name, email, org, status" />' + (canEdit ? '<button class="btn primary" data-action="open-onboarding-wizard" style="padding:6px 10px;font-size:11px">+ Onboard New Member</button> ' : '') + '<button class="btn subtle" data-action="export-people-csv" style="padding:6px 10px;font-size:11px">Export CSV</button></div></div><div class="card-body">';
+    var html = '<div class="card"><div class="card-head"><div><div class="card-title">People</div><div class="card-sub">Fast search, details, and role-gated editing for CCSD personnel.</div></div><div class="filter-row"><input id="peopleSearchInput" class="input" style="max-width:260px;width:100%" placeholder="Search name, email, org, status" />' + (canEdit ? '<button class="btn primary" data-action="open-onboarding-wizard" style="padding:6px 10px;font-size:11px">+ Onboard New Member</button> ' : '') + '<button class="btn subtle" data-action="export-people-csv" style="padding:6px 10px;font-size:11px">Export CSV</button></div></div><div class="card-body">';
     html += '<div class="tile-grid" id="peopleGrid">';
     rows.forEach(function(p){
       var search = [formatPerson(p), p.Email, p.Status, p.OrgID && p.OrgID.Title, p.PositionID && p.PositionID.Title, p.PersonID].join(' ').toLowerCase();
@@ -4213,7 +4193,7 @@ function renderOnboardingStep(){
     if (!unassigned.length) {
       body += '<div class="empty">No unassigned assets available.</div>';
     } else {
-      body += '<div style="max-height:250px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:4px">';
+      body += '<div style="max-height:50vh;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:4px">';
       unassigned.slice(0, 50).forEach(function(a){
         body += '<label style="display:flex;gap:6px;padding:4px;cursor:pointer"><input type="checkbox" class="ob-asset-cb" value="' + a.Id + '"><span style="font-size:13px">' + escHtml(a.AssetTag || '') + ' — ' + escHtml(a.Title || a.Model || '') + ' (' + escHtml(a.AssetType || '') + ')</span></label>';
       });
@@ -5952,7 +5932,7 @@ function renderTraining(){
     var html = '';
     html += '<div class="exec-strip"><div class="title">Training Readiness</div><div class="item"><span class="swatch"></span>Compliance ' + escHtml(String(pct)) + '%</div><div class="item"><span class="swatch"></span>Current ' + escHtml(String(currentCount)) + '</div><div class="item"><span class="swatch"></span>Due Soon ' + escHtml(String(dueSoonCount)) + '</div><div class="item"><span class="swatch"></span>Expired/Missing ' + escHtml(String(expiredCount + missingCount)) + '</div><div class="item"><span class="swatch"></span>Pending Review ' + escHtml(String(reviewerRows.length)) + '</div></div>';
     html += '<div class="grid cols-2">';
-    html += '<div class="card glow"><div class="card-head"><div><div class="card-title">My Training</div><div class="card-sub">Required training, completion history, due soon items, and pending reviews.</div></div><div class="filter-row"><input id="trainingSearchInput" class="input" style="width:260px" placeholder="Search training" /> <button class="btn subtle" data-action="export-my-transcript">Export Transcript</button></div></div><div class="card-body"><div class="list-inline">' + statusBadge('Current: ' + currentCount) + statusBadge('Due Soon: ' + dueSoonCount) + statusBadge('Expired: ' + expiredCount) + statusBadge('Missing: ' + missingCount) + statusBadge('Pending Review: ' + pendingCount) + '</div><div style="margin-top:14px" class="progress"><span style="width:' + pct + '%"></span></div><div class="small-note" style="margin-top:8px">Compliance is calculated against training requirements applicable to the current person.</div><div class="tile-grid" id="trainingGrid" style="margin-top:16px">';
+    html += '<div class="card glow"><div class="card-head"><div><div class="card-title">My Training</div><div class="card-sub">Required training, completion history, due soon items, and pending reviews.</div></div><div class="filter-row"><input id="trainingSearchInput" class="input" style="max-width:260px;width:100%" placeholder="Search training" /> <button class="btn subtle" data-action="export-my-transcript">Export Transcript</button></div></div><div class="card-body"><div class="list-inline">' + statusBadge('Current: ' + currentCount) + statusBadge('Due Soon: ' + dueSoonCount) + statusBadge('Expired: ' + expiredCount) + statusBadge('Missing: ' + missingCount) + statusBadge('Pending Review: ' + pendingCount) + '</div><div style="margin-top:14px" class="progress"><span style="width:' + pct + '%"></span></div><div class="small-note" style="margin-top:8px">Compliance is calculated against training requirements applicable to the current person.</div><div class="tile-grid" id="trainingGrid" style="margin-top:16px">';
     currentRows.forEach(function(r){
       var t = r.training;
       var search = [t.TrainingName, t.Title, t.TrainingCode, t.Category, r.status].join(' ').toLowerCase();
@@ -6410,7 +6390,7 @@ function renderRequests(){
     var html = '';
     html += '<div class="exec-strip"><div class="title">Request Backbone</div><div class="item"><span class="swatch"></span>Visible Requests ' + escHtml(String(visible.length)) + '</div><div class="item"><span class="swatch"></span>Open Requests ' + escHtml(String(openCount)) + '</div><div class="item"><span class="swatch"></span>Office Queue ' + escHtml(String(summary.queue.length)) + '</div><div class="item"><span class="swatch"></span>Overdue ' + escHtml(String(overdueCount)) + '</div></div>';
     html += '<div class="grid cols-2">';
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">My Requests</div><div class="card-sub">Requests connected to the current user or personnel record.</div></div><div class="filter-row"><input id="requestsSearchInput" class="input" style="width:260px" placeholder="Search requests" /></div></div><div class="card-body">' + renderRequestTable(visible, true) + '</div></div>';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">My Requests</div><div class="card-sub">Requests connected to the current user or personnel record.</div></div><div class="filter-row"><input id="requestsSearchInput" class="input" style="max-width:260px;width:100%" placeholder="Search requests" /></div></div><div class="card-body">' + renderRequestTable(visible, true) + '</div></div>';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">Office Queue</div><div class="card-sub">Assigned or office-routed items needing action.</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn subtle" data-action="open-create-request">New Request</button><button class="btn subtle" data-action="open-request-templates">From Template</button>' + (canManageInOut() ? '<button class="btn subtle" data-action="supervisor-request-dashboard">Team Requests</button>' : '') + '</div></div><div class="card-body">' + renderRequestTable(summary.queue, false) + '</div></div>';
     html += '</div>';
     setView(html);
@@ -8428,7 +8408,7 @@ function renderFacilities(){
     html += '</div>';
     html += '<div class="org-branch-shell" style="margin-top:16px">';
     var exportLabel = ui.selectedRoomId ? 'Export Room Seats' : (ui.selectedFacilityId ? 'Export Building Seats' : 'Export All Seats');
-    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="width:260px" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="facility-capacity-report">Capacity</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-seat-import">Bulk Seats</button>' : '') + '<button class="btn subtle" data-action="export-seats-scope">' + exportLabel + '</button></div></div><div class="card-body">';
+    html += '<div class="card"><div class="card-head"><div><div class="card-title">Facilities & Rooms</div><div class="card-sub">Browse buildings, rooms, and seat availability. Select a room to see its seat map.</div></div><div class="filter-row"><input id="facilitiesSearchInput" class="input" style="max-width:260px;width:100%" placeholder="Search building, room, seat" /><button class="btn subtle" data-action="facility-capacity-report">Capacity</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-seat-import">Bulk Seats</button>' : '') + '<button class="btn subtle" data-action="export-seats-scope">' + exportLabel + '</button></div></div><div class="card-body">';
     facilities.forEach(function(f){
       var fRooms = rooms.filter(function(r){ return r.FacilityID && r.FacilityID.Id === f.Id; });
       var roomIds = {};
@@ -11398,7 +11378,7 @@ function renderAssets(){
     html += metricCard('Portable Devices', portableCount, 'Laptops and other portable equipment', Math.min(100, portableCount / 3));
     html += metricCard('Software Titles Near ATO Attention', atoSoon, 'Titles with ATO expiry within 90 days', Math.min(100, atoSoon * 12));
     html += '</div>';
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button><button class="btn subtle" data-action="inventory-audit-mode">Audit</button><button class="btn subtle" data-action="approved-sw-catalog">SW Catalog</button><button class="btn subtle" data-action="warranty-tracking">Warranties</button><button class="btn subtle" data-action="version-compliance">Versions</button><button class="btn subtle" data-action="cost-center-report">Cost Centers</button><button class="btn subtle" data-action="location-tracking">Locations</button><button class="btn subtle" data-action="sw-request">Request SW</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="width:280px" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">Assets and Software Governance</div><div class="card-sub">Person-centered equipment accountability, approved software visibility, and environment-aware assignment tracking across the division.</div></div><div class="filter-row"><button class="btn subtle" data-action="create-hw-assignment">+ Hardware</button><button class="btn subtle" data-action="create-sw-assignment">+ Software</button><button class="btn subtle" data-action="asset-depreciation">Aging Report</button><button class="btn subtle" data-action="asset-discrepancies">Discrepancies</button><button class="btn subtle" data-action="inventory-audit-mode">Audit</button><button class="btn subtle" data-action="approved-sw-catalog">SW Catalog</button><button class="btn subtle" data-action="warranty-tracking">Warranties</button><button class="btn subtle" data-action="version-compliance">Versions</button><button class="btn subtle" data-action="cost-center-report">Cost Centers</button><button class="btn subtle" data-action="location-tracking">Locations</button><button class="btn subtle" data-action="sw-request">Request SW</button>' + (canSeeAdmin() ? '<button class="btn subtle" data-action="bulk-asset-import">Bulk Import</button>' : '') + '<input id="assetSearchInput" class="input" style="max-width:280px;width:100%" placeholder="Search person, seat, hardware, software, system" value="' + escAttr(ui.search || '') + '" /></div></div><div class="card-body">';
     if (ui.personId) {
       var focusPerson = findPersonById(ui.personId);
       if (focusPerson) {
@@ -11453,7 +11433,7 @@ function renderLicenseUtilizationCard(idx){
     html += '<tr><td>' + escHtml(swName) + '</td><td>' + escHtml(vendor) + '</td>'
       + '<td>' + escHtml(String(used)) + '</td>'
       + '<td>' + escHtml(String(total)) + '</td>'
-      + '<td><div class="utilization-bar" style="background:#eee;height:8px;border-radius:4px;width:120px;overflow:hidden"><div style="background:' + (pct >= 100 ? '#c00' : pct >= 90 ? '#e67e22' : '#2ecc71') + ';height:100%;width:' + Math.min(100, pct) + '%"></div></div><span class="muted" style="margin-left:8px">' + pct + '%</span></td>'
+      + '<td><div class="utilization-bar" style="background:var(--line);height:8px;border-radius:4px;width:120px;overflow:hidden"><div style="background:' + (pct >= 100 ? 'var(--danger)' : pct >= 90 ? 'var(--warn)' : 'var(--ok)') + ';height:100%;width:' + Math.min(100, pct) + '%"></div></div><span class="muted" style="margin-left:8px">' + pct + '%</span></td>'
       + '<td>' + statusBadge(statusLabel) + '</td></tr>';
   });
   html += '</tbody></table></div></div></div>';
@@ -11469,7 +11449,7 @@ function renderApprovedSoftwareCatalog(){
 
   var html = '<div class="card"><div class="card-header">Approved Software Catalog <span style="color:var(--text-muted);font-weight:normal">(' + approved.length + ' titles)</span></div>';
   html += '<div class="card-body">';
-  html += '<div style="margin-bottom:8px"><input id="swCatalogSearch" placeholder="Search titles..." style="width:260px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)" /></div>';
+  html += '<div style="margin-bottom:8px"><input id="swCatalogSearch" placeholder="Search titles..." style="max-width:260px;width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text)" /></div>';
   html += '<table class="data-table" id="swCatalogTable"><thead><tr>';
   html += '<th>Title</th><th>Vendor</th><th>Version</th><th>License Type</th><th>Network</th><th>Requires ATO</th><th>Requestable</th></tr></thead><tbody>';
   approved.forEach(function(s){
@@ -12090,7 +12070,7 @@ function renderDiagnostics(){
     html += '<div class="grid cols-2" style="margin-top:16px">';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">Diagnostics Center</div><div class="card-sub">Readable production support detail for schema, list reachability, queue state, and SharePoint failures.</div></div><div class="quick-actions"><button class="btn" data-action="run-self-test">Run Self-Test</button><button class="btn" data-action="flush-telemetry">Flush Telemetry</button></div></div><div class="card-body"><div class="kv"><div class="k">Current User</div><div class="v">' + escHtml(APP.state.currentUser ? APP.state.currentUser.title : '') + '</div><div class="k">User Email</div><div class="v">' + escHtml(APP.state.currentUser ? APP.state.currentUser.email : '') + '</div><div class="k">Resolved Roles</div><div class="v">' + escHtml((APP.state.roleNames || []).join(', ')) + '</div><div class="k">Current Personnel</div><div class="v">' + escHtml(APP.state.currentPersonnel ? formatPerson(APP.state.currentPersonnel) : 'Not linked') + '</div><div class="k">Queued Telemetry</div><div class="v">' + escHtml(String(queuedTelemetry.length)) + '</div><div class="k">Queued Audit</div><div class="v">' + escHtml(String(queuedAudit.length)) + '</div></div>';
     if (latest) {
-      html += '<div style="margin-top:14px;padding:12px 14px;border:1px solid #d4dce7;border-radius:14px;background:#f7f9fc"><div class="mini" style="font-weight:700;color:#16314f;margin-bottom:6px">Latest Error Snapshot</div><div style="font-weight:700;color:#12263f">' + escHtml(latest.message || '') + '</div><div class="small-note" style="margin-top:6px">' + escHtml(latest.context || '') + ' • ' + escHtml(latest.when || '') + '</div><div class="small-note" style="margin-top:8px">' + escHtml(trimText((latest.meta && (latest.meta.spMessage || getSharePointErrorMessage(latest.meta.detail, latest.message))) || '', 240)) + '</div><div style="margin-top:10px"><button class="btn subtle" data-action="diag-detail" data-id="' + escAttr(latest.id) + '">Open Detail</button></div></div>';
+      html += '<div style="margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)"><div class="mini" style="font-weight:700;color:var(--text);margin-bottom:6px">Latest Error Snapshot</div><div style="font-weight:700;color:var(--text)">' + escHtml(latest.message || '') + '</div><div class="small-note" style="margin-top:6px">' + escHtml(latest.context || '') + ' • ' + escHtml(latest.when || '') + '</div><div class="small-note" style="margin-top:8px">' + escHtml(trimText((latest.meta && (latest.meta.spMessage || getSharePointErrorMessage(latest.meta.detail, latest.message))) || '', 240)) + '</div><div style="margin-top:10px"><button class="btn subtle" data-action="diag-detail" data-id="' + escAttr(latest.id) + '">Open Detail</button></div></div>';
     }
     html += '</div></div>';
     html += '<div class="card"><div class="card-head"><div><div class="card-title">List Health</div><div class="card-sub">Run self-test to refresh list reachability and current item counts.</div></div></div><div class="card-body">';
@@ -13986,7 +13966,7 @@ function renderSecurityRecordsRoster(){
   filterPills.forEach(function(f){
     html += '<button class="btn btn-sm sec-roster-pill" data-filter="' + escAttr(f) + '"' + (f === 'All' ? ' style="font-weight:700"' : '') + '>' + escHtml(f) + '</button>';
   });
-  html += '<input id="secRosterSearch" placeholder="Search name, org, clearance..." style="margin-left:auto;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;width:200px">';
+  html += '<input id="secRosterSearch" placeholder="Search name, org, clearance..." style="margin-left:auto;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;max-width:200px;width:100%">';
   html += '</div>';
 
   if (!activeRecords.length) {
@@ -14160,7 +14140,7 @@ function openBatchRemindersModal(){
   var rows = APP.state.data.securityIncidents || [];
   var open = rows.filter(function(r){ var s = String(r.Status || '').toLowerCase(); return s.indexOf('closed') < 0 && s.indexOf('admin') < 0; });
   var body = '<p>Select cases to send daily check-in reminders:</p>';
-  body += '<div style="max-height:300px;overflow:auto">';
+  body += '<div style="max-height:50vh;overflow:auto">';
   open.forEach(function(r){
     body += '<label style="display:block;padding:4px 0"><input type="checkbox" class="batch-reminder-case" value="' + escAttr(r.Id) + '"> '
       + escHtml(r.CaseNumber || ('#' + r.Id)) + ' — ' + escHtml((r.PersonID && r.PersonID.Title) || 'Unknown') + ' (' + escHtml(r.Status || '') + ')</label>';
@@ -14599,7 +14579,7 @@ function renderSupervisorHubContent(){
 
   html += '<div class="card" style="margin-top:16px"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between">';
   html += '<span>Team Roster (' + teamMembers.length + ')</span>';
-  html += '<input type="text" id="sup-roster-search" placeholder="Search by name, grade, position..." style="width:220px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px">';
+  html += '<input type="text" id="sup-roster-search" placeholder="Search by name, grade, position..." style="max-width:220px;width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px">';
   html += '</div>';
   html += '<div class="card-body">';
 
@@ -15429,7 +15409,7 @@ function openCaseLinkModal(incidentId){
   var others = rows.filter(function(r){ return String(r.Id) !== String(incidentId); });
   var existing = (current.RelatedCases || '').split(',').filter(Boolean);
   var body = '<p>Link case <strong>' + escHtml(current.CaseNumber || '') + '</strong> to related cases:</p>';
-  body += '<div style="max-height:300px;overflow:auto">';
+  body += '<div style="max-height:50vh;overflow:auto">';
   others.forEach(function(r){
     var checked = existing.indexOf(String(r.Id)) >= 0 ? ' checked' : '';
     body += '<label style="display:block;padding:3px 0"><input type="checkbox" class="case-link-cb" value="' + escAttr(r.Id) + '"' + checked + '> '
@@ -15463,7 +15443,7 @@ function openBulkStatusUpdateModal(){
   body += '<div style="margin-bottom:8px"><select id="bulkNewStatus">';
   ['Closed — Favorable','Closed — Adverse Action','Closed — Mitigated','Administrative Withdrawal'].forEach(function(s){ body += '<option value="' + escAttr(s) + '">' + escHtml(s) + '</option>'; });
   body += '</select></div>';
-  body += '<div style="max-height:250px;overflow:auto">';
+  body += '<div style="max-height:50vh;overflow:auto">';
   open.forEach(function(r){
     body += '<label style="display:block;padding:3px 0"><input type="checkbox" class="bulk-status-cb" value="' + escAttr(r.Id) + '"> '
       + escHtml(r.CaseNumber || '#' + r.Id) + ' — ' + escHtml((r.PersonID && r.PersonID.Title) || '') + ' (' + escHtml(r.Status || '') + ')</label>';
